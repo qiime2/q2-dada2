@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 ###################################################
 # This R script takes a fastq or fastq.gz files
 # and outputs a pdf and png of the quality profile of

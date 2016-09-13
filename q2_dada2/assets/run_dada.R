@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 ###################################################
 # This R script takes an input directory of .fastq.gz files
 # and outputs a tsv file of the dada2 processed sequence
@@ -63,4 +65,3 @@ col.names[[1]] <- paste0("#OTU ID\t", col.names[[1]])
 write.table(seqtab, out.path, sep="\t",
             row.names=TRUE, col.names=col.names, quote=FALSE)
 q(status=0)
-
