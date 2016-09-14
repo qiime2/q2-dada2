@@ -30,3 +30,14 @@ qiime dada2 denoise --i-demultiplexed-seqs fmt-tutorial-per-sample-fastq-1p.qza 
 qiime feature-table summarize --i-table fmt-tutorial-table.qza --o-visualization fmt-tutorial-table-summ
 qiime tools view fmt-tutorial-table-summ.qzv
 ```
+
+You can then perform some diversity analyses as follows. First, begin by downloading the sample metadata from [here](https://docs.google.com/spreadsheets/d/16ANHgoFhnpjehCO6ulVPD1b93FDGuDVgA_xh2O4mIRU/edit?usp=sharing) as a ``tsv`` file named ``sample-metadata.tsv``.
+
+```bash
+pip install https://github.com/qiime2/q2-feature-table/archive/master.zip https://github.com/qiime2/q2-diversity/archive/master.zip
+qiime feature-table rarefy --i-table fmt-tutorial-table.qza --o-rarefied-table fmt-tutorial-table-even200.qza --p-counts-per-sample 200
+qiime diversity beta --i-table fmt-tutorial-table-even200.qza --p-metric braycurtis --o-distance-matrix bray-curtis-dm
+qiime diversity pcoa --i-distance-matrix bray-curtis-dm.qza --o-pcoa bray-curtis-pc
+qiime emperor plot --i-pcoa bray-curtis-pc.qza --m-sample-metadata-file sample-metadata.tsv --o-visualization bray-curtis-emperor
+qiime tools view bray-curtis-emperor.qzv
+```
