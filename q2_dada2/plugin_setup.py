@@ -34,7 +34,8 @@ plugin = qiime.plugin.Plugin(
 plugin.methods.register_function(
     function=q2_dada2.denoise,
     inputs={'demultiplexed_fastq_dir': SampleData[SequencesWithQuality]},
-    parameters={},
+    parameters={'trunc_len': qiime.plugin.Int,
+                'trim_left': qiime.plugin.Int},
     outputs=[('table', FeatureTable[Frequency])],
     name='Denoise and dereplicate',
     description=('This method denoises sequences, dereplicates them, and '
