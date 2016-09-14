@@ -10,6 +10,7 @@
 import qiime.plugin
 from q2_types.per_sample_sequences import SequencesWithQuality
 from q2_types.sample_data import SampleData
+from q2_types.feature_data import FeatureData, Sequence
 from q2_types.feature_table import FeatureTable, Frequency
 
 
@@ -33,10 +34,11 @@ plugin = qiime.plugin.Plugin(
 
 plugin.methods.register_function(
     function=q2_dada2.denoise,
-    inputs={'demultiplexed_fastq_dir': SampleData[SequencesWithQuality]},
+    inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality]},
     parameters={'trunc_len': qiime.plugin.Int,
                 'trim_left': qiime.plugin.Int},
-    outputs=[('table', FeatureTable[Frequency])],
+    outputs=[('table', FeatureTable[Frequency]),
+             ('representative_sequences', FeatureData[Sequence])],
     name='Denoise and dereplicate',
     description=('This method denoises sequences, dereplicates them, and '
                  'filters chimeras.')
@@ -44,7 +46,7 @@ plugin.methods.register_function(
 
 plugin.visualizers.register_function(
     function=q2_dada2.plot_qualities,
-    inputs={'demultiplexed_fastq_dir': SampleData[SequencesWithQuality]},
+    inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality]},
     parameters={'n': qiime.plugin.Int},
     name='Plot positional qualitites',
     description=('Plots positional quality scores for n samples selected '

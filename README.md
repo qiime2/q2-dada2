@@ -16,15 +16,17 @@ pip install https://github.com/qiime2/qiime2/archive/master.zip https://github.c
 You can first use DADA2 to explore the quality of a tutorial dataset as follows.
 
 ```bash
-curl -sO https://dl.dropboxusercontent.com/u/2868868/data/qiime2/artifacts/fmt-tutorial-per-sample-fastq.qza
-qiime dada2 plot-qualities --i-demultiplexed-fastq-dir fmt-tutorial-per-sample-fastq.qza --o-visualization quality-plots --p-n 10
+curl -sO https://dl.dropboxusercontent.com/u/2868868/data/qiime2/artifacts/fmt-tutorial-per-sample-fastq-1p.qza
+# this step will take about 2-3 minutes
+qiime dada2 plot-qualities --i-demultiplexed-seqs fmt-tutorial-per-sample-fastq-1p.qza --o-visualization quality-plots --p-n 10
 qiime tools view quality-plots.qzv
 ```
 
 You can then use DADA2 to denoise, dereplicate, and remove chimeras from the same dataset as follows.
 
 ```bash
-qiime dada2 denoise --i-demultiplexed-fastq-dir /Users/caporaso/gdrive/published-documents/qiime2/2016-fmt-tutorial/fmt-tutorial-per-sample-fastq.qza --o-table fmt-tutorial-table.qza
+# this step will take about 2-3 minutes
+qiime dada2 denoise --i-demultiplexed-seqs fmt-tutorial-per-sample-fastq-1p.qza --o-table fmt-tutorial-table.qza --p-trim-left 10 --p-trunc-len 130 --o-representative-sequences fmt-tutorial-rep-seqs.qza
 qiime feature-table summarize --i-table fmt-tutorial-table.qza --o-visualization fmt-tutorial-table-summ
 qiime tools view fmt-tutorial-table-summ.qzv
 ```

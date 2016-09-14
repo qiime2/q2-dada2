@@ -17,11 +17,11 @@ from q2_types.per_sample_sequences import (
 
 def plot_qualities(
      output_dir: str, n: int,
-     demultiplexed_fastq_dir: SingleLanePerSampleSingleEndFastqDirFmt)\
+     demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt)\
      -> None:
     index_f = open('%s/index.html' % output_dir, 'w')
     index_f.write('<html>\n<body>\n')
-    fps = glob.glob('%s/*.fastq.gz' % str(demultiplexed_fastq_dir))
+    fps = glob.glob('%s/*.fastq.gz' % str(demultiplexed_seqs))
     random.shuffle(fps)
     for fp in fps[:n]:
         cmd = ['profile_quality.R', fp, output_dir]
