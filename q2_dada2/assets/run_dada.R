@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 ###################################################
 # This R script takes an input directory of .fastq.gz files
 # and outputs a tsv file of the dada2 processed sequence
@@ -14,19 +16,22 @@ args <- commandArgs(TRUE)
 
 inp.dir <- args[[1]]
 out.path <- args[[2]]
+truncLen <- as.integer(args[[3]])
+trimLeft <- as.integer(args[[4]])
+filteredFastqOutputDir <- args[[5]]
 errQuit <- function(mesg) {
   message(mesg)
   q(status=1)
 }
 
 # Input directory is expected to contain .fastq file(s)
-# that have already been filtered and globally trimmed
+# that have not yet been filtered and globally trimmed
 # to the same length.
 if(!dir.exists(inp.dir)) {
   errQuit("Input directory does not exist.")
 } else {
-  filts <- list.files(inp.dir, pattern=".fastq.gz$", full.names=TRUE)
-  if(length(filts) == 0) {
+  unfilts <- list.files(inp.dir, pattern=".fastq.gz$", full.names=TRUE)
+  if(length(unfilts) == 0) {
     errQuit("No input files with the expected filename format found.")
   }
 }
@@ -42,6 +47,16 @@ if(dir.exists(out.path)) {
 # Valid input/output -- load libraries and process
 library(methods)
 library(dada2)
+
+# Trim and filter
+# This is adapted from the example provided in the DADA2 tutorial.
+for(i in seq_along(unfilts)) {
+  fileName = basename(unfilts[i])
+  filteredFastq = file.path(filteredFastqOutputDir, fileName)
+  fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft)
+}
+filts <- list.files(filteredFastqOutputDir, pattern=".fastq.gz$",
+                    full.names=TRUE)
 
 # Dereplicate
 drps <- derepFastq(filts)
@@ -63,4 +78,3 @@ col.names[[1]] <- paste0("#OTU ID\t", col.names[[1]])
 write.table(seqtab, out.path, sep="\t",
             row.names=TRUE, col.names=col.names, quote=FALSE)
 q(status=0)
-
