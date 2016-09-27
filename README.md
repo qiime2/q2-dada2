@@ -10,7 +10,7 @@ You can install the DADA2 plugin as follows using Miniconda.
 conda create -n q2-dada2 -c r r python=3.5
 source activate q2-dada2
 conda install -c bioconda bioconductor-dada2
-pip install https://github.com/qiime2/qiime2/archive/master.zip https://github.com/qiime2/q2cli/archive/master.zip https://github.com/qiime2/q2-types/archive/master.zip https://github.com/qiime2/q2-feature-table/archive/master.zip https://github.com/gregcaporaso/q2-dada2/archive/master.zip
+pip install https://github.com/qiime2/qiime2/archive/master.zip https://github.com/qiime2/q2cli/archive/master.zip https://github.com/qiime2/q2-types/archive/master.zip https://github.com/qiime2/q2-feature-table/archive/master.zip https://github.com/benjjneb/q2-dada2/archive/master.zip
 ```
 
 You can first use DADA2 to explore the quality of a tutorial dataset as follows.
