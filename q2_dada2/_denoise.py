@@ -16,6 +16,7 @@ from q2_types.feature_data import DNAIterator
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt)
 
+from q2_dada2._plot import run_commands
 
 def denoise(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
             trunc_len: int, trim_left: int) -> (biom.Table, DNAIterator):
@@ -23,8 +24,7 @@ def denoise(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         cmd = ['run_dada.R', str(demultiplexed_seqs), biom_fp,
                str(trunc_len), str(trim_left), temp_dir_name]
-        subprocess.run(cmd, stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL)
+        run_commands([cmd])
         table = biom.Table.from_tsv(open(biom_fp), None, None, None)
         # Currently the sample IDs in DADA2 are the file names. We make
         # them the sample id part of the filename here.
