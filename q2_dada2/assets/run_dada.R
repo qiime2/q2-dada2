@@ -53,7 +53,7 @@ library(dada2)
 for(i in seq_along(unfilts)) {
   fileName = basename(unfilts[i])
   filteredFastq = file.path(filteredFastqOutputDir, fileName)
-  fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft)
+  fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft, rm.phix=TRUE)
 }
 filts <- list.files(filteredFastqOutputDir, pattern=".fastq.gz$",
                     full.names=TRUE)

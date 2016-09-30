@@ -14,6 +14,7 @@ import subprocess
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt)
 
+
 def run_commands(cmds, verbose=True):
     if verbose:
         print("Running external command line application(s). This may print "
