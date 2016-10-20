@@ -28,6 +28,15 @@ def run_commands(cmds, verbose=True):
             print(" ".join(cmd), end='\n\n')
         subprocess.run(cmd, check=True)
 
+_plot_key_text = (
+    "<div class='row'>\n <p class='alert alert-warning col-md-12'>\n"
+    "Figure key: "
+    "The distribution of quality scores at each position is shown as a "
+    "grey-scale heat map, with dark colors corresponding to higher frequency. "
+    "Lines show positional summary statistics: green is the mean, "
+    "orange is the median, and the dashed orange lines are the 25th "
+    "and 75th quantiles.\n </p>\n</div>\n")
+
 
 def plot_qualities(
      output_dir: str, n: int,
@@ -35,6 +44,7 @@ def plot_qualities(
      -> None:
     index_f = open('%s/index.html' % output_dir, 'w')
     index_f.write('<html>\n<body>\n')
+    index_f.write(_plot_key_text)
     fps = glob.glob('%s/*.fastq.gz' % str(demultiplexed_seqs))
     random.shuffle(fps)
     cmds = []
