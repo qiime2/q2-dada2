@@ -12,6 +12,7 @@
 # Get character vector of input arguments
 # For now: Format is two positional arguments
 # path/to/dir/with/fastqs path/to/output_file.tsv
+cat(R.version$version.string, "\n")
 args <- commandArgs(TRUE)
 
 inp.dir <- args[[1]]
@@ -49,6 +50,7 @@ if(dir.exists(out.path)) {
 # Valid input/output -- load libraries and process
 library(methods)
 library(dada2)
+cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 
 # Trim and filter
 # This is adapted from the example provided in the DADA2 tutorial.
