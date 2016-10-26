@@ -18,7 +18,9 @@ inp.dir <- args[[1]]
 out.path <- args[[2]]
 truncLen <- as.integer(args[[3]])
 trimLeft <- as.integer(args[[4]])
-filteredFastqOutputDir <- args[[5]]
+maxEE <- as.integer(args[[5]])
+truncQ <- as.integer(args[[6]])
+filteredFastqOutputDir <- args[[7]]
 errQuit <- function(mesg) {
   message(mesg)
   q(status=1)
@@ -53,7 +55,8 @@ library(dada2)
 for(i in seq_along(unfilts)) {
   fileName = basename(unfilts[i])
   filteredFastq = file.path(filteredFastqOutputDir, fileName)
-  fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft, rm.phix=TRUE)
+  fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft,
+              maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE)
 }
 filts <- list.files(filteredFastqOutputDir, pattern=".fastq.gz$",
                     full.names=TRUE)

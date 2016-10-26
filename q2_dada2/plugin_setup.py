@@ -37,6 +37,8 @@ plugin.methods.register_function(
     inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality]},
     parameters={'trunc_len': qiime.plugin.Int,
                 'trim_left': qiime.plugin.Int,
+                'max_ee': qiime.plugin.Int,
+                'truncq': qiime.plugin.Int,
                 'hashed_feature_ids': qiime.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence])],
