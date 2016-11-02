@@ -23,7 +23,7 @@ setup(
     name="q2-dada2",
     version=version,
     packages=find_packages(),
-    install_requires=['qiime >= 2.0.5', 'q2-types >= 0.0.5',
+    install_requires=['qiime >= 2.0.6', 'q2-types >= 0.0.6',
                       'biom-format >= 2.1.5, < 2.2.0'],
     author="Greg Caporaso and Benjamin Callahan",
     author_email="gregcaporaso@gmail.com",
