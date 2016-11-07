@@ -11,6 +11,6 @@ from ._denoise import denoise
 from ._plot import plot_qualities
 
 
-__version__ = "0.0.6.dev"
+__version__ = "0.0.7.dev0"
 
 __all__ = ['denoise', 'plot_qualities']
