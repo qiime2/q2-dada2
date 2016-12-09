@@ -39,9 +39,9 @@ _plot_key_text = (
 
 
 def plot_qualities(
-     output_dir: str, n: int,
-     demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt)\
-     -> None:
+     output_dir: str,
+     demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
+     n: int) -> None:
     index_f = open('%s/index.html' % output_dir, 'w')
     index_f.write('<html>\n<body>\n')
     index_f.write(_plot_key_text)
