@@ -6,12 +6,33 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Rscript run_dada2.R path/to/dir/with/fastqs path/to/outputfile.tsv
+# Rscript run_dada2.R input_dir output.tsv truncLen trimLeft filtered_dir
 ####################################################
 
-# Get character vector of input arguments
-# For now: Format is two positional arguments
-# path/to/dir/with/fastqs path/to/output_file.tsv
+####################################################
+#             DESCRIPTION OF ARGUMENTS             #
+####################################################
+# NOTE: ALL ARGUMENTS ARE POSITIONAL!
+#
+# 1) File path to directory with the .fastq.gz files to be processed.
+#    Ex: path/to/dir/with/fastqgzs
+#
+# 2) File path to output tsv file. If already exists, will be overwritten.
+#    Ex: path/to/output_file.tsv
+#
+# 3) truncLen - The position at which to truncate reads. Reads shorter
+#               than truncLen will be discarded.
+#    Ex: 150
+#
+# 4) trimLeft - The number of nucleotides to remove from the start of
+#               each read. Should be less than truncLen for obvious reasons.
+#    Ex: 0
+#
+# 5) File path to write the filtered .fastq.gz files. These files remain after
+#               the script completes.
+#    Ex: path/to/dir/with/fastqgzs/filtered
+#
+
 args <- commandArgs(TRUE)
 
 inp.dir <- args[[1]]
