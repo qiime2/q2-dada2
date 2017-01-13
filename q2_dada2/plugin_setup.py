@@ -1,13 +1,12 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016--, QIIME development team.
+# Copyright (c) 2016-2017, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-
-import qiime.plugin
+import qiime2.plugin
 from q2_types.per_sample_sequences import SequencesWithQuality
 from q2_types.sample_data import SampleData
 from q2_types.feature_data import FeatureData, Sequence
@@ -17,7 +16,7 @@ from q2_types.feature_table import FeatureTable, Frequency
 import q2_dada2
 
 
-plugin = qiime.plugin.Plugin(
+plugin = qiime2.plugin.Plugin(
     name='dada2',
     version=q2_dada2.__version__,
     website='http://benjjneb.github.io/dada2/',
@@ -35,9 +34,11 @@ plugin = qiime.plugin.Plugin(
 plugin.methods.register_function(
     function=q2_dada2.denoise,
     inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality]},
-    parameters={'trunc_len': qiime.plugin.Int,
-                'trim_left': qiime.plugin.Int,
-                'hashed_feature_ids': qiime.plugin.Bool},
+    parameters={'trunc_len': qiime2.plugin.Int,
+                'trim_left': qiime2.plugin.Int,
+                'max_ee': qiime2.plugin.Int,
+                'truncq': qiime2.plugin.Int,
+                'hashed_feature_ids': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence])],
     name='Denoise and dereplicate',
@@ -48,7 +49,7 @@ plugin.methods.register_function(
 plugin.visualizers.register_function(
     function=q2_dada2.plot_qualities,
     inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality]},
-    parameters={'n': qiime.plugin.Int},
+    parameters={'n': qiime2.plugin.Int},
     name='Plot positional qualitites',
     description=('Plots positional quality scores for n samples selected '
                  'at random from the input data.')

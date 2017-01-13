@@ -8,11 +8,14 @@ before_install:
   - ./miniconda.sh -b
   - export PATH=/home/travis/miniconda3/bin:$PATH
 install:
-  - conda create --yes -n test-env -c qiime2 python=$PYTHON_VERSION qiime nose flake8
+  - conda create --yes -n test-env python=$PYTHON_VERSION numpy nose
   - source activate test-env
-  - conda install -c r r
-  - conda install -c bioconda bioconductor-dada2
+  - conda install --yes -c r -c bioconda bioconductor-dada2
+  - pip install https://github.com/qiime2/qiime2/archive/master.zip https://github.com/qiime2/q2-types/archive/master.zip
+  - pip install flake8
   - pip install .
+  - git clone https://github.com/qiime2/q2lint
 script:
   - nosetests
-  - flake8 q2_dada2 setup.py
+  - flake8
+  - python q2lint/q2lint.py

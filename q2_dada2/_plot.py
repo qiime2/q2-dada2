@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016--, QIIME development team.
+# Copyright (c) 2016-2017, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -28,6 +28,7 @@ def run_commands(cmds, verbose=True):
             print(" ".join(cmd), end='\n\n')
         subprocess.run(cmd, check=True)
 
+
 _plot_key_text = (
     "<div class='row'>\n <p class='alert alert-warning col-md-12'>\n"
     "Figure key: "
@@ -39,9 +40,9 @@ _plot_key_text = (
 
 
 def plot_qualities(
-     output_dir: str, n: int,
-     demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt)\
-     -> None:
+     output_dir: str,
+     demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
+     n: int) -> None:
     index_f = open('%s/index.html' % output_dir, 'w')
     index_f.write('<html>\n<body>\n')
     index_f.write(_plot_key_text)

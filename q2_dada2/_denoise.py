@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016--, QIIME development team.
+# Copyright (c) 2016-2017, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -20,12 +20,13 @@ from q2_dada2._plot import run_commands
 
 
 def denoise(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-            trunc_len: int, trim_left: int, hashed_feature_ids: bool=True) \
-            -> (biom.Table, DNAIterator):
+            trunc_len: int, trim_left: int, max_ee: int=2, truncq: int=2,
+            hashed_feature_ids: bool=True) -> (biom.Table, DNAIterator):
     with tempfile.TemporaryDirectory() as temp_dir_name:
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         cmd = ['run_dada.R', str(demultiplexed_seqs), biom_fp,
-               str(trunc_len), str(trim_left), temp_dir_name]
+               str(trunc_len), str(trim_left), str(max_ee), str(truncq),
+               temp_dir_name]
         run_commands([cmd])
         table = biom.Table.from_tsv(open(biom_fp), None, None, None)
         # Currently the sample IDs in DADA2 are the file names. We make
