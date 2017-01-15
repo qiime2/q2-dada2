@@ -70,7 +70,7 @@ truncQ <- as.integer(args[[7]])
 nthreads <- as.integer(args[[8]])
 nreads.learn <- as.integer(args[[9]])
 errQuit <- function(mesg) {
-  message(mesg)
+  message("Error: ", mesg)
   q(status=1)
 }
 
@@ -91,7 +91,7 @@ if(!dir.exists(inp.dir)) {
 # Output path is to be a filename (not a directory) and is to be
 # removed and replaced if already present.
 if(dir.exists(out.path)) {
-  errQuit("Output filename points to pre-existing directory.")
+  errQuit("Output filename is a directory.")
 } else if(file.exists(out.path)) {
   invisible(file.remove(out.path))
 }
@@ -114,17 +114,24 @@ cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 
 ### TRIM AND FILTER ###
 # This is adapted from the example provided in the DADA2 tutorial.
-cat("1) Filtering")
+cat("1) Filtering ")
 for(i in seq_along(unfilts)) {
   fileName = basename(unfilts[i])
   filteredFastq = file.path(filtered.dir, fileName)
-  fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft,
-              maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE)
-  cat(".")
+  suppressWarnings(fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft,
+              maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE))
+  if(file.exists(filteredFastq)) { # Some of the samples reads passed the filter
+    cat(".")
+  } else {
+    cat("x")
+  }
 }
 filts <- list.files(filtered.dir, pattern=".fastq.gz$",
                     full.names=TRUE)
 cat("\n")
+if(length(filts) == 0) { # All reads were filtered out
+  errQuit("No reads passed the filter (was truncLen longer than the read length?)")
+}
 
 ### LEARN ERROR RATES ###
 # Dereplicate enough samples to get nreads.learn total reads
@@ -145,7 +152,7 @@ cat("\n")
 
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates
-cat("3) Denoise remaining samples")
+cat("3) Denoise remaining samples ")
 if(i < length(filts)) {
   for(j in seq(i+1,length(filts))) {
     drp <- derepFastq(filts[[j]])
