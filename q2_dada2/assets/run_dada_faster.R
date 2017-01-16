@@ -6,7 +6,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Rscript run_dada_faster.R input_dir output.tsv truncLen trimLeft filtered_dir
+# Ex: Rscript run_dada_faster.R input_dir output.tsv filtered_dir 200 0 2 2 0 1000000
 ####################################################
 
 ####################################################
@@ -25,8 +25,9 @@
 # 2) File path to output tsv file. If already exists, will be overwritten.
 #    Ex: path/to/output_file.tsv
 #
-# 3) File path to write the filtered .fastq.gz files. These files are interemediate
+# 3) File path to directory in which to write the filtered .fastq.gz files. These files are intermediate
 #               for the full workflow. Currently they remain after the script finishes.
+#               Directory must already exist.
 #    Ex: path/to/dir/with/fastqgzs/filtered
 #
 ### FILTERING ARGUMENTS ###
@@ -49,7 +50,7 @@
 ### SPEED ARGUMENTS ###
 #
 # 8) nthreads - The number of threads to use.
-#                 Special values: 0 - detect available and use all.
+#                 Special values: 0 - detect available cores and use all.
 #    Ex: 1
 #
 # 9) nreads_learn - The minimum number of reads to learn the error model from.
@@ -113,7 +114,6 @@ library(dada2)
 cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 
 ### TRIM AND FILTER ###
-# This is adapted from the example provided in the DADA2 tutorial.
 cat("1) Filtering ")
 for(i in seq_along(unfilts)) {
   fileName = basename(unfilts[i])
