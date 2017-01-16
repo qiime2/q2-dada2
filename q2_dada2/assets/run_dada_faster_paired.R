@@ -223,5 +223,5 @@ col.names <- basename(filtsF)
 col.names[[1]] <- paste0("#OTU ID\t", col.names[[1]])
 write.table(seqtab, out.path, sep="\t",
             row.names=TRUE, col.names=col.names, quote=FALSE)
-saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
+#saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
 q(status=0)
