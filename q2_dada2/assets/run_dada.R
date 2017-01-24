@@ -6,12 +6,41 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Rscript run_dada2.R path/to/dir/with/fastqs path/to/outputfile.tsv
+# Rscript run_dada2.R input_dir output.tsv truncLen trimLeft maxEE truncQ filtered_dir
 ####################################################
 
-# Get character vector of input arguments
-# For now: Format is two positional arguments
-# path/to/dir/with/fastqs path/to/output_file.tsv
+####################################################
+#             DESCRIPTION OF ARGUMENTS             #
+####################################################
+# NOTE: ALL ARGUMENTS ARE POSITIONAL!
+#
+# 1) File path to directory with the .fastq.gz files to be processed.
+#    Ex: path/to/dir/with/fastqgzs
+#
+# 2) File path to output tsv file. If already exists, will be overwritten.
+#    Ex: path/to/output_file.tsv
+#
+# 3) truncLen - The position at which to truncate reads. Reads shorter
+#               than truncLen will be discarded.
+#    Ex: 150
+#
+# 4) trimLeft - The number of nucleotides to remove from the start of
+#               each read. Should be less than truncLen for obvious reasons.
+#    Ex: 0
+#
+# 5) maxEE - Reads with expected errors higher than maxEE are discarded.
+#    Ex: 3
+#
+# 6) truncQ - Reads are truncated at the first instance of quality score truncQ.
+#                If the read is then shorter than truncLen, it is discarded.
+#    Ex: 2
+#
+# 7) File path to write the filtered .fastq.gz files. These files remain after
+#               the script completes.
+#    Ex: path/to/dir/with/fastqgzs/filtered
+#
+
+
 cat(R.version$version.string, "\n")
 args <- commandArgs(TRUE)
 
@@ -82,4 +111,5 @@ col.names <- basename(filts)
 col.names[[1]] <- paste0("#OTU ID\t", col.names[[1]])
 write.table(seqtab, out.path, sep="\t",
             row.names=TRUE, col.names=col.names, quote=FALSE)
+saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
 q(status=0)
