@@ -183,16 +183,24 @@ drpsF <- drpsF[1:i]
 drpsR <- drpsR[1:i]
 cat("2a) Forward Reads\n")
 ddsF <- dada(drpsF, err=NULL, selfConsist=TRUE, multithread=multithread)
-errF <- ddsF[[1]]$err_out
 cat("2b) Reverse Reads\n")
 ddsR <- dada(drpsR, err=NULL, selfConsist=TRUE, multithread=multithread)
-errR <- ddsR[[1]]$err_out
+if(i==1) {
+  errF <- ddsF$err_out
+  errR <- ddsR$err_out
+} else {
+  errF <- ddsF[[1]]$err_out
+}
 cat("\n")
 
 ### PROCESS ALL SAMPLES ###
 # Process samples used to learn error rates
 mergers <- vector("list", length(filtsF))
-mergers[1:i] <- mergePairs(ddsF, drpsF, ddsR, drpsR)
+if(i==1) { # breaks list assignment
+  mergers[[1]] <- mergePairs(ddsF, drpsF, ddsR, drpsR)
+} else {
+  mergers[1:i] <- mergePairs(ddsF, drpsF, ddsR, drpsR)
+}
 rm(drpsF); rm(drpsR); rm(ddsF); rm(ddsR)
 # Loop over rest in streaming fashion with learned error rates
 cat("3) Denoise remaining samples ")

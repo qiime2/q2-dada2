@@ -145,7 +145,11 @@ for(i in seq_along(filts)) {
 }
 # Run dada in self-consist mode on those samples
 dds <- vector("list", length(filts))
-dds[1:i] <- dada(drps[1:i], err=NULL, selfConsist=TRUE, multithread=multithread)
+if(i==1) { # breaks list assignment
+  dds[[1]] <- dada(drps[[1]], err=NULL, selfConsist=TRUE, multithread=multithread)
+} else { # more than one sample, no problem with list assignment
+  dds[1:i] <- dada(drps[1:i], err=NULL, selfConsist=TRUE, multithread=multithread)
+}
 err <- dds[[1]]$err_out
 rm(drps)
 cat("\n")
