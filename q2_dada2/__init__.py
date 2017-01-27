@@ -8,10 +8,10 @@
 
 import pkg_resources
 
-from ._denoise import denoise
+from ._denoise import denoise_single, denoise_paired
 from ._plot import plot_qualities
 
 
 __version__ = pkg_resources.get_distribution('q2-dada2').version
 
-__all__ = ['denoise', 'plot_qualities']
+__all__ = ['denoise_single', 'denoise_paired', 'plot_qualities']

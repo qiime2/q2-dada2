@@ -7,14 +7,16 @@
 # ----------------------------------------------------------------------------
 
 import qiime2.plugin
-from q2_types.per_sample_sequences import SequencesWithQuality
+from q2_types.per_sample_sequences import (
+    SequencesWithQuality, PairedEndSequencesWithQuality,
+    SingleLanePerSampleSingleEndFastqDirFmt,
+    SingleLanePerSamplePairedEndFastqDirFmt)
 from q2_types.sample_data import SampleData
 from q2_types.feature_data import FeatureData, Sequence
 from q2_types.feature_table import FeatureTable, Frequency
 
-
 import q2_dada2
-
+from q2_dada2._plot import _PlotQualView
 
 plugin = qiime2.plugin.Plugin(
     name='dada2',
@@ -32,25 +34,60 @@ plugin = qiime2.plugin.Plugin(
 
 
 plugin.methods.register_function(
-    function=q2_dada2.denoise,
-    inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality]},
+    function=q2_dada2.denoise_single,
+    inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality |
+                                             PairedEndSequencesWithQuality]},
     parameters={'trunc_len': qiime2.plugin.Int,
                 'trim_left': qiime2.plugin.Int,
-                'max_ee': qiime2.plugin.Int,
-                'truncq': qiime2.plugin.Int,
+                'max_ee': qiime2.plugin.Float,
+                'trunc_q': qiime2.plugin.Int,
+                'n_threads': qiime2.plugin.Int,
+                'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence])],
-    name='Denoise and dereplicate',
-    description=('This method denoises sequences, dereplicates them, and '
-                 'filters chimeras.')
+    name='Denoise and dereplicate single-end sequences',
+    description=('This method denoises single-end sequences, dereplicates '
+                 'them, and filters chimeras.')
 )
+
+
+plugin.methods.register_function(
+    function=q2_dada2.denoise_paired,
+    inputs={'demultiplexed_seqs': SampleData[PairedEndSequencesWithQuality]},
+    parameters={'trunc_len_f': qiime2.plugin.Int,
+                'trunc_len_r': qiime2.plugin.Int,
+                'trim_left_f': qiime2.plugin.Int,
+                'trim_left_r': qiime2.plugin.Int,
+                'max_ee': qiime2.plugin.Float,
+                'trunc_q': qiime2.plugin.Int,
+                'n_threads': qiime2.plugin.Int,
+                'n_reads_learn': qiime2.plugin.Int,
+                'hashed_feature_ids': qiime2.plugin.Bool},
+    outputs=[('table', FeatureTable[Frequency]),
+             ('representative_sequences', FeatureData[Sequence])],
+    name='Denoise and dereplicate paired-end sequences',
+    description=('This method denoises paired-end sequences, dereplicates '
+                 'them, and filters chimeras.')
+)
+
 
 plugin.visualizers.register_function(
     function=q2_dada2.plot_qualities,
-    inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality]},
+    inputs={'demultiplexed_seqs':
+            SampleData[SequencesWithQuality | PairedEndSequencesWithQuality]},
     parameters={'n': qiime2.plugin.Int},
     name='Plot positional qualitites',
     description=('Plots positional quality scores for n samples selected '
                  'at random from the input data.')
 )
+
+
+@plugin.register_transformer
+def _1(dirfmt: SingleLanePerSampleSingleEndFastqDirFmt) -> _PlotQualView:
+    return _PlotQualView(dirfmt, paired=False)
+
+
+@plugin.register_transformer
+def _2(dirfmt: SingleLanePerSamplePairedEndFastqDirFmt) -> _PlotQualView:
+    return _PlotQualView(dirfmt, paired=True)

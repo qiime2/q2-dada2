@@ -11,9 +11,6 @@ import random
 import os.path
 import subprocess
 
-from q2_types.per_sample_sequences import (
-    SingleLanePerSampleSingleEndFastqDirFmt)
-
 
 def run_commands(cmds, verbose=True):
     if verbose:
@@ -29,6 +26,17 @@ def run_commands(cmds, verbose=True):
         subprocess.run(cmd, check=True)
 
 
+class _PlotQualView:
+    """
+    A very simple pass-through view which is made up of a single-end or
+    paired-end directory format with a bool indicating if single or paired.
+    """
+    def __init__(self, directory_format, paired):
+        self._directory_format = directory_format
+        self.directory = str(directory_format)
+        self.paired = paired
+
+
 _plot_key_text = (
     "<div class='row'>\n <p class='alert alert-warning col-md-12'>\n"
     "Figure key: "
@@ -39,24 +47,55 @@ _plot_key_text = (
     "and 75th quantiles.\n </p>\n</div>\n")
 
 
-def plot_qualities(
-     output_dir: str,
-     demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-     n: int) -> None:
+def plot_qualities(output_dir: str, demultiplexed_seqs: _PlotQualView, n: int
+                   ) -> None:
+    cmds = []
     index_f = open('%s/index.html' % output_dir, 'w')
     index_f.write('<html>\n<body>\n')
     index_f.write(_plot_key_text)
-    fps = glob.glob('%s/*.fastq.gz' % str(demultiplexed_seqs))
-    random.shuffle(fps)
-    cmds = []
-    for fp in fps[:n]:
-        cmd = ['profile_quality.R', fp, output_dir]
-        cmds.append(cmd)
-        fn = os.path.basename(fp)
-        index_f.write(' <b>%s</b>' % fn)
-        index_f.write(' (<a href="./%s.qprofile.pdf">PDF</a>)' % fn)
-        index_f.write(' <img src="./%s.qprofile.png", width=1000><br>\n' % fn)
-        index_f.write(' <hr>\n\n')
+    if demultiplexed_seqs.paired:
+        fps = glob.glob('%s/*.fastq.gz' % str(demultiplexed_seqs.directory))
+        forward = []
+        reverse = []
+        for fp in fps:
+            if 'R1_001.fastq' in fp:
+                forward.append(fp)
+            else:
+                reverse.append(fp)
+        fps = list(zip(sorted(forward), sorted(reverse)))
+        for fwd, rev in random.sample(fps, n):
+            cmds.append(['profile_quality.R', fwd, output_dir])
+            cmds.append(['profile_quality.R', rev, output_dir])
+            index_f.write(' <div style="display: inline-block">')
+            fn = os.path.basename(fwd)
+            index_f.write('  <div style="text-align: center"><b>%s</b></div>'
+                          % fn.split('_', 1)[0])
+            index_f.write('  <div style="float: left">')
+            index_f.write('  (<a href="./%s.qprofile.pdf">PDF</a>)' % fn)
+            index_f.write('  <img src="./%s.qprofile.png", width=500><br>\n'
+                          % fn)
+            index_f.write('  </div>')
+            index_f.write('  <div style="float: left">')
+            fn = os.path.basename(rev)
+            index_f.write('  (<a href="./%s.qprofile.pdf">PDF</a>)' % fn)
+            index_f.write('  <img src="./%s.qprofile.png", width=500><br>\n'
+                          % fn)
+            index_f.write('  </div>')
+            index_f.write(' <span style="clear:both"></span></div>')
+            index_f.write(' <hr>\n\n')
+    else:
+        fps = list(glob.glob('%s/*.fastq.gz'
+                             % str(demultiplexed_seqs.directory)))
+        for fp in random.sample(fps, n):
+            cmds.append(['profile_quality.R', fp, output_dir])
+            fn = os.path.basename(fp)
+            index_f.write(' <div style="text-align: center"><b>%s</b></div>'
+                          % fn.split('_', 1)[0])
+            index_f.write(' (<a href="./%s.qprofile.pdf">PDF</a>)' % fn)
+            index_f.write(' <img src="./%s.qprofile.png", width=1000><br>\n'
+                          % fn)
+            index_f.write(' <hr>\n\n')
+
     index_f.write('</body>\n</html>\n')
     index_f.close()
     run_commands(cmds)
