@@ -20,7 +20,8 @@ setup(
     author_email="gregcaporaso@gmail.com",
     description="Apply DADA2 to generate denoised sequence variants. ",
     scripts=['q2_dada2/assets/profile_quality.R',
-             'q2_dada2/assets/run_dada.R'],
+             'q2_dada2/assets/run_dada_single.R',
+             'q2_dada2/assets/run_dada_paired.R'],
     entry_points={
         "qiime2.plugins":
         ["q2-dada2=q2_dada2.plugin_setup:plugin"]
