@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 ###################################################
-# This R script takes an input two directories of 
+# This R script takes an input two directories of
 # .fastq.gz files, corresponding to matched forward
 # and reverse sequence files,
 # and outputs a tsv file of the dada2 processed sequence
@@ -41,7 +41,7 @@
 #    Ex: path/to/dir/with/REV_fastqgzs/filtered
 #
 ### FILTERING ARGUMENTS ###
-# 
+#
 # 6) truncLenF - The position at which to truncate forward reads. Forward reads shorter
 #               than truncLenF will be discarded.
 #    Ex: 240
@@ -60,7 +60,7 @@
 #
 # 10) maxEE - Reads with expected errors higher than maxEE are discarded.
 #               Both forward and reverse reads are independently tested.
-#    Ex: 2.5
+#    Ex: 2
 #
 # 11) truncQ - Reads are truncated at the first instance of quality score truncQ.
 #                If the read is then shorter than truncLen, it is discarded.
@@ -128,13 +128,13 @@ if(dir.exists(out.path)) {
 }
 
 # Convert nthreads to the logical/numeric expected by dada2
-if(nthreads < 0) { 
-  errQuit("nthreads must be non-negative.") 
-} else if(nthreads == 0) { 
+if(nthreads < 0) {
+  errQuit("nthreads must be non-negative.")
+} else if(nthreads == 0) {
   multithread <- TRUE # detect and use all
 } else if(nthreads == 1) {
-  multithread <- FALSE 
-} else { 
+  multithread <- FALSE
+} else {
   multithread <- nthreads
 }
 
