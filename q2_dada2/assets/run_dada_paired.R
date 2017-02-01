@@ -60,7 +60,7 @@
 #
 # 10) maxEE - Reads with expected errors higher than maxEE are discarded.
 #               Both forward and reverse reads are independently tested.
-#    Ex: 2
+#    Ex: 2.0
 #
 # 11) truncQ - Reads are truncated at the first instance of quality score truncQ.
 #                If the read is then shorter than truncLen, it is discarded.

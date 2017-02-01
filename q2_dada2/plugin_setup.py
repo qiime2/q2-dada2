@@ -71,14 +71,15 @@ plugin.methods.register_function(
         'n_reads_learn': ('The number of reads to use when training the '
                           'error model. Smaller numbers will result in a '
                           'shorter run time but a less reliable error '
-                          'model.'),
+                          'model. If 0 is provided, all input reads will be '
+                          'used.'),
         'hashed_feature_ids': ('If true, the feature ids in the resulting '
                                'table will be presented as hashes of the '
                                'sequences defining each feature. The hash '
                                'will always be the same for the same sequence '
                                'so this allows feature tables to be merged '
                                'across runs of this method. You should only '
-                               'merge tables if the exact same paraemters are '
+                               'merge tables if the exact same parameters are '
                                'used for each run.')
     },
     output_descriptions={
@@ -136,21 +137,24 @@ plugin.methods.register_function(
                    'value will be discarded.'),
         'trunc_q': ('Reads are truncated at the first instance of a quality '
                     'score less than or equal to this value. If the resulting '
-                    'read is then shorter than `trunc_len`, it is discarded.'),
+                    'read is then shorter than `trunc_len_f` or `trunc_len_r` '
+                    '(depending on the direction of the read) it is '
+                    'discarded.'),
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
         'n_reads_learn': ('The number of reads to use when training the '
                           'error model. Smaller numbers will result in a '
                           'shorter run time but a less reliable error '
-                          'model.'),
+                          'model. If 0 is provided, all input reads will be '
+                          'used.'),
         'hashed_feature_ids': ('If true, the feature ids in the resulting '
                                'table will be presented as hashes of the '
                                'sequences defining each feature. The hash '
                                'will always be the same for the same sequence '
                                'so this allows feature tables to be merged '
                                'across runs of this method. You should only '
-                               'merge tables if the exact same paraemters are '
+                               'merge tables if the exact same parameters are '
                                'used for each run.')
     },
     output_descriptions={
@@ -177,7 +181,9 @@ plugin.visualizers.register_function(
                                'quality plots should be generated.')
     },
     parameter_descriptions={
-        'n': 'The number of per-sample quality plots to generate.'
+        'n': ('The number of per-sample quality plots to generate. If input '
+              'reads are paired end, plots will be generated for both the '
+              'forward and reverse reads for each of the `n` samples.')
     },
     name='Plot positional qualitites',
     description=('Plots positional quality scores for n samples selected '
