@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 ###################################################
-# This R script takes an input two directories of 
+# This R script takes an input two directories of
 # .fastq.gz files, corresponding to matched forward
 # and reverse sequence files,
 # and outputs a tsv file of the dada2 processed sequence
@@ -41,7 +41,7 @@
 #    Ex: path/to/dir/with/REV_fastqgzs/filtered
 #
 ### FILTERING ARGUMENTS ###
-# 
+#
 # 6) truncLenF - The position at which to truncate forward reads. Forward reads shorter
 #               than truncLenF will be discarded.
 #    Ex: 240
@@ -93,9 +93,9 @@ maxEE <- as.numeric(args[[10]])
 truncQ <- as.integer(args[[11]])
 nthreads <- as.integer(args[[12]])
 nreads.learn <- as.integer(args[[13]])
-errQuit <- function(mesg) {
+errQuit <- function(mesg, status=1) {
   message("Error: ", mesg)
-  q(status=1)
+  q(status=status)
 }
 
 ### VALIDATE ARGUMENTS ###
@@ -128,13 +128,13 @@ if(dir.exists(out.path)) {
 }
 
 # Convert nthreads to the logical/numeric expected by dada2
-if(nthreads < 0) { 
-  errQuit("nthreads must be non-negative.") 
-} else if(nthreads == 0) { 
+if(nthreads < 0) {
+  errQuit("nthreads must be non-negative.")
+} else if(nthreads == 0) {
   multithread <- TRUE # detect and use all
 } else if(nthreads == 1) {
-  multithread <- FALSE 
-} else { 
+  multithread <- FALSE
+} else {
   multithread <- nthreads
 }
 
@@ -163,7 +163,7 @@ filtsF <- list.files(filtered.dirF, pattern=".fastq.gz$", full.names=TRUE)
 filtsR <- list.files(filtered.dirR, pattern=".fastq.gz$", full.names=TRUE)
 cat("\n")
 if(length(filtsF) == 0) { # All reads were filtered out
-  errQuit("No reads passed the filter (were truncLenF/R longer than the read lengths?)")
+  errQuit("No reads passed the filter (were truncLenF/R longer than the read lengths?)", status=2)
 }
 
 ### LEARN ERROR RATES ###
