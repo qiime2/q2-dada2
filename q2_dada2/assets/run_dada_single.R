@@ -31,7 +31,7 @@
 #    Ex: path/to/dir/with/fastqgzs/filtered
 #
 ### FILTERING ARGUMENTS ###
-# 
+#
 # 4) truncLen - The position at which to truncate reads. Reads shorter
 #               than truncLen will be discarded.
 #    Ex: 150
@@ -41,7 +41,7 @@
 #    Ex: 0
 #
 # 6) maxEE - Reads with expected errors higher than maxEE are discarded.
-#    Ex: 2.5
+#    Ex: 2.0
 #
 # 7) truncQ - Reads are truncated at the first instance of quality score truncQ.
 #                If the read is then shorter than truncLen, it is discarded.
@@ -98,13 +98,13 @@ if(dir.exists(out.path)) {
 }
 
 # Convert nthreads to the logical/numeric expected by dada2
-if(nthreads < 0) { 
-  errQuit("nthreads must be non-negative.") 
-} else if(nthreads == 0) { 
+if(nthreads < 0) {
+  errQuit("nthreads must be non-negative.")
+} else if(nthreads == 0) {
   multithread <- TRUE # detect and use all
 } else if(nthreads == 1) {
-  multithread <- FALSE 
-} else { 
+  multithread <- FALSE
+} else {
   multithread <- nthreads
 }
 
