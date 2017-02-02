@@ -71,8 +71,7 @@ plugin.methods.register_function(
         'n_reads_learn': ('The number of reads to use when training the '
                           'error model. Smaller numbers will result in a '
                           'shorter run time but a less reliable error '
-                          'model. If 0 is provided, all input reads will be '
-                          'used.'),
+                          'model.'),
         'hashed_feature_ids': ('If true, the feature ids in the resulting '
                                'table will be presented as hashes of the '
                                'sequences defining each feature. The hash '
@@ -146,8 +145,7 @@ plugin.methods.register_function(
         'n_reads_learn': ('The number of reads to use when training the '
                           'error model. Smaller numbers will result in a '
                           'shorter run time but a less reliable error '
-                          'model. If 0 is provided, all input reads will be '
-                          'used.'),
+                          'model.'),
         'hashed_feature_ids': ('If true, the feature ids in the resulting '
                                'table will be presented as hashes of the '
                                'sequences defining each feature. The hash '
