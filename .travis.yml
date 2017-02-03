@@ -2,10 +2,12 @@ sudo: false
 compiler:
   - gcc
 addons:
+  source:
+    - ubuntu-toolchain-r-test
   apt:
     packages:
-     - gcc-4.8
-     - g++-4.8
+     - gcc-5
+     - g++-5
 language: python
 env:
   - PYTHON_VERSION=3.5
