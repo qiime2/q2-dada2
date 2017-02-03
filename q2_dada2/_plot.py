@@ -49,6 +49,9 @@ _plot_key_text = (
 
 def plot_qualities(output_dir: str, demultiplexed_seqs: _PlotQualView, n: int
                    ) -> None:
+    if n < 1:
+        raise ValueError("Argument to 'n' was %r, should be greater than"
+                         " zero." % n)
     cmds = []
     index_f = open('%s/index.html' % output_dir, 'w')
     index_f.write('<html>\n<body>\n')

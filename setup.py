@@ -22,6 +22,12 @@ setup(
     scripts=['q2_dada2/assets/profile_quality.R',
              'q2_dada2/assets/run_dada_single.R',
              'q2_dada2/assets/run_dada_paired.R'],
+    package_data={
+        'q2_dada2.tests': ['data/*',
+                           'data/expected/*',
+                           'data/sample_seqs_single/*',
+                           'data/sample_seqs_paired/*']
+    },
     entry_points={
         "qiime2.plugins":
         ["q2-dada2=q2_dada2.plugin_setup:plugin"]

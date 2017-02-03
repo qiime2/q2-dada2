@@ -70,9 +70,9 @@ maxEE <- as.numeric(args[[6]])
 truncQ <- as.integer(args[[7]])
 nthreads <- as.integer(args[[8]])
 nreads.learn <- as.integer(args[[9]])
-errQuit <- function(mesg) {
+errQuit <- function(mesg, status=1) {
   message("Error: ", mesg)
-  q(status=1)
+  q(status=status)
 }
 
 ### VALIDATE ARGUMENTS ###
@@ -130,7 +130,7 @@ filts <- list.files(filtered.dir, pattern=".fastq.gz$",
                     full.names=TRUE)
 cat("\n")
 if(length(filts) == 0) { # All reads were filtered out
-  errQuit("No reads passed the filter (was truncLen longer than the read length?)")
+  errQuit("No reads passed the filter (was truncLen longer than the read length?)", status=2)
 }
 
 ### LEARN ERROR RATES ###

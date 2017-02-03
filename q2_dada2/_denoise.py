@@ -9,6 +9,7 @@
 import os
 import tempfile
 import hashlib
+import subprocess
 
 import biom
 import skbio
@@ -30,10 +31,42 @@ def _check_featureless_table(fp):
                          "your truncation and trim parameter settings.")
 
 
-def _denoise_helper(cmd, biom_fp, hashed_feature_ids):
-    run_commands([cmd])
+_WHOLE_NUM = (lambda x: x >= 0, 'non-negative')
+_NAT_NUM = (lambda x: x > 0, 'greater than zero')
+# Better to choose to skip, than to implicitly ignore things that KeyError
+_SKIP = (lambda x: True, '')
+_valid_inputs = {
+    'trunc_len': _WHOLE_NUM,
+    'trunc_len_f': _WHOLE_NUM,
+    'trunc_len_r': _WHOLE_NUM,
+    'trim_left': _WHOLE_NUM,
+    'trim_left_f': _WHOLE_NUM,
+    'trim_left_r': _WHOLE_NUM,
+    'max_ee': _NAT_NUM,
+    'trunc_q': _WHOLE_NUM,
+    'n_threads': _WHOLE_NUM,
+    # 0 is technically allowed, but we don't want to support it because it only
+    # takes all reads from the first sample (alphabetically by sample id)
+    'n_reads_learn': _NAT_NUM,
+    # Skipped because they are valid for whole domain of type
+    'hashed_feature_ids': _SKIP,
+    'demultiplexed_seqs': _SKIP
+}
+
+
+# TODO: Replace this with Range predicates when interfaces support them better
+def _check_inputs(**kwargs):
+    for param, arg in kwargs.items():
+        check_is_valid, explanation = _valid_inputs[param]
+        if not check_is_valid(arg):
+            raise ValueError('Argument to %r was %r, should be %s.'
+                             % (param, arg, explanation))
+
+
+def _denoise_helper(biom_fp, hashed_feature_ids):
     _check_featureless_table(biom_fp)
-    table = biom.Table.from_tsv(open(biom_fp), None, None, None)
+    with open(biom_fp) as fh:
+        table = biom.Table.from_tsv(fh, None, None, None)
     # Currently the sample IDs in DADA2 are the file names. We make
     # them the sample id part of the filename here.
     sid_map = {id_: id_.split('_')[0] for id_ in table.ids(axis='sample')}
@@ -59,13 +92,28 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    trunc_q: int=2, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
+    _check_inputs(**locals())
+    if trim_left >= trunc_len:
+        raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
+                         % (trim_left, trunc_len))
     with tempfile.TemporaryDirectory() as temp_dir_name:
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         cmd = ['run_dada_single.R',
                str(demultiplexed_seqs), biom_fp, temp_dir_name,
                str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
                str(n_threads), str(n_reads_learn)]
-        return _denoise_helper(cmd, biom_fp, hashed_feature_ids)
+        try:
+            run_commands([cmd])
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 2:
+                raise ValueError(
+                    "No reads passed the filter. trunc_len (%r) may be longer"
+                    " than read lengths, or other arguments (such as max_ee"
+                    " or trunc_q) may be preventing reads from passing the"
+                    " filter." % trunc_len)
+            else:
+                raise
+        return _denoise_helper(biom_fp, hashed_feature_ids)
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -74,6 +122,13 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    max_ee: float=2.0, trunc_q: int=2, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
+    _check_inputs(**locals())
+    if trim_left_f >= trunc_len_f:
+        raise ValueError("trim_left_f (%r) must be smaller than trunc_len_f"
+                         " (%r)" % (trim_left_f, trunc_len_f))
+    if trim_left_r >= trunc_len_r:
+        raise ValueError("trim_left_r (%r) must be smaller than trunc_len_r"
+                         " (%r)" % (trim_left_r, trunc_len_r))
     with tempfile.TemporaryDirectory() as temp_dir:
         tmp_forward = os.path.join(temp_dir, 'forward')
         tmp_reverse = os.path.join(temp_dir, 'reverse')
@@ -95,4 +150,16 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                str(trim_left_f), str(trim_left_r),
                str(max_ee), str(trunc_q),
                str(n_threads), str(n_reads_learn)]
-        return _denoise_helper(cmd, biom_fp, hashed_feature_ids)
+        try:
+            run_commands([cmd])
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 2:
+                raise ValueError(
+                    "No reads passed the filter. trunc_len_f (%r) or"
+                    " trunc_len_r (%r) may be longer than read lengths, or"
+                    " other arguments (such as max_ee or trunc_q) may be"
+                    " preventing reads from passing the filter."
+                    % (trunc_len_f, trunc_len_r))
+            else:
+                raise
+        return _denoise_helper(biom_fp, hashed_feature_ids)
