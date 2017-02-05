@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="q2-dada2",
-    version="2017.2.0.dev0",
+    version="2017.2.0",
     url="https://qiime2.org",
     license="BSD-3-Clause",
     packages=find_packages(),
