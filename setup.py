@@ -10,11 +10,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="q2-dada2",
-    version="2017.2.0",
+    version="2017.3.0.dev",
     url="https://qiime2.org",
     license="BSD-3-Clause",
     packages=find_packages(),
-    install_requires=['qiime2 == 2017.2.*', 'q2-types == 2017.2.*',
+    install_requires=['qiime2 == 2017.3.*', 'q2-types == 2017.3.*',
                       'biom-format >= 2.1.5, < 2.2.0'],
     author="Greg Caporaso and Benjamin Callahan",
     author_email="gregcaporaso@gmail.com",
