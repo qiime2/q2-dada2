@@ -9,15 +9,17 @@ before_install:
   - ./miniconda.sh -b
   - export PATH=/home/travis/miniconda3/bin:$PATH
 install:
-  - conda create --yes -n test-env python=$PYTHON_VERSION numpy nose
+  - conda create --yes -n test-env python=$PYTHON_VERSION numpy pytest pytest-cov
   - source activate test-env
   - conda install --yes --override-channels -c r -c defaults r 'r-base=3.3.1 1'
   - CDPATH= R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("dada2")'
   - pip install https://github.com/qiime2/qiime2/archive/master.zip https://github.com/qiime2/q2-types/archive/master.zip
-  - pip install flake8
+  - pip install flake8 coveralls
   - pip install .
   - git clone https://github.com/qiime2/q2lint
 script:
-  - nosetests
+  - py.test --cov=q2_dada2
   - flake8
   - python q2lint/q2lint.py
+after_success:
+  - coveralls
