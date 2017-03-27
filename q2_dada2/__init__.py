@@ -6,12 +6,12 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-import pkg_resources
-
 from ._denoise import denoise_single, denoise_paired
 from ._plot import plot_qualities
+from ._version import get_versions
 
 
-__version__ = pkg_resources.get_distribution('q2-dada2').version
+__version__ = get_versions()['version']
+del get_versions
 
 __all__ = ['denoise_single', 'denoise_paired', 'plot_qualities']

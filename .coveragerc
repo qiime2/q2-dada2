@@ -3,8 +3,12 @@ branch = True
 omit =
     */tests*
     */__init__.py
+    q2_dada2/_version.py
+    versioneer.py
 
 [report]
 omit =
     */tests*
     */__init__.py
+    q2_dada2/_version.py
+    versioneer.py
