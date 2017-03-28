@@ -1,0 +1,36 @@
+{% set data = load_setup_py_data() %}
+
+package:
+  name: q2-dada2
+  version: {{ data.get('version') }}
+
+source:
+  path: ../..
+
+build:
+  script: python setup.py install
+
+requirements:
+  build:
+    - python 3.5*
+    - setuptools
+    - biom-format >=2.1.5,<2.2.0
+    - qiime2 2017.3.*
+    - q2-types 2017.3.*
+
+  run:
+    - python 3.5*
+    - setuptools
+    - biom-format >=2.1.5,<2.2.0
+    - qiime2 2017.3.*
+    - q2-types 2017.3.*
+
+test:
+  imports:
+    - q2_dada2
+    - qiime2.plugins.dada2
+
+about:
+  home: https://qiime2.org
+  license: BSD-3-Clause
+  license_family: BSD
