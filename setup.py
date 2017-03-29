@@ -35,5 +35,6 @@ setup(
     entry_points={
         "qiime2.plugins":
         ["q2-dada2=q2_dada2.plugin_setup:plugin"]
-    }
+    },
+    zip_safe=False,
 )
