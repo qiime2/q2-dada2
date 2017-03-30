@@ -70,7 +70,7 @@ plugin.methods.register_function(
         'chimera_method': ('The method used to remove chimeras. Valid options... '
                            'none: No chimera removal is performed. '
                            'pooled: All reads are pooled prior to chimera detection. '
-                           'consensus: Chimeras are detect in samples individually, and
+                           'consensus: Chimeras are detect in samples individually, and '
                            'sequences found chimeric in a sufficient fraction of samples are removed.'),
         'min_parent_abundance': ('The minimum abundance of potential "parents" of a sequence '
                                  'being tested as chimeric, expressed as a fold-change versus '
@@ -156,7 +156,7 @@ plugin.methods.register_function(
         'chimera_method': ('The method used to remove chimeras. Valid options... '
                            'none: No chimera removal is performed. '
                            'pooled: All reads are pooled prior to chimera detection. '
-                           'consensus: Chimeras are detect in samples individually, and
+                           'consensus: Chimeras are detect in samples individually, and '
                            'sequences found chimeric in a sufficient fraction of samples are removed.'),
         'min_parent_abundance': ('The minimum abundance of potential "parents" of a sequence '
                                  'being tested as chimeric, expressed as a fold-change versus '
