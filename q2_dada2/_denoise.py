@@ -44,7 +44,9 @@ _valid_inputs = {
     'trim_left_r': _WHOLE_NUM,
     'max_ee': _NAT_NUM,
     'trunc_q': _WHOLE_NUM,
-    'chimera_method': _SKIP, # TEST FOR VALIDITY HERE? Value should be 'pooled', 'consensus' or 'none'
+    'chimera_method': _SKIP,
+    # TEST chimera_method FOR VALIDITY HERE?
+    # Value should be 'pooled', 'consensus' or 'none'
     'min_parent_abundance': _NAT_NUM,
     'n_threads': _WHOLE_NUM,
     # 0 is technically allowed, but we don't want to support it because it only
@@ -123,7 +125,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    trunc_len_f: int, trunc_len_r: int,
                    trim_left_f: int=0, trim_left_r: int=0,
-                   max_ee: float=2.0, trunc_q: int=2, chimera_method: str='pooled',
+                   max_ee: float=2.0, trunc_q: int=2,
+                   chimera_method: str='pooled',
                    min_parent_abundance: float=1.0, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
