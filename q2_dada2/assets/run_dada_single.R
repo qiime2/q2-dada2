@@ -94,7 +94,7 @@ errQuit <- function(mesg, status=1) {
 
 ### VALIDATE ARGUMENTS ###
 
-# Input directory is expected to contain .fastq file(s)
+# Input directory is expected to contain .fastq.gz file(s)
 # that have not yet been filtered and globally trimmed
 # to the same length.
 if(!dir.exists(inp.dir)) {
@@ -189,9 +189,9 @@ seqtab <- makeSequenceTable(dds)
 # Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
 if(chimeraMethod == "pooled") {
-  seqtab <- removeBimeraDenovo(seqtab, minFoldParentOverAbundance = minParentFold, multithread=multithread)
+  seqtab <- removeBimeraDenovo(seqtab, tableMethod=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
 } else if(chimeraMethod == "consensus") {
-  seqtab <- removeBimeraDenovo(seqtab, tableMethod="consensus", minFoldParentOverAbundance = minParentFold)
+  seqtab <- removeBimeraDenovo(seqtab, tableMethod=chimeraMethod, minFoldParentOverAbundance = minParentFold)
 }
 
 ### WRITE OUTPUT AND QUIT ###

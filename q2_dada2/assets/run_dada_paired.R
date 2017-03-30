@@ -8,7 +8,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Rscript run_dada_faster_paired.R input_dirF input_dirR output.tsv filtered_dirF filtered_dirR 240 160 0 0 2 2 0 100000
+# Rscript run_dada_paired.R input_dirF input_dirR output.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2 pooled 1.0 0 100000
 ####################################################
 
 ####################################################
@@ -66,13 +66,28 @@
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
+### CHIMERA ARGUMENTS ###
+#
+# 12) chimeraMethod - The method used to remove chimeras. Valid options are:
+#               none: No chimera removal is performed.
+#               pooled: All reads are pooled prior to chimera detection.
+#               consensus: Chimeras are detect in samples individually, and a consensus decision
+#                           is made for each sequence variant.
+#    Ex: consensus
+#
+# 13) minParentFold - The minimum abundance of potential "parents" of a sequence being
+#               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
+#               tested. Values should be greater than or equal to 1 (i.e. parents should be more
+#               abundant than the sequence being tested).
+#    Ex: 1.0
+#
 ### SPEED ARGUMENTS ###
 #
-# 12) nthreads - The number of threads to use.
+# 14) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available and use all.
 #    Ex: 1
 #
-# 13) nreads_learn - The minimum number of reads to learn the error model from.
+# 15) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
@@ -91,8 +106,10 @@ trimLeftF <- as.integer(args[[8]])
 trimLeftR <- as.integer(args[[9]])
 maxEE <- as.numeric(args[[10]])
 truncQ <- as.integer(args[[11]])
-nthreads <- as.integer(args[[12]])
-nreads.learn <- as.integer(args[[13]])
+chimeraMethod <- args[[12]]
+minParentFold <- as.numeric(args[[13]])
+nthreads <- as.integer(args[[14]])
+nreads.learn <- as.integer(args[[15]])
 errQuit <- function(mesg, status=1) {
   message("Error: ", mesg)
   q(status=status)
@@ -100,7 +117,7 @@ errQuit <- function(mesg, status=1) {
 
 ### VALIDATE ARGUMENTS ###
 
-# Input directory is expected to contain .fastq file(s)
+# Input directory is expected to contain .fastq.gz file(s)
 # that have not yet been filtered and globally trimmed
 # to the same length.
 if(!(dir.exists(inp.dirF) && dir.exists(inp.dirR))) {
@@ -221,8 +238,12 @@ cat("\n")
 seqtab <- makeSequenceTable(mergers)
 
 # Remove chimeras
-cat("4) Remove chimeras\n")
-seqtab <- removeBimeraDenovo(seqtab, multithread=multithread)
+cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
+if(chimeraMethod == "pooled") {
+  seqtab <- removeBimeraDenovo(seqtab, tableMethod=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
+} else if(chimeraMethod == "consensus") {
+  seqtab <- removeBimeraDenovo(seqtab, tableMethod=chimeraMethod, minFoldParentOverAbundance = minParentFold)
+}
 
 ### WRITE OUTPUT AND QUIT ###
 # Formatting as tsv plain-text sequence table table
