@@ -17,6 +17,7 @@ requirements:
     - biom-format >=2.1.5,<2.2.0
     - qiime2 2017.3.*
     - q2-types 2017.3.*
+    - bioconductor-dada2
 
   run:
     - python 3.5*
@@ -24,6 +25,7 @@ requirements:
     - biom-format >=2.1.5,<2.2.0
     - qiime2 2017.3.*
     - q2-types 2017.3.*
+    - bioconductor-dada2
 
 test:
   imports:
