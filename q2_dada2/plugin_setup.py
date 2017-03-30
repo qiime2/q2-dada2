@@ -41,6 +41,8 @@ plugin.methods.register_function(
                 'trim_left': qiime2.plugin.Int,
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
+                'chimera_method': qiime2.plugin.Str, # IS THIS THE RIGHT TYPE?
+                'min_parent_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
@@ -65,6 +67,16 @@ plugin.methods.register_function(
         'trunc_q': ('Reads are truncated at the first instance of a quality '
                     'score less than or equal to this value. If the resulting '
                     'read is then shorter than `trunc_len`, it is discarded.'),
+        'chimera_method': ('The method used to remove chimeras. Valid options... '
+                           'none: No chimera removal is performed. '
+                           'pooled: All reads are pooled prior to chimera detection. '
+                           'consensus: Chimeras are detect in samples individually, and
+                           'sequences found chimeric in a sufficient fraction of samples are removed.'),
+        'min_parent_abundance': ('The minimum abundance of potential "parents" of a sequence '
+                                 'being tested as chimeric, expressed as a fold-change versus '
+                                 'the abundance of the sequence being tested. Values should '
+                                 'be greater than or equal to 1 (i.e. parents should be more '
+                                 'abundant than the sequence being tested).'),
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
@@ -102,6 +114,8 @@ plugin.methods.register_function(
                 'trim_left_r': qiime2.plugin.Int,
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
+                'chimera_method': qiime2.plugin.Str, # IS THIS THE RIGHT TYPE?
+                'min_parent_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
@@ -139,6 +153,16 @@ plugin.methods.register_function(
                     'read is then shorter than `trunc_len_f` or `trunc_len_r` '
                     '(depending on the direction of the read) it is '
                     'discarded.'),
+        'chimera_method': ('The method used to remove chimeras. Valid options... '
+                           'none: No chimera removal is performed. '
+                           'pooled: All reads are pooled prior to chimera detection. '
+                           'consensus: Chimeras are detect in samples individually, and
+                           'sequences found chimeric in a sufficient fraction of samples are removed.'),
+        'min_parent_abundance': ('The minimum abundance of potential "parents" of a sequence '
+                                 'being tested as chimeric, expressed as a fold-change versus '
+                                 'the abundance of the sequence being tested. Values should '
+                                 'be greater than or equal to 1 (i.e. parents should be more '
+                                 'abundant than the sequence being tested).'),
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
