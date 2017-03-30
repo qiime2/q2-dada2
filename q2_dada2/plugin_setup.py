@@ -41,7 +41,8 @@ plugin.methods.register_function(
                 'trim_left': qiime2.plugin.Int,
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
-                'chimera_method': qiime2.plugin.Str, # IS THIS THE RIGHT TYPE?
+                'chimera_method': qiime2.plugin.Str,
+                # IS qiime2.plugin.Str THE RIGHT TYPE?
                 'min_parent_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
