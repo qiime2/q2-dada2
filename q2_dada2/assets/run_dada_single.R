@@ -6,7 +6,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Ex: Rscript run_dada_faster.R input_dir output.tsv filtered_dir 200 0 2 2 0 1000000
+# Ex: Rscript run_dada_single.R input_dir output.tsv filtered_dir 200 0 2.0 2 pooled 1.0 0 1000000
 ####################################################
 
 ####################################################
@@ -47,13 +47,28 @@
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
+### CHIMERA ARGUMENTS ###
+#
+# 8) chimeraMethod - The method used to remove chimeras. Valid options are:
+#               none: No chimera removal is performed.
+#               pooled: All reads are pooled prior to chimera detection.
+#               consensus: Chimeras are detect in samples individually, and a consensus decision
+#                           is made for each sequence variant.
+#    Ex: consensus
+#
+# 9) minParentFold - The minimum abundance of potential "parents" of a sequence being
+#               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
+#               tested. Values should be greater than or equal to 1 (i.e. parents should be more
+#               abundant than the sequence being tested).
+#    Ex: 1.0
+#
 ### SPEED ARGUMENTS ###
 #
-# 8) nthreads - The number of threads to use.
+# 10) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available cores and use all.
 #    Ex: 1
 #
-# 9) nreads_learn - The minimum number of reads to learn the error model from.
+# 11) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
@@ -68,8 +83,10 @@ truncLen <- as.integer(args[[4]])
 trimLeft <- as.integer(args[[5]])
 maxEE <- as.numeric(args[[6]])
 truncQ <- as.integer(args[[7]])
-nthreads <- as.integer(args[[8]])
-nreads.learn <- as.integer(args[[9]])
+chimeraMethod <- args[[8]]
+minParentFold <- as.numeric(args[[9]])
+nthreads <- as.integer(args[[10]])
+nreads.learn <- as.integer(args[[11]])
 errQuit <- function(mesg, status=1) {
   message("Error: ", mesg)
   q(status=status)
@@ -170,8 +187,12 @@ cat("\n")
 seqtab <- makeSequenceTable(dds)
 
 # Remove chimeras
-cat("4) Remove chimeras\n")
-seqtab <- removeBimeraDenovo(seqtab, multithread=multithread)
+cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
+if(chimeraMethod == "pooled") {
+  seqtab <- removeBimeraDenovo(seqtab, minFoldParentOverAbundance = minParentFold, multithread=multithread)
+} else if(chimeraMethod == "consensus") {
+  seqtab <- removeBimeraDenovo(seqtab, tableMethod="consensus", minFoldParentOverAbundance = minParentFold)
+}
 
 ### WRITE OUTPUT AND QUIT ###
 # Formatting as tsv plain-text sequence table table
