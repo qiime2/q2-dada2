@@ -44,9 +44,7 @@ _valid_inputs = {
     'trim_left_r': _WHOLE_NUM,
     'max_ee': _NAT_NUM,
     'trunc_q': _WHOLE_NUM,
-    'chimera_method': _SKIP,
-    # TEST chimera_method FOR VALIDITY HERE?
-    # Value should be 'pooled', 'consensus' or 'none'
+    'chimera_method': (lambda x: x in {'pooled', 'consensus', 'none'}),
     'min_parent_abundance': _NAT_NUM,
     'n_threads': _WHOLE_NUM,
     # 0 is technically allowed, but we don't want to support it because it only

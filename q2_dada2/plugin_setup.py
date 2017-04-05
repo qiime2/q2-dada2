@@ -41,8 +41,7 @@ plugin.methods.register_function(
                 'trim_left': qiime2.plugin.Int,
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
-                'chimera_method': qiime2.plugin.Str,
-                # IS qiime2.plugin.Str THE RIGHT TYPE?
+                'chimera_method': qiime2.plugin.Str % qiime2.plugin.Choices({'pooled', 'consensus', 'none'}),
                 'min_parent_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
@@ -69,9 +68,9 @@ plugin.methods.register_function(
                     'score less than or equal to this value. If the resulting '
                     'read is then shorter than `trunc_len`, it is discarded.'),
         'chimera_method': ('The method used to remove chimeras. '
-                           'none: No chimera removal is performed. '
-                           'pooled: All reads are pooled prior to chimera '
-                           'detection. consensus: Chimeras are detected in '
+                           '"none": No chimera removal is performed. '
+                           '"pooled": All reads are pooled prior to chimera '
+                           'detection. "consensus": Chimeras are detected in '
                            'samples individually, and sequences found '
                            'chimeric in a sufficient fraction of samples are '
                            'removed.'),
@@ -119,8 +118,7 @@ plugin.methods.register_function(
                 'trim_left_r': qiime2.plugin.Int,
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
-                'chimera_method': qiime2.plugin.Str,
-                # IS qiime2.plugin.Str THE RIGHT TYPE?
+                'chimera_method': qiime2.plugin.Str % qiime2.plugin.Choices({'pooled', 'consensus', 'none'}),
                 'min_parent_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
@@ -160,9 +158,9 @@ plugin.methods.register_function(
                     '(depending on the direction of the read) it is '
                     'discarded.'),
         'chimera_method': ('The method used to remove chimeras. '
-                           'none: No chimera removal is performed. '
-                           'pooled: All reads are pooled prior to chimera '
-                           'detection. consensus: Chimeras are detected in '
+                           '"none": No chimera removal is performed. '
+                           '"pooled": All reads are pooled prior to chimera '
+                           'detection. "consensus": Chimeras are detected in '
                            'samples individually, and sequences found '
                            'chimeric in a sufficient fraction of samples are '
                            'removed.'),
