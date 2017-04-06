@@ -44,7 +44,7 @@ plugin.methods.register_function(
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
                 'chimera_method': qiime2.plugin.Str %
-                                  qiime2.plugin.Choices(_CHIM_OPT),
+                qiime2.plugin.Choices(_CHIM_OPT),
                 'min_parent_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
