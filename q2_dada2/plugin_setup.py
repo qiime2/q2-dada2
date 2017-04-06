@@ -18,6 +18,8 @@ from q2_types.feature_table import FeatureTable, Frequency
 import q2_dada2
 from q2_dada2._plot import _PlotQualView
 
+_CHIM_OPT = {'pooled', 'consensus', 'none'}
+
 plugin = qiime2.plugin.Plugin(
     name='dada2',
     version=q2_dada2.__version__,
@@ -42,7 +44,7 @@ plugin.methods.register_function(
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
                 'chimera_method': qiime2.plugin.Str %
-                    qiime2.plugin.Choices({'pooled', 'consensus', 'none'}),
+                                 qiime2.plugin.Choices(_CHIM_OPT),
                 'min_parent_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
@@ -120,7 +122,7 @@ plugin.methods.register_function(
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
                 'chimera_method': qiime2.plugin.Str %
-                    qiime2.plugin.Choices({'pooled', 'consensus', 'none'}),
+                                 qiime2.plugin.Choices(_CHIM_OPT),
                 'min_parent_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
