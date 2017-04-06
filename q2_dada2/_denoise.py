@@ -33,7 +33,8 @@ def _check_featureless_table(fp):
 
 _WHOLE_NUM = (lambda x: x >= 0, 'non-negative')
 _NAT_NUM = (lambda x: x > 0, 'greater than zero')
-_CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'}, 'pooled, consensus or none')
+_CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'},
+             'pooled, consensus or none')
 # Better to choose to skip, than to implicitly ignore things that KeyError
 _SKIP = (lambda x: True, '')
 _valid_inputs = {
