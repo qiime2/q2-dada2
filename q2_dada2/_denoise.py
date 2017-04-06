@@ -33,6 +33,7 @@ def _check_featureless_table(fp):
 
 _WHOLE_NUM = (lambda x: x >= 0, 'non-negative')
 _NAT_NUM = (lambda x: x > 0, 'greater than zero')
+_CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'}, 'pooled, consensus or none')
 # Better to choose to skip, than to implicitly ignore things that KeyError
 _SKIP = (lambda x: True, '')
 _valid_inputs = {
@@ -44,7 +45,7 @@ _valid_inputs = {
     'trim_left_r': _WHOLE_NUM,
     'max_ee': _NAT_NUM,
     'trunc_q': _WHOLE_NUM,
-    'chimera_method': (lambda x: x in {'pooled', 'consensus', 'none'}),
+    'chimera_method': _CHIM_STR,
     'min_parent_abundance': _NAT_NUM,
     'n_threads': _WHOLE_NUM,
     # 0 is technically allowed, but we don't want to support it because it only
