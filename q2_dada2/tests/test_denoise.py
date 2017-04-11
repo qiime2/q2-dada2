@@ -54,9 +54,12 @@ class TestDenoiseSingle(TestPluginBase):
         for seq in exp_rep_seqs:
             del seq.metadata['description']
 
+        # NOTE: the test data isn't interesting enough to be impacted by
+        # min_fold_parent_over_abundance.
         table, rep_seqs = denoise_single(
             self.demux_seqs, 100, trim_left=10, max_ee=10.5, trunc_q=1,
-            n_threads=0, n_reads_learn=2, hashed_feature_ids=False)
+            n_threads=0, n_reads_learn=2, hashed_feature_ids=False,
+            chimera_method='consensus', min_fold_parent_over_abundance=1.1)
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
@@ -75,6 +78,9 @@ class TestDenoiseSingle(TestPluginBase):
 
         with self.assertRaisesRegex(ValueError, 'n_reads_learn'):
             denoise_single(self.demux_seqs, 100, n_reads_learn=0)
+
+        with self.assertRaisesRegex(ValueError, 'consensus'):
+            denoise_single(self.demux_seqs, 100, chimera_method='foo')
 
     def test_trim_left_bigger_than_trunc_len(self):
         with self.assertRaisesRegex(ValueError, 'trim_left'):
@@ -113,10 +119,13 @@ class TestDenoisePaired(TestPluginBase):
         for seq in exp_rep_seqs:
             del seq.metadata['description']
 
+        # NOTE: the test data isn't interesting enough to be impacted by
+        # chimera_method or min_fold_parent_over_abundance.
         table, rep_seqs = denoise_paired(
             self.demux_seqs, 150, 150, trim_left_f=10, trim_left_r=10,
             max_ee=20.5, trunc_q=0, n_threads=0, n_reads_learn=2,
-            hashed_feature_ids=False)
+            hashed_feature_ids=False, chimera_method='consensus',
+            min_fold_parent_over_abundance=1.1)
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
@@ -144,6 +153,9 @@ class TestDenoisePaired(TestPluginBase):
 
         with self.assertRaisesRegex(ValueError, 'n_reads_learn'):
             denoise_paired(self.demux_seqs, 150, 150, n_reads_learn=0)
+
+        with self.assertRaisesRegex(ValueError, 'consensus'):
+            denoise_single(self.demux_seqs, 150, 150, chimera_method='foo')
 
     def test_trim_left_bigger_than_trunc_len(self):
         with self.assertRaisesRegex(ValueError, 'trim_left_f'):
