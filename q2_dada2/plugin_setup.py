@@ -45,7 +45,7 @@ plugin.methods.register_function(
                 'trunc_q': qiime2.plugin.Int,
                 'chimera_method': qiime2.plugin.Str %
                 qiime2.plugin.Choices(_CHIM_OPT),
-                'min_parent_abundance': qiime2.plugin.Float,
+                'min_fold_parent_over_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
@@ -77,13 +77,13 @@ plugin.methods.register_function(
                            'samples individually, and sequences found '
                            'chimeric in a sufficient fraction of samples are '
                            'removed.'),
-        'min_parent_abundance': ('The minimum abundance of potential parents '
-                                 'of a sequence being tested as chimeric, '
-                                 'expressed as a fold-change versus '
-                                 'the abundance of the sequence being tested. '
-                                 'Values should be greater than or equal to 1 '
-                                 '(i.e. parents should be more '
-                                 'abundant than the sequence being tested).'),
+        'min_fold_parent_over_abundance': (
+            'The minimum abundance of potential parents of a sequence being '
+            'tested as chimeric, expressed as a fold-change versus the '
+            'abundance of the sequence being tested. Values should be greater '
+            'than or equal to 1 (i.e. parents should be more abundant than '
+            'the sequence being tested). This parameter has no effect if '
+            'chimera_method is "none".'),
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
@@ -123,7 +123,7 @@ plugin.methods.register_function(
                 'trunc_q': qiime2.plugin.Int,
                 'chimera_method': qiime2.plugin.Str %
                 qiime2.plugin.Choices(_CHIM_OPT),
-                'min_parent_abundance': qiime2.plugin.Float,
+                'min_fold_parent_over_abundance': qiime2.plugin.Float,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
@@ -168,13 +168,13 @@ plugin.methods.register_function(
                            'samples individually, and sequences found '
                            'chimeric in a sufficient fraction of samples are '
                            'removed.'),
-        'min_parent_abundance': ('The minimum abundance of potential parents '
-                                 'of a sequence being tested as chimeric, '
-                                 'expressed as a fold-change versus '
-                                 'the abundance of the sequence being tested. '
-                                 'Values should be greater than or equal to 1 '
-                                 '(i.e. parents should be more '
-                                 'abundant than the sequence being tested).'),
+        'min_fold_parent_over_abundance': (
+            'The minimum abundance of potential parents of a sequence being '
+            'tested as chimeric, expressed as a fold-change versus the '
+            'abundance of the sequence being tested. Values should be greater '
+            'than or equal to 1 (i.e. parents should be more abundant than '
+            'the sequence being tested). This parameter has no effect if '
+            'chimera_method is "none".'),
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
