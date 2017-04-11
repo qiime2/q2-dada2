@@ -47,7 +47,7 @@ _valid_inputs = {
     'max_ee': _NAT_NUM,
     'trunc_q': _WHOLE_NUM,
     'chimera_method': _CHIM_STR,
-    'min_parent_abundance': _NAT_NUM,
+    'min_fold_parent_over_abundance': _NAT_NUM,
     'n_threads': _WHOLE_NUM,
     # 0 is technically allowed, but we don't want to support it because it only
     # takes all reads from the first sample (alphabetically by sample id)
@@ -94,7 +94,7 @@ def _denoise_helper(biom_fp, hashed_feature_ids):
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    trunc_len: int, trim_left: int=0, max_ee: float=2.0,
                    trunc_q: int=2, chimera_method: str='pooled',
-                   min_parent_abundance: float=1.0, n_threads: int=1,
+                   min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
     _check_inputs(**locals())
@@ -106,7 +106,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         cmd = ['run_dada_single.R',
                str(demultiplexed_seqs), biom_fp, temp_dir_name,
                str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
-               str(chimera_method), str(min_parent_abundance),
+               str(chimera_method), str(min_fold_parent_over_abundance),
                str(n_threads), str(n_reads_learn)]
         try:
             run_commands([cmd])
@@ -127,7 +127,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    trim_left_f: int=0, trim_left_r: int=0,
                    max_ee: float=2.0, trunc_q: int=2,
                    chimera_method: str='pooled',
-                   min_parent_abundance: float=1.0, n_threads: int=1,
+                   min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
     _check_inputs(**locals())
@@ -157,7 +157,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                str(trunc_len_f), str(trunc_len_r),
                str(trim_left_f), str(trim_left_r),
                str(max_ee), str(trunc_q),
-               str(chimera_method), str(min_parent_abundance),
+               str(chimera_method), str(min_fold_parent_over_abundance),
                str(n_threads), str(n_reads_learn)]
         try:
             run_commands([cmd])
