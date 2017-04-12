@@ -1,8 +1,10 @@
 {% set data = load_setup_py_data() %}
+{% set version = data.get('version') %}
+{% set release = '.'.join(version.split('.')[:2]) %}
 
 package:
   name: q2-dada2
-  version: {{ data.get('version') }}
+  version: {{ version }}
 
 source:
   path: ../..
@@ -14,18 +16,14 @@ requirements:
   build:
     - python 3.5*
     - setuptools
-    - biom-format >=2.1.5,<2.2.0
-    - qiime2 2017.3.*
-    - q2-types 2017.3.*
-    - bioconductor-dada2 1.2
 
   run:
     - python 3.5*
     - setuptools
     - biom-format >=2.1.5,<2.2.0
-    - qiime2 2017.3.*
-    - q2-types 2017.3.*
     - bioconductor-dada2 1.2
+    - qiime2 {{ release }}.*
+    - q2-types {{ release }}.*
 
 test:
   imports:
