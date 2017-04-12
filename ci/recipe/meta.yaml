@@ -1,5 +1,5 @@
 {% set data = load_setup_py_data() %}
-{% set version = data.get('version') %}
+{% set version = data.get('version') or 'placehold' %}
 {% set release = '.'.join(version.split('.')[:2]) %}
 
 package:
