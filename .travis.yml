@@ -1,25 +1,25 @@
-sudo: false
 dist: trusty
+sudo: false
 language: python
-env:
-  - PYTHON_VERSION=3.5
 before_install:
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b
-  - export PATH=/home/travis/miniconda3/bin:$PATH
+  - export MPLBACKEND='Agg'
+  - wget -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  - export MINICONDA_PREFIX="$HOME/miniconda"
+  - bash miniconda.sh -b -p $MINICONDA_PREFIX
+  - export PATH="$MINICONDA_PREFIX/bin:$PATH"
+  - conda config --set always_yes yes
+  - conda update -q conda
+  - conda info -a
+  - git clone https://github.com/qiime2/q2lint ../q2lint
 install:
-  - conda create --yes -n test-env python=$PYTHON_VERSION numpy pytest pytest-cov
+  - conda create -q -n test-env --file https://raw.githubusercontent.com/qiime2/environment-files/master/latest/staging/qiime2-latest-conda-linux-64.txt
   - source activate test-env
-  - conda install --yes --override-channels -c r -c defaults r 'r-base=3.3.1 1'
-  - CDPATH= R -e 'source("https://bioconductor.org/biocLite.R"); biocLite("dada2")'
-  - pip install https://github.com/qiime2/qiime2/archive/master.zip https://github.com/qiime2/q2-types/archive/master.zip
-  - pip install flake8 coveralls
-  - pip install .
-  - git clone https://github.com/qiime2/q2lint
+  - conda install -q pytest-cov
+  - pip install -q flake8 coveralls
+  - python setup.py install
 script:
-  - py.test --cov=q2_dada2
   - flake8
-  - python q2lint/q2lint.py
+  - python ../q2lint/q2lint.py
+  - py.test --cov=q2_dada2
 after_success:
   - coveralls
