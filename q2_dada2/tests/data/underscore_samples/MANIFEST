@@ -1,0 +1,20 @@
+sample-id,filename,direction
+# direction is not meaningful in this file as these
+# data may be derived from forward, reverse, or 
+# joined reads
+L5_S155,L5_S155_2_L001_R1_001.fastq.gz,forward
+L1_S208,L1_S208_10_L001_R1_001.fastq.gz,forward
+L1_S257,L1_S257_11_L001_R1_001.fastq.gz,forward
+L1_S76,L1_S76_12_L001_R1_001.fastq.gz,forward
+L1_S57,L1_S57_13_L001_R1_001.fastq.gz,forward
+L2_S357,L2_S357_15_L001_R1_001.fastq.gz,forward
+L3_S294,L3_S294_16_L001_R1_001.fastq.gz,forward
+L6_S20,L6_S20_20_L001_R1_001.fastq.gz,forward
+L2_S155,L2_S155_25_L001_R1_001.fastq.gz,forward
+L4_S112,L4_S112_26_L001_R1_001.fastq.gz,forward
+L2_S175,L2_S175_27_L001_R1_001.fastq.gz,forward
+L5_S174,L5_S174_29_L001_R1_001.fastq.gz,forward
+L6_S68,L6_S68_30_L001_R1_001.fastq.gz,forward
+L4_S63,L4_S63_31_L001_R1_001.fastq.gz,forward
+L3_S313,L3_S313_32_L001_R1_001.fastq.gz,forward
+L2_S309,L2_S309_33_L001_R1_001.fastq.gz,forward

@@ -27,6 +27,7 @@ setup(
     package_data={
         'q2_dada2.tests': ['data/*',
                            'data/expected/*',
+                           'data/underscore_samples/*',
                            'data/sample_seqs_single/*',
                            'data/sample_seqs_paired/*']
     },

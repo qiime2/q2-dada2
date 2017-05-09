@@ -86,6 +86,25 @@ class TestDenoiseSingle(TestPluginBase):
         with self.assertRaisesRegex(ValueError, 'trim_left'):
             denoise_single(self.demux_seqs, 100, trim_left=100)
 
+    def test_underscore_samples(self):
+        self.demux_seqs = SingleLanePerSampleSingleEndFastqDirFmt(
+            self.get_data_path('underscore_samples'), 'r')
+
+        with open(self.get_data_path('expected/underscore-samples.tsv')) as fh:
+            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+        exp_rep_seqs = list(
+            skbio.io.read(
+                self.get_data_path('expected/underscore-samples.fasta'),
+                'fasta', constructor=skbio.DNA))
+        for seq in exp_rep_seqs:
+            del seq.metadata['description']
+
+        table, rep_seqs = denoise_single(self.demux_seqs, 100)
+
+        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_seqs(rep_seqs),
+                         _sort_seqs(exp_rep_seqs))
+
 
 class TestDenoisePaired(TestPluginBase):
     package = 'q2_dada2.tests'
