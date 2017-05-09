@@ -73,7 +73,7 @@ def _denoise_helper(biom_fp, hashed_feature_ids):
         table = biom.Table.from_tsv(fh, None, None, None)
     # Currently the sample IDs in DADA2 are the file names. We make
     # them the sample id part of the filename here.
-    sid_map = {id_: id_.split('_')[0] for id_ in table.ids(axis='sample')}
+    sid_map = {id_: id_.rsplit('_', 4)[0] for id_ in table.ids(axis='sample')}
     table.update_ids(sid_map, axis='sample', inplace=True)
     # The feature IDs in DADA2 are the sequences themselves.
     if hashed_feature_ids:
