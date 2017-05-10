@@ -21,8 +21,7 @@ setup(
     author="Greg Caporaso and Benjamin Callahan",
     author_email="gregcaporaso@gmail.com",
     description="Apply DADA2 to generate denoised sequence variants. ",
-    scripts=['q2_dada2/assets/profile_quality.R',
-             'q2_dada2/assets/run_dada_single.R',
+    scripts=['q2_dada2/assets/run_dada_single.R',
              'q2_dada2/assets/run_dada_paired.R'],
     package_data={
         'q2_dada2.tests': ['data/*',
