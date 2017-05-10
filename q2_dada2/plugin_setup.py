@@ -8,15 +8,12 @@
 
 import qiime2.plugin
 from q2_types.per_sample_sequences import (
-    SequencesWithQuality, PairedEndSequencesWithQuality,
-    SingleLanePerSampleSingleEndFastqDirFmt,
-    SingleLanePerSamplePairedEndFastqDirFmt)
+    SequencesWithQuality, PairedEndSequencesWithQuality)
 from q2_types.sample_data import SampleData
 from q2_types.feature_data import FeatureData, Sequence
 from q2_types.feature_table import FeatureTable, Frequency
 
 import q2_dada2
-from q2_dada2._plot import _PlotQualView
 
 _CHIM_OPT = {'pooled', 'consensus', 'none'}
 
@@ -203,33 +200,3 @@ plugin.methods.register_function(
     description=('This method denoises paired-end sequences, dereplicates '
                  'them, and filters chimeras.')
 )
-
-
-plugin.visualizers.register_function(
-    function=q2_dada2.plot_qualities,
-    inputs={'demultiplexed_seqs':
-            SampleData[SequencesWithQuality | PairedEndSequencesWithQuality]},
-    parameters={'n': qiime2.plugin.Int},
-    input_descriptions={
-        'demultiplexed_seqs': ('The demultiplexed sequences for which '
-                               'quality plots should be generated.')
-    },
-    parameter_descriptions={
-        'n': ('The number of per-sample quality plots to generate. If input '
-              'reads are paired end, plots will be generated for both the '
-              'forward and reverse reads for each of the `n` samples.')
-    },
-    name='Plot positional qualitites',
-    description=('Plots positional quality scores for n samples selected '
-                 'at random from the input data.')
-)
-
-
-@plugin.register_transformer
-def _1(dirfmt: SingleLanePerSampleSingleEndFastqDirFmt) -> _PlotQualView:
-    return _PlotQualView(dirfmt, paired=False)
-
-
-@plugin.register_transformer
-def _2(dirfmt: SingleLanePerSamplePairedEndFastqDirFmt) -> _PlotQualView:
-    return _PlotQualView(dirfmt, paired=True)
