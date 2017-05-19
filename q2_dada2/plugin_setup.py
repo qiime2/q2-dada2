@@ -22,13 +22,15 @@ plugin = qiime2.plugin.Plugin(
     version=q2_dada2.__version__,
     website='http://benjjneb.github.io/dada2/',
     package='q2_dada2',
-    user_support_text=("To get help with DADA2, post to the DADA2 issue "
-                       "tracker: https://github.com/benjjneb/dada2/issues"),
     citation_text=("DADA2: High-resolution sample inference from Illumina "
                    "amplicon data. Benjamin J Callahan, Paul J McMurdie, "
                    "Michael J Rosen, Andrew W Han, Amy Jo A Johnson, "
                    "Susan P Holmes. Nature Methods 13, 581–583 (2016) "
-                   "doi:10.1038/nmeth.3869.")
+                   "doi:10.1038/nmeth.3869."),
+    description=('This QIIME 2 plugin wraps DADA2 and supports '
+                 'sequence quality control for single-end and paired-end '
+                 'reads using the DADA2 R library.'),
+    short_description='Plugin for sequence quality control with DADA2.'
 )
 
 
