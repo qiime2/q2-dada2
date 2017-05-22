@@ -99,7 +99,11 @@ class TestDenoiseSingle(TestPluginBase):
         for seq in exp_rep_seqs:
             del seq.metadata['description']
 
-        table, rep_seqs = denoise_single(self.demux_seqs, 100)
+        # Historical NOTE: default used to be `pooled`, so the data still
+        # expects that. Since this is only testing underscores, it shouldn't
+        # matter much and serves as a regression test to boot.
+        table, rep_seqs = denoise_single(self.demux_seqs, 100,
+                                         chimera_method='pooled')
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
@@ -123,6 +127,8 @@ class TestDenoisePaired(TestPluginBase):
         for seq in exp_rep_seqs:
             del seq.metadata['description']
 
+        # NOTE: changing the chimera_method parameter doesn't impact the
+        # results for this dataset
         table, rep_seqs = denoise_paired(self.demux_seqs, 150, 150)
 
         self.assertEqual(table, exp_table)
