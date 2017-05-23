@@ -189,9 +189,9 @@ seqtab <- makeSequenceTable(dds)
 # Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
 if(chimeraMethod == "pooled") {
-  seqtab <- removeBimeraDenovo(seqtab, tableMethod=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
+  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
 } else if(chimeraMethod == "consensus") {
-  seqtab <- removeBimeraDenovo(seqtab, tableMethod=chimeraMethod, minFoldParentOverAbundance = minParentFold)
+  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
 }
 
 ### WRITE OUTPUT AND QUIT ###

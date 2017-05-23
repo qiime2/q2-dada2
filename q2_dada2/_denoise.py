@@ -105,7 +105,7 @@ def _denoise_helper(biom_fp, hashed_feature_ids):
 
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    trunc_len: int, trim_left: int=0, max_ee: float=2.0,
-                   trunc_q: int=2, chimera_method: str='pooled',
+                   trunc_q: int=2, chimera_method: str='consensus',
                    min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
@@ -138,7 +138,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    trunc_len_f: int, trunc_len_r: int,
                    trim_left_f: int=0, trim_left_r: int=0,
                    max_ee: float=2.0, trunc_q: int=2,
-                   chimera_method: str='pooled',
+                   chimera_method: str='consensus',
                    min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
