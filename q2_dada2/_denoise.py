@@ -13,6 +13,8 @@ import subprocess
 
 import biom
 import skbio
+import qiime2.util
+
 from q2_types.feature_data import DNAIterator
 from q2_types.per_sample_sequences import (
     FastqGzFormat, SingleLanePerSampleSingleEndFastqDirFmt,
@@ -160,9 +162,9 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         for rp, view in demultiplexed_seqs.sequences.iter_views(FastqGzFormat):
             fp = str(view)
             if 'R1_001.fastq' in rp.name:
-                os.link(fp, os.path.join(tmp_forward, rp.name))
+                qiime2.util.duplicate(fp, os.path.join(tmp_forward, rp.name))
             elif 'R2_001.fastq' in rp.name:
-                os.link(fp, os.path.join(tmp_reverse, rp.name))
+                qiime2.util.duplicate(fp, os.path.join(tmp_reverse, rp.name))
 
         cmd = ['run_dada_paired.R',
                tmp_forward, tmp_reverse, biom_fp, filt_forward, filt_reverse,
