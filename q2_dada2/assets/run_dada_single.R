@@ -134,6 +134,7 @@ cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 ### TRIM AND FILTER ###
 cat("1) Filtering ")
 filts <- file.path(filtered.dir, basename(unfilts))
+
 cat("TESTING...\n", args, "\nUnfilts", length(normalizePath(unfilts, mustWork=TRUE)), ":\n", normalizePath(unfilts, mustWork=TRUE), 
     "\nFilts", length(normalizePath(filts, mustWork=FALSE)), ":\n", normalizePath(filts, mustWork=FALSE),
     truncLen, trimLeft, maxEE, truncQ, multithread, ifelse(is.logical(multithread) && multithread, length(unfilts), multithread))
