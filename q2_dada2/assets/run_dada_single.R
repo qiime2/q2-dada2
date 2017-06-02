@@ -135,7 +135,7 @@ cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 cat("1) Filtering ")
 filts <- file.path(filtered.dir, basename(unfilts))
 filterAndTrim(unfilts, filts, truncLen=truncLen, trimLeft=trimLeft, 
-              maxEE=maxEE, truncQ=truncQ, minLen=10, rm.phix=TRUE, multithread=multithread)
+              maxEE=maxEE, truncQ=truncQ, minLen=20, rm.phix=TRUE, multithread=multithread)
 for(filt in filts) {
   if(file.exists(filt)) { # Some of the samples reads passed the filter
     cat(".")
@@ -199,5 +199,5 @@ col.names <- basename(filts)
 col.names[[1]] <- paste0("#OTU ID\t", col.names[[1]])
 write.table(seqtab, out.path, sep="\t",
             row.names=TRUE, col.names=col.names, quote=FALSE)
-saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
+#saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
 q(status=0)

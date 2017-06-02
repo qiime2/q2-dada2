@@ -168,7 +168,7 @@ filtsF <- file.path(filtered.dirF, basename(unfiltsF))
 filtsR <- file.path(filtered.dirR, basename(unfiltsR))
 filterAndTrim(fwd=unfiltsF, filt=filtsF, rev=unfiltsR, filt.rev=filtsR,
               truncLen=c(truncLenF, truncLenR), trimLeft=c(trimLeftF, trimLeftR),
-              maxEE=maxEE, truncQ=truncQ, minLen=10, rm.phix=TRUE,
+              maxEE=maxEE, truncQ=truncQ, minLen=20, rm.phix=TRUE,
               multithread=multithread)
 for(filt in filtsF) {
   if(file.exists(filt)) { # Some of the samples reads passed the filter
@@ -252,5 +252,5 @@ col.names <- basename(filtsF)
 col.names[[1]] <- paste0("#OTU ID\t", col.names[[1]])
 write.table(seqtab, out.path, sep="\t",
             row.names=TRUE, col.names=col.names, quote=FALSE)
-saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
+#saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
 q(status=0)
