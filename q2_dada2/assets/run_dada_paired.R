@@ -44,10 +44,12 @@
 #
 # 6) truncLenF - The position at which to truncate forward reads. Forward reads shorter
 #               than truncLenF will be discarded.
+#               Special values: 0 - no truncation or length filtering.
 #    Ex: 240
 #
 # 7) truncLenR - The position at which to truncate reverse reads. Reverse reads shorter
 #               than truncLenR will be discarded.
+#               Special values: 0 - no truncation or length filtering.
 #    Ex: 160
 #
 # 8) trimLeftF - The number of nucleotides to remove from the start of
@@ -162,15 +164,14 @@ cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 
 ### TRIM AND FILTER ###
 cat("1) Filtering ")
-for(i in seq_along(unfiltsF)) {
-  fileNameF = basename(unfiltsF[i])
-  filteredFastqF = file.path(filtered.dirF, fileNameF)
-  fileNameR = basename(unfiltsR[i])
-  filteredFastqR = file.path(filtered.dirR, fileNameR)
-  suppressWarnings(fastqPairedFilter(c(unfiltsF[[i]], unfiltsR[[i]]), c(filteredFastqF, filteredFastqR),
-                                     truncLen=c(truncLenF, truncLenR), trimLeft=c(trimLeftF, trimLeftR),
-                                     maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE))
-  if(file.exists(filteredFastqF)) { # Some of the samples reads passed the filter
+filtsF <- file.path(filtered.dirF, basename(unfiltsF))
+filtsR <- file.path(filtered.dirR, basename(unfiltsR))
+filterAndTrim(fwd=unfiltsF, filt=filtsF, rev=unfiltsR, filt.rev=filtsR,
+              truncLen=c(truncLenF, truncLenR), trimLeft=c(trimLeftF, trimLeftR),
+              maxEE=maxEE, truncQ=truncQ, minLen=10, rm.phix=TRUE,
+              multithread=multithread)
+for(filt in filtsF) {
+  if(file.exists(filt)) { # Some of the samples reads passed the filter
     cat(".")
   } else {
     cat("x")
@@ -239,10 +240,8 @@ seqtab <- makeSequenceTable(mergers)
 
 # Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
-if(chimeraMethod == "pooled") {
-  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
-} else if(chimeraMethod == "consensus") {
-  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
+if(chimeraMethod %in% c("pooled", "consensus")) {
+  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
 }
 
 ### WRITE OUTPUT AND QUIT ###
@@ -253,5 +252,5 @@ col.names <- basename(filtsF)
 col.names[[1]] <- paste0("#OTU ID\t", col.names[[1]])
 write.table(seqtab, out.path, sep="\t",
             row.names=TRUE, col.names=col.names, quote=FALSE)
-#saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
+saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
 q(status=0)
