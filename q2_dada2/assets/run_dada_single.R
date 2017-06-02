@@ -135,9 +135,10 @@ cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 cat("1) Filtering ")
 filts <- file.path(filtered.dir, basename(unfilts))
 cat("TESTING...\nUnfilts", length(unfilts), ":\n", unfilts, "\nFilts", length(filts), ":\n", filts,
-    truncLen, trimLeft, maxEE, truncQ, multithread) 
+    truncLen, trimLeft, maxEE, truncQ, multithread, ifelse(is.logical(multithread) && multithread, length(unfilts), multithread))
 filterAndTrim(unfilts, filts, truncLen=truncLen, trimLeft=trimLeft, 
-              maxEE=maxEE, truncQ=truncQ, minLen=20, rm.phix=TRUE, multithread=multithread)
+              maxEE=maxEE, truncQ=truncQ, minLen=20, rm.phix=TRUE, 
+              multithread=ifelse(is.logical(multithread) && multithread, length(unfilts), multithread))
 for(filt in filts) {
   if(file.exists(filt)) { # Some of the samples reads passed the filter
     cat(".")
