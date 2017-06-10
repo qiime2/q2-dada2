@@ -133,16 +133,12 @@ cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 
 ### TRIM AND FILTER ###
 cat("1) Filtering ")
-filts <- file.path(filtered.dir, basename(unfilts))
-
-cat("TESTING...\n", args, "\nUnfilts", length(normalizePath(unfilts, mustWork=TRUE)), ":\n", normalizePath(unfilts, mustWork=TRUE), 
-    "\nFilts", length(normalizePath(filts, mustWork=FALSE)), ":\n", normalizePath(filts, mustWork=FALSE),
-    truncLen, trimLeft, maxEE, truncQ, multithread, ifelse(is.logical(multithread) && multithread, length(unfilts), multithread))
-filterAndTrim(fwd=unfilts, filt=filts, truncLen=truncLen, trimLeft=trimLeft, 
-              maxEE=maxEE, truncQ=truncQ, minLen=20, rm.phix=TRUE, 
-              multithread=ifelse(is.logical(multithread) && multithread, length(unfilts), multithread))
-for(filt in filts) {
-  if(file.exists(filt)) { # Some of the samples reads passed the filter
+for(i in seq_along(unfilts)) {
+  fileName = basename(unfilts[i])
+  filteredFastq = file.path(filtered.dir, fileName)
+  suppressWarnings(fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft,
+                               maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE))
+  if(file.exists(filteredFastq)) { # Some of the samples reads passed the filter
     cat(".")
   } else {
     cat("x")
