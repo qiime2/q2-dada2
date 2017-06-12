@@ -34,6 +34,7 @@
 #
 # 4) truncLen - The position at which to truncate reads. Reads shorter
 #               than truncLen will be discarded.
+#               Special values: 0 - no truncation or length filtering.
 #    Ex: 150
 #
 # 5) trimLeft - The number of nucleotides to remove from the start of
@@ -136,15 +137,14 @@ for(i in seq_along(unfilts)) {
   fileName = basename(unfilts[i])
   filteredFastq = file.path(filtered.dir, fileName)
   suppressWarnings(fastqFilter(unfilts[i], filteredFastq, truncLen=truncLen, trimLeft=trimLeft,
-              maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE))
+                               maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE))
   if(file.exists(filteredFastq)) { # Some of the samples reads passed the filter
     cat(".")
   } else {
     cat("x")
   }
 }
-filts <- list.files(filtered.dir, pattern=".fastq.gz$",
-                    full.names=TRUE)
+filts <- list.files(filtered.dir, pattern=".fastq.gz$", full.names=TRUE)
 cat("\n")
 if(length(filts) == 0) { # All reads were filtered out
   errQuit("No reads passed the filter (was truncLen longer than the read length?)", status=2)
@@ -188,10 +188,8 @@ seqtab <- makeSequenceTable(dds)
 
 # Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
-if(chimeraMethod == "pooled") {
-  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
-} else if(chimeraMethod == "consensus") {
-  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
+if(chimeraMethod %in% c("pooled", "consensus")) {
+  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
 }
 
 ### WRITE OUTPUT AND QUIT ###

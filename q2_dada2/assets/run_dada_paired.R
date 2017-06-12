@@ -44,10 +44,12 @@
 #
 # 6) truncLenF - The position at which to truncate forward reads. Forward reads shorter
 #               than truncLenF will be discarded.
+#               Special values: 0 - no truncation or length filtering.
 #    Ex: 240
 #
 # 7) truncLenR - The position at which to truncate reverse reads. Reverse reads shorter
 #               than truncLenR will be discarded.
+#               Special values: 0 - no truncation or length filtering.
 #    Ex: 160
 #
 # 8) trimLeftF - The number of nucleotides to remove from the start of
@@ -239,10 +241,8 @@ seqtab <- makeSequenceTable(mergers)
 
 # Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
-if(chimeraMethod == "pooled") {
-  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
-} else if(chimeraMethod == "consensus") {
-  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance = minParentFold, multithread=multithread)
+if(chimeraMethod %in% c("pooled", "consensus")) {
+  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
 }
 
 ### WRITE OUTPUT AND QUIT ###

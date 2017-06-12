@@ -59,7 +59,9 @@ plugin.methods.register_function(
                       'decrease in quality. This truncates the 3\' end of the '
                       'of the input sequences, which will be the bases that '
                       'were sequenced in the last cycles. Reads that are '
-                      'shorter than this value will be discarded.'),
+                      'shorter than this value will be discarded. If 0 is '
+                      'provided, no truncation or length filtering will be '
+                      'performed'),
         'trim_left': ('Position at which sequences should be trimmed due to '
                       'low quality. This trims the 5\' end of the '
                       'of the input sequences, which will be the bases that '
@@ -140,7 +142,9 @@ plugin.methods.register_function(
                         'cycles. Reads that are shorter than this value '
                         'will be discarded. After this parameter is applied '
                         'there must still be at least a 20 nucleotide overlap '
-                        'between the forward and reverse reads.'),
+                        'between the forward and reverse reads. If 0 is '
+                        'provided, no truncation or length filtering will be '
+                        'performed'),
         'trim_left_f': ('Position at which forward read sequences should be '
                         'trimmed due to low quality. This trims the 5\' end '
                         'of the input sequences, which will be the bases that '
@@ -152,7 +156,9 @@ plugin.methods.register_function(
                         'cycles. Reads that are shorter than this value '
                         'will be discarded. After this parameter is applied '
                         'there must still be at least a 20 nucleotide overlap '
-                        'between the forward and reverse reads.'),
+                        'between the forward and reverse reads. If 0 is '
+                        'provided, no truncation or length filtering will be '
+                        'performed'),
         'trim_left_r': ('Position at which reverse read sequences should be '
                         'trimmed due to low quality. This trims the 5\' end '
                         'of the input sequences, which will be the bases that '
