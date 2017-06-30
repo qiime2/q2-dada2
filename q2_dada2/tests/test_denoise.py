@@ -86,6 +86,9 @@ class TestDenoiseSingle(TestPluginBase):
         with self.assertRaisesRegex(ValueError, 'trim_left'):
             denoise_single(self.demux_seqs, 100, trim_left=100)
 
+        # Shouldn't fail when `trunc_len=0`
+        denoise_single(self.demux_seqs, 0, trim_left=100)
+
     def test_underscore_samples(self):
         self.demux_seqs = SingleLanePerSampleSingleEndFastqDirFmt(
             self.get_data_path('underscore_samples'), 'r')
@@ -188,6 +191,11 @@ class TestDenoisePaired(TestPluginBase):
 
         with self.assertRaisesRegex(ValueError, 'trim_left_r'):
             denoise_paired(self.demux_seqs, 150, 150, trim_left_r=150)
+
+        # Shouldn't fail when `trunc_len_f=0`
+        denoise_paired(self.demux_seqs, 0, 150, trim_left_f=10)
+        # Shouldn't fail when `trunc_len_r=0`
+        denoise_paired(self.demux_seqs, 150, 0, trim_left_r=10)
 
 
 if __name__ == '__main__':

@@ -112,7 +112,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
     _check_inputs(**locals())
-    if trim_left >= trunc_len:
+    if trunc_len != 0 and trim_left >= trunc_len:
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
                          % (trim_left, trunc_len))
     with tempfile.TemporaryDirectory() as temp_dir_name:
@@ -145,10 +145,10 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
     _check_inputs(**locals())
-    if trim_left_f >= trunc_len_f:
+    if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
         raise ValueError("trim_left_f (%r) must be smaller than trunc_len_f"
                          " (%r)" % (trim_left_f, trunc_len_f))
-    if trim_left_r >= trunc_len_r:
+    if trunc_len_r != 0 and trim_left_r >= trunc_len_r:
         raise ValueError("trim_left_r (%r) must be smaller than trunc_len_r"
                          " (%r)" % (trim_left_r, trunc_len_r))
     with tempfile.TemporaryDirectory() as temp_dir:
