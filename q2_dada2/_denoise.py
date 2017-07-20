@@ -130,7 +130,9 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                     " or trunc_q) may be preventing reads from passing the"
                     " filter." % trunc_len)
             else:
-                raise
+                raise Exception("An error was encountered while running DADA2"
+                                " in R (return code %d), please inspect stdout"
+                                " and stderr to learn more." % e.returncode)
         return _denoise_helper(biom_fp, hashed_feature_ids)
 
 
@@ -185,5 +187,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                     " preventing reads from passing the filter."
                     % (trunc_len_f, trunc_len_r))
             else:
-                raise
+                raise Exception("An error was encountered while running DADA2"
+                                " in R (return code %d), please inspect stdout"
+                                " and stderr to learn more." % e.returncode)
         return _denoise_helper(biom_fp, hashed_feature_ids)
