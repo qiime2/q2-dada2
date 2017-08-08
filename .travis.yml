@@ -10,16 +10,15 @@ before_install:
   - conda config --set always_yes yes
   - conda update -q conda
   - conda info -a
-  - git clone https://github.com/qiime2/q2lint ../q2lint
 install:
   - conda create -q -n test-env --file https://raw.githubusercontent.com/qiime2/environment-files/master/latest/staging/qiime2-latest-conda-linux-64.txt
   - source activate test-env
   - conda install -q pytest-cov
   - pip install -q flake8 coveralls
-  - python setup.py install
+  - pip install -q https://github.com/qiime2/q2lint/archive/master.zip
+  - make install
 script:
-  - flake8
-  - python ../q2lint/q2lint.py
-  - py.test --cov=q2_dada2
+  - make lint
+  - make test-cov
 after_success:
   - coveralls
