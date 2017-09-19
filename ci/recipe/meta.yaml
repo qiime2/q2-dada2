@@ -21,7 +21,7 @@ requirements:
     - python 3.5*
     - setuptools
     - biom-format >=2.1.5,<2.2.0
-    - bioconductor-dada2 1.4.0 r3.3.1_0
+    - bioconductor-dada2 1.4.0 r3.3.2_0
     - qiime2 {{ release }}.*
     - q2-types {{ release }}.*
 
