@@ -158,26 +158,19 @@ if(nthreads < 0) {
 }
 
 ### LOAD LIBRARIES ###
-library(methods)
-library(dada2)
+suppressWarnings(library(methods))
+suppressWarnings(library(dada2))
 cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 
 ### TRIM AND FILTER ###
 cat("1) Filtering ")
-for(i in seq_along(unfiltsF)) {
-  fileNameF = basename(unfiltsF[i])
-  filteredFastqF = file.path(filtered.dirF, fileNameF)
-  fileNameR = basename(unfiltsR[i])
-  filteredFastqR = file.path(filtered.dirR, fileNameR)
-  suppressWarnings(fastqPairedFilter(c(unfiltsF[[i]], unfiltsR[[i]]), c(filteredFastqF, filteredFastqR),
-                                     truncLen=c(truncLenF, truncLenR), trimLeft=c(trimLeftF, trimLeftR),
-                                     maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE))
-  if(file.exists(filteredFastqF)) { # Some of the samples reads passed the filter
-    cat(".")
-  } else {
-    cat("x")
-  }
-}
+filtsF <- file.path(filtered.dirF, basename(unfiltsF))
+filtsR <- file.path(filtered.dirR, basename(unfiltsR))
+out <- suppressWarnings(filterAndTrim(unfiltsF, filtsF, unfiltsR, filtsR,
+                                      truncLen=c(truncLenF, truncLenR), trimLeft=c(trimLeftF, trimLeftR),
+                                      maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE, 
+                                      multithread=multithread))
+cat(ifelse(file.exists(filtsF), ".", "x"), sep="")
 filtsF <- list.files(filtered.dirF, pattern=".fastq.gz$", full.names=TRUE)
 filtsR <- list.files(filtered.dirR, pattern=".fastq.gz$", full.names=TRUE)
 cat("\n")
@@ -191,6 +184,8 @@ cat("2) Learning Error Rates\n")
 NREADS <- 0
 drpsF <- vector("list", length(filtsF))
 drpsR <- vector("list", length(filtsR))
+denoisedF <- rep(0, length(filtsF))
+getN <- function(x) sum(getUniques(x))
 for(i in seq_along(filtsF)) {
   drpsF[[i]] <- derepFastq(filtsF[[i]])
   drpsR[[i]] <- derepFastq(filtsR[[i]])
@@ -201,9 +196,9 @@ for(i in seq_along(filtsF)) {
 drpsF <- drpsF[1:i]
 drpsR <- drpsR[1:i]
 cat("2a) Forward Reads\n")
-ddsF <- dada(drpsF, err=NULL, selfConsist=TRUE, multithread=multithread)
+ddsF <- dada(drpsF, err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2)
 cat("2b) Reverse Reads\n")
-ddsR <- dada(drpsR, err=NULL, selfConsist=TRUE, multithread=multithread)
+ddsR <- dada(drpsR, err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2)
 if(i==1) {
   errF <- ddsF$err_out
   errR <- ddsR$err_out
@@ -218,8 +213,10 @@ cat("\n")
 mergers <- vector("list", length(filtsF))
 if(i==1) { # breaks list assignment
   mergers[[1]] <- mergePairs(ddsF, drpsF, ddsR, drpsR)
+  denoisedF[[1]] <- getN(ddsF)
 } else {
   mergers[1:i] <- mergePairs(ddsF, drpsF, ddsR, drpsR)
+  denoisedF[1:i] <- sapply(ddsF, getN)
 }
 rm(drpsF); rm(drpsR); rm(ddsF); rm(ddsR)
 # Loop over rest in streaming fashion with learned error rates
@@ -227,10 +224,11 @@ cat("3) Denoise remaining samples ")
 if(i < length(filtsF)) {
   for(j in seq(i+1,length(filtsF))) {
     drpF <- derepFastq(filtsF[[j]])
-    { sink("/dev/null"); ddF <- dada(drpF, err=errF, multithread=multithread); sink(); }
+    { sink("/dev/null"); ddF <- dada(drpF, err=errF, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2); sink(); }
     drpR <- derepFastq(filtsR[[j]])
-    { sink("/dev/null"); ddR <- dada(drpR, err=errR, multithread=multithread); sink(); }
+    { sink("/dev/null"); ddR <- dada(drpR, err=errR, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2); sink(); }
     mergers[[j]] <- mergePairs(ddF, drpF, ddR, drpR)
+    denoisedF[[j]] <- getN(ddF)
     cat(".")
   }
 }
@@ -242,16 +240,29 @@ seqtab <- makeSequenceTable(mergers)
 # Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
 if(chimeraMethod %in% c("pooled", "consensus")) {
-  seqtab <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
+  seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
 }
+
+### REPORT READ COUNTS AT EACH PROCESSING STEP ###
+# Handle edge cases: Samples lost in filtering; One sample
+track <- cbind(out, matrix(0, nrow=nrow(out), ncol=3))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "non-chimeric")
+passed.filtering <- track[,"filtered"] > 0
+track[passed.filtering,"denoised"] <- denoisedF
+track[passed.filtering,"merged"] <- rowSums(seqtab)
+track[passed.filtering,"non-chimeric"] <- rowSums(seqtab.nochim)
+head(track)
+#write.table(track, out.track, sep="\t",
+#            row.names=TRUE, col.names=col.names, quote=FALSE)
 
 ### WRITE OUTPUT AND QUIT ###
 # Formatting as tsv plain-text sequence table table
-cat("5) Write output\n")
-seqtab <- t(seqtab) # QIIME has OTUs as rows
+cat("6) Write output\n")
+seqtab.nochim <- t(seqtab.nochim) # QIIME has OTUs as rows
 col.names <- basename(filtsF)
 col.names[[1]] <- paste0("#OTU ID\t", col.names[[1]])
-write.table(seqtab, out.path, sep="\t",
+write.table(seqtab.nochim, out.path, sep="\t",
             row.names=TRUE, col.names=col.names, quote=FALSE)
-#saveRDS(seqtab, gsub("tsv", "rds", out.path)) ### TESTING
+saveRDS(seqtab.nochim, gsub("tsv", "rds", out.path)) ### TESTING
+
 q(status=0)
