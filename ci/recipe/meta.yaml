@@ -22,6 +22,14 @@ requirements:
     - setuptools
     - biom-format >=2.1.5,<2.2.0
     - bioconductor-dada2 1.6.0 r3.4.1_0
+    # openjdk is not a real dependency, but, r-base has a post-link and post-
+    # activation hook that calls R CMD javareconf, which pokes around for any
+    # installations of java. On modern versions of macOS, a binary called
+    # `java` is included, but it only launches a GUI installation alert,
+    # indicating to the user that there is no "true" installation of java
+    # present. By including openjdk on osx hosts, this pop-up is prevented at
+    # installation and activation time of the environment.
+    - openjdk # [osx]
     - qiime2 {{ release }}.*
     - q2-types {{ release }}.*
 
