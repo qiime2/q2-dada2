@@ -157,9 +157,9 @@ for(i in seq_along(filts)) {
 # Run dada in self-consist mode on those samples
 dds <- vector("list", length(filts))
 if(i==1) { # breaks list assignment
-  dds[[1]] <- dada(drps[[1]], err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2)
+  dds[[1]] <- dada(drps[[1]], err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
 } else { # more than one sample, no problem with list assignment
-  dds[1:i] <- dada(drps[1:i], err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2)
+  dds[1:i] <- dada(drps[1:i], err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
 }
 err <- dds[[1]]$err_out
 rm(drps)
@@ -171,7 +171,7 @@ cat("3) Denoise remaining samples ")
 if(i < length(filts)) {
   for(j in seq(i+1,length(filts))) {
     drp <- derepFastq(filts[[j]])
-    { sink("/dev/null"); dds[[j]] <- dada(drp, err=err, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2); sink(); }
+    { sink("/dev/null"); dds[[j]] <- dada(drp, err=err, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1); sink(); }
     cat(".")
   }
 }

@@ -196,9 +196,9 @@ for(i in seq_along(filtsF)) {
 drpsF <- drpsF[1:i]
 drpsR <- drpsR[1:i]
 cat("2a) Forward Reads\n")
-ddsF <- dada(drpsF, err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2)
+ddsF <- dada(drpsF, err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
 cat("2b) Reverse Reads\n")
-ddsR <- dada(drpsR, err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2)
+ddsR <- dada(drpsR, err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
 if(i==1) {
   errF <- ddsF$err_out
   errR <- ddsR$err_out
@@ -224,9 +224,9 @@ cat("3) Denoise remaining samples ")
 if(i < length(filtsF)) {
   for(j in seq(i+1,length(filtsF))) {
     drpF <- derepFastq(filtsF[[j]])
-    { sink("/dev/null"); ddF <- dada(drpF, err=errF, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2); sink(); }
+    { sink("/dev/null"); ddF <- dada(drpF, err=errF, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1); sink(); }
     drpR <- derepFastq(filtsR[[j]])
-    { sink("/dev/null"); ddR <- dada(drpR, err=errR, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=2); sink(); }
+    { sink("/dev/null"); ddR <- dada(drpR, err=errR, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1); sink(); }
     mergers[[j]] <- mergePairs(ddF, drpF, ddR, drpR)
     denoisedF[[j]] <- getN(ddF)
     cat(".")
