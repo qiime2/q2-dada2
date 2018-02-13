@@ -184,6 +184,8 @@ seqtab <- makeSequenceTable(dds)
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
 if(chimeraMethod %in% c("pooled", "consensus")) {
   seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
+} else { # No chimera removal, copy seqtab to seqtab.nochim
+  seqtab.nochim <- seqtab
 }
 
 ### REPORT READ FRACTIONS THROUGH PIPELINE ###
