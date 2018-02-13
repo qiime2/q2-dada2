@@ -112,6 +112,22 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
 
+    def test_no_chimera_method(self):
+        with open(self.get_data_path('expected/single-default.tsv')) as fh:
+            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+        exp_rep_seqs = list(
+            skbio.io.read(self.get_data_path('expected/single-default.fasta'),
+                          'fasta', constructor=skbio.DNA))
+        for seq in exp_rep_seqs:
+            del seq.metadata['description']
+
+        table, rep_seqs = denoise_single(self.demux_seqs, 100,
+                                         chimera_method='none')
+
+        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_seqs(rep_seqs),
+                         _sort_seqs(exp_rep_seqs))
+
 
 class TestDenoisePaired(TestPluginBase):
     package = 'q2_dada2.tests'
@@ -196,6 +212,22 @@ class TestDenoisePaired(TestPluginBase):
         denoise_paired(self.demux_seqs, 0, 150, trim_left_f=10)
         # Shouldn't fail when `trunc_len_r=0`
         denoise_paired(self.demux_seqs, 150, 0, trim_left_r=10)
+
+    def test_no_chimera_method(self):
+        with open(self.get_data_path('expected/paired-default.tsv')) as fh:
+            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+        exp_rep_seqs = list(
+            skbio.io.read(self.get_data_path('expected/paired-default.fasta'),
+                          'fasta', constructor=skbio.DNA))
+        for seq in exp_rep_seqs:
+            del seq.metadata['description']
+
+        table, rep_seqs = denoise_paired(self.demux_seqs, 150, 150,
+                                         chimera_method='none')
+
+        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_seqs(rep_seqs),
+                         _sort_seqs(exp_rep_seqs))
 
 
 if __name__ == '__main__':
