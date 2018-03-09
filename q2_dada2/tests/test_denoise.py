@@ -15,7 +15,7 @@ from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt)
 
-from q2_dada2 import denoise_single, denoise_paired
+from q2_dada2 import denoise_single, denoise_paired, denoise_pyro
 
 
 def _sort_seqs(seqs):
@@ -228,6 +228,41 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+
+
+# More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
+# just a variation of denoise-single. These tests should serve basically
+# as regression or integration tests (depending on perspective).
+class TestDenoisePyro(TestPluginBase):
+    package = 'q2_dada2.tests'
+
+    def setUp(self):
+        super().setUp()
+        # Reusing the single-end reads for this test suite
+        self.demux_seqs = SingleLanePerSampleSingleEndFastqDirFmt(
+            self.get_data_path('sample_seqs_single'), 'r')
+
+    def test_defaults(self):
+        with open(self.get_data_path('expected/pyro-default.tsv')) as fh:
+            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+        exp_rep_seqs = list(
+            skbio.io.read(self.get_data_path('expected/pyro-default.fasta'),
+                          'fasta', constructor=skbio.DNA))
+        for seq in exp_rep_seqs:
+            del seq.metadata['description']
+
+        table, rep_seqs = denoise_pyro(self.demux_seqs, 100)
+
+        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_seqs(rep_seqs),
+                         _sort_seqs(exp_rep_seqs))
+
+    def test_trunc_len_bigger_than_max_len(self):
+        with self.assertRaisesRegex(ValueError, 'max_len'):
+            denoise_pyro(self.demux_seqs, 100, max_len=99)
+
+        # Shouldn't fail when `max_len=100`
+        denoise_pyro(self.demux_seqs, 100, max_len=100)
 
 
 if __name__ == '__main__':

@@ -6,11 +6,11 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-from ._denoise import denoise_single, denoise_paired
+from ._denoise import denoise_single, denoise_paired, denoise_pyro
 from ._version import get_versions
 
 
 __version__ = get_versions()['version']
 del get_versions
 
-__all__ = ['denoise_single', 'denoise_paired']
+__all__ = ['denoise_single', 'denoise_paired', 'denoise_pyro']

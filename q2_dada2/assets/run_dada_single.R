@@ -6,7 +6,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Ex: Rscript run_dada_single.R input_dir output.tsv filtered_dir 200 0 2.0 2 pooled 1.0 0 1000000
+# Ex: Rscript run_dada_single.R input_dir output.tsv filtered_dir 200 0 2.0 2 Inf pooled 1.0 0 1000000 NULL 32
 ####################################################
 
 ####################################################
@@ -48,16 +48,20 @@
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
+# 8) maxLen - Remove reads with length greater than maxLen. maxLen is enforced on the raw reads.
+#             Default Inf - no maximum.
+#    Ex: 300
+#
 ### CHIMERA ARGUMENTS ###
 #
-# 8) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 9) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 9) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 10) minParentFold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
@@ -65,13 +69,25 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 10) nthreads - The number of threads to use.
+# 11) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available cores and use all.
 #    Ex: 1
 #
-# 11) nreads_learn - The minimum number of reads to learn the error model from.
+# 12) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
+#
+### GLOBAL OPTION ARGUMENTS ###
+#
+# 13) HOMOPOLYMER_GAP_PENALTY - The cost of gaps in homopolymer regions (>=3 repeated bases).
+#                               Default is NULL, which causes homopolymer gaps
+#                               to be treated as normal gaps.
+#    Ex: -1
+#
+# 14) BAND_SIZE - When set, banded Needleman-Wunsch alignments are performed.
+#                 The default value of BAND_SIZE is 16. Setting BAND_SIZE to a negative
+#                 number turns off banding (i.e. full Needleman-Wunsch).
+#    Ex: 32
 #
 
 cat(R.version$version.string, "\n")
@@ -84,10 +100,15 @@ truncLen <- as.integer(args[[4]])
 trimLeft <- as.integer(args[[5]])
 maxEE <- as.numeric(args[[6]])
 truncQ <- as.integer(args[[7]])
-chimeraMethod <- args[[8]]
-minParentFold <- as.numeric(args[[9]])
-nthreads <- as.integer(args[[10]])
-nreads.learn <- as.integer(args[[11]])
+maxLen <- if (args[[8]]=='Inf') Inf else as.integer(args[[8]])
+chimeraMethod <- args[[9]]
+minParentFold <- as.numeric(args[[10]])
+nthreads <- as.integer(args[[11]])
+nreads.learn <- as.integer(args[[12]])
+# The following args are not directly exposed to end users in q2-dada2,
+# but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
+HOMOPOLYMER_GAP_PENALTY <- if (args[[13]]=='NULL') NULL else as.integer(args[[13]])
+BAND_SIZE <- as.integer(args[[14]])
 errQuit <- function(mesg, status=1) {
   message("Error: ", mesg)
   q(status=status)
@@ -135,8 +156,8 @@ cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
 cat("1) Filtering ")
 filts <- file.path(filtered.dir, basename(unfilts))
 out <- suppressWarnings(filterAndTrim(unfilts, filts, truncLen=truncLen, trimLeft=trimLeft,
-                                      maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE, 
-                                      multithread=multithread))
+                                      maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE,
+                                      multithread=multithread, maxLen=maxLen))
 cat(ifelse(file.exists(filts), ".", "x"), sep="")
 filts <- list.files(filtered.dir, pattern=".fastq.gz$", full.names=TRUE)
 cat("\n")
@@ -157,9 +178,13 @@ for(i in seq_along(filts)) {
 # Run dada in self-consist mode on those samples
 dds <- vector("list", length(filts))
 if(i==1) { # breaks list assignment
-  dds[[1]] <- dada(drps[[1]], err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
+  dds[[1]] <- dada(drps[[1]], err=NULL, selfConsist=TRUE, multithread=multithread,
+                   HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
+                   BAND_SIZE=BAND_SIZE, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
 } else { # more than one sample, no problem with list assignment
-  dds[1:i] <- dada(drps[1:i], err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
+  dds[1:i] <- dada(drps[1:i], err=NULL, selfConsist=TRUE, multithread=multithread,
+                   HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
+                   BAND_SIZE=BAND_SIZE, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
 }
 err <- dds[[1]]$err_out
 rm(drps)
@@ -171,7 +196,10 @@ cat("3) Denoise remaining samples ")
 if(i < length(filts)) {
   for(j in seq(i+1,length(filts))) {
     drp <- derepFastq(filts[[j]])
-    { sink("/dev/null"); dds[[j]] <- dada(drp, err=err, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1); sink(); }
+    { sink("/dev/null"); dds[[j]] <- dada(drp, err=err, multithread=multithread,
+                                          HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
+                                          BAND_SIZE=BAND_SIZE, VECTORIZED_ALIGNMENT=FALSE,
+                                          SSE=1); sink(); }
     cat(".")
   }
 }
