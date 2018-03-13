@@ -231,8 +231,8 @@ class TestDenoisePaired(TestPluginBase):
 
 
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
-# just a variation of denoise-single. These tests should serve basically
-# as regression or integration tests (depending on perspective).
+# just a variation of denoise-single. These tests should serve as regression
+# or integration tests (depending on perspective).
 class TestDenoisePyro(TestPluginBase):
     package = 'q2_dada2.tests'
 
@@ -261,8 +261,8 @@ class TestDenoisePyro(TestPluginBase):
         with self.assertRaisesRegex(ValueError, 'max_len'):
             denoise_pyro(self.demux_seqs, 100, max_len=99)
 
-        # Shouldn't fail when `max_len=100`
-        denoise_pyro(self.demux_seqs, 100, max_len=100)
+        # Shouldn't fail when max_len > trunc_len
+        denoise_pyro(self.demux_seqs, 100, max_len=160)
 
 
 if __name__ == '__main__':

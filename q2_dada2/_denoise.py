@@ -108,6 +108,10 @@ def _denoise_helper(biom_fp, hashed_feature_ids):
     return table, rep_sequences
 
 
+# Since `denoise-single` and `denoise-pyro` are almost identical, break out
+# the bulk of the functionality to this helper util. Typechecking is assumed
+# to have occurred in the calling functions, this is primarily for making
+# sure that DADA2 is able to do what it needs to do.
 def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, chimera_method, min_fold_parent_over_abundance,
                     n_threads, n_reads_learn, hashed_feature_ids,
@@ -117,7 +121,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
                          % (trim_left, trunc_len))
     if max_len != 0 and max_len < trunc_len:
-        raise ValueError("trunc_len (%r) must be smaller than max_len (%r)"
+        raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
                          % (trunc_len, max_len))
     # Coerce for `run_dada_single.R`
     max_len = 'Inf' if max_len == 0 else max_len
@@ -127,9 +131,10 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
         cmd = ['run_dada_single.R',
                str(demultiplexed_seqs), biom_fp, temp_dir_name,
                str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
-               'Inf', str(chimera_method), str(min_fold_parent_over_abundance),
-               str(n_threads), str(n_reads_learn), homopolymer_gap_penalty,
-               band_size]
+               str(max_len), str(chimera_method),
+               str(min_fold_parent_over_abundance), str(n_threads),
+               str(n_reads_learn), str(homopolymer_gap_penalty),
+               str(band_size)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -220,7 +225,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  trunc_q: int=2, max_len: int=0,
                  chimera_method: str='consensus',
                  min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
-                 n_reads_learn: int=1000000, hashed_feature_ids: bool=True
+                 n_reads_learn: int=250000, hashed_feature_ids: bool=True
                  ) -> (biom.Table, DNAIterator):
     return _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee,
                            trunc_q, max_len, chimera_method,

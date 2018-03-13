@@ -290,7 +290,7 @@ plugin.methods.register_function(
                                     'feature in the feature table will be '
                                     'represented by exactly one sequence.'
     },
-    name='Denoise and dereplicate single-end sequences',
+    name='Denoise and dereplicate single-end pyrosequences',
     description='This method denoises single-end pyrosequencing sequences, '
                 'dereplicates them, and filters chimeras.'
 )
