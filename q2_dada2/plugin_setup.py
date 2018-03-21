@@ -252,8 +252,9 @@ plugin.methods.register_function(
         'trunc_q': 'Reads are truncated at the first instance of a quality '
                    'score less than or equal to this value. If the resulting '
                    'read is then shorter than `trunc_len`, it is discarded.',
-        'max_len': 'Remove raw reads which are longer than this value. If 0 '
-                   'is provided no reads will be removed based on length.',
+        'max_len': 'Remove reads prior to trimming or truncation which are '
+                   'longer than this value. If 0 is provided no reads will '
+                   'be removed based on length.',
         'chimera_method': 'The method used to remove chimeras. '
                           '"none": No chimera removal is performed. '
                           '"pooled": All reads are pooled prior to chimera '

@@ -157,10 +157,20 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
                    ) -> (biom.Table, DNAIterator):
-    return _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee,
-                           trunc_q, 0, chimera_method,
-                           min_fold_parent_over_abundance, n_threads,
-                           n_reads_learn, hashed_feature_ids, 'NULL', '16')
+    return _denoise_single(
+        demultiplexed_seqs=demultiplexed_seqs,
+        trunc_len=trunc_len,
+        trim_left=trim_left,
+        max_ee=max_ee,
+        trunc_q=trunc_q,
+        max_len=0,
+        chimera_method=chimera_method,
+        min_fold_parent_over_abundance=min_fold_parent_over_abundance,
+        n_threads=n_threads,
+        n_reads_learn=n_reads_learn,
+        hashed_feature_ids=hashed_feature_ids,
+        homopolymer_gap_penalty='NULL',
+        band_size='16')
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -227,7 +237,17 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                  n_reads_learn: int=250000, hashed_feature_ids: bool=True
                  ) -> (biom.Table, DNAIterator):
-    return _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee,
-                           trunc_q, max_len, chimera_method,
-                           min_fold_parent_over_abundance, n_threads,
-                           n_reads_learn, hashed_feature_ids, '-1', '32')
+    return _denoise_single(
+        demultiplexed_seqs=demultiplexed_seqs,
+        trunc_len=trunc_len,
+        trim_left=trim_left,
+        max_ee=max_ee,
+        trunc_q=trunc_q,
+        max_len=max_len,
+        chimera_method=chimera_method,
+        min_fold_parent_over_abundance=min_fold_parent_over_abundance,
+        n_threads=n_threads,
+        n_reads_learn=n_reads_learn,
+        hashed_feature_ids=hashed_feature_ids,
+        homopolymer_gap_penalty='-1',
+        band_size='32')
