@@ -30,54 +30,57 @@
 # 3) File path to output tsv file. If already exists, will be overwritten.
 #    Ex: path/to/output_file.tsv
 #
-# 4) File path to directory to write the filtered FORWARD .fastq.gz files. These files are intermediate
+# 4) File path to tracking tsv file. If already exists, will be overwritte.
+#    Ex: path/to/tracking_stats.tsv
+#
+# 5) File path to directory to write the filtered FORWARD .fastq.gz files. These files are intermediate
 #               for the full workflow. Currently they remain after the script finishes. Directory must
 #               already exist.
 #    Ex: path/to/dir/with/FWD_fastqgzs/filtered
 #
-# 5) File path to directory to write the filtered REVERSE .fastq.gz files. These files are intermediate
+# 6) File path to directory to write the filtered REVERSE .fastq.gz files. These files are intermediate
 #               for the full workflow. Currently they remain after the script finishes. Directory must
 #               already exist.
 #    Ex: path/to/dir/with/REV_fastqgzs/filtered
 #
 ### FILTERING ARGUMENTS ###
 #
-# 6) truncLenF - The position at which to truncate forward reads. Forward reads shorter
+# 7) truncLenF - The position at which to truncate forward reads. Forward reads shorter
 #               than truncLenF will be discarded.
 #               Special values: 0 - no truncation or length filtering.
 #    Ex: 240
 #
-# 7) truncLenR - The position at which to truncate reverse reads. Reverse reads shorter
+# 8) truncLenR - The position at which to truncate reverse reads. Reverse reads shorter
 #               than truncLenR will be discarded.
 #               Special values: 0 - no truncation or length filtering.
 #    Ex: 160
 #
-# 8) trimLeftF - The number of nucleotides to remove from the start of
+# 9) trimLeftF - The number of nucleotides to remove from the start of
 #               each forward read. Should be less than truncLenF.
 #    Ex: 0
 #
-# 9) trimLeftR - The number of nucleotides to remove from the start of
+# 10) trimLeftR - The number of nucleotides to remove from the start of
 #               each reverse read. Should be less than truncLenR.
 #    Ex: 0
 #
-# 10) maxEE - Reads with expected errors higher than maxEE are discarded.
+# 11) maxEE - Reads with expected errors higher than maxEE are discarded.
 #               Both forward and reverse reads are independently tested.
 #    Ex: 2.0
 #
-# 11) truncQ - Reads are truncated at the first instance of quality score truncQ.
+# 12) truncQ - Reads are truncated at the first instance of quality score truncQ.
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
 ### CHIMERA ARGUMENTS ###
 #
-# 12) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 13) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 13) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 14) minParentFold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
@@ -85,11 +88,11 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 14) nthreads - The number of threads to use.
+# 15) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available and use all.
 #    Ex: 1
 #
-# 15) nreads_learn - The minimum number of reads to learn the error model from.
+# 16) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
@@ -100,18 +103,19 @@ args <- commandArgs(TRUE)
 inp.dirF <- args[[1]]
 inp.dirR <- args[[2]]
 out.path <- args[[3]]
-filtered.dirF <- args[[4]]
-filtered.dirR <- args[[5]]
-truncLenF <- as.integer(args[[6]])
-truncLenR <- as.integer(args[[7]])
-trimLeftF <- as.integer(args[[8]])
-trimLeftR <- as.integer(args[[9]])
-maxEE <- as.numeric(args[[10]])
-truncQ <- as.integer(args[[11]])
-chimeraMethod <- args[[12]]
-minParentFold <- as.numeric(args[[13]])
-nthreads <- as.integer(args[[14]])
-nreads.learn <- as.integer(args[[15]])
+out.track <- args[[4]]
+filtered.dirF <- args[[5]]
+filtered.dirR <- args[[6]]
+truncLenF <- as.integer(args[[7]])
+truncLenR <- as.integer(args[[8]])
+trimLeftF <- as.integer(args[[9]])
+trimLeftR <- as.integer(args[[10]])
+maxEE <- as.numeric(args[[11]])
+truncQ <- as.integer(args[[12]])
+chimeraMethod <- args[[13]]
+minParentFold <- as.numeric(args[[14]])
+nthreads <- as.integer(args[[15]])
+nreads.learn <- as.integer(args[[16]])
 errQuit <- function(mesg, status=1) {
   message("Error: ", mesg)
   q(status=status)
@@ -168,7 +172,7 @@ filtsF <- file.path(filtered.dirF, basename(unfiltsF))
 filtsR <- file.path(filtered.dirR, basename(unfiltsR))
 out <- suppressWarnings(filterAndTrim(unfiltsF, filtsF, unfiltsR, filtsR,
                                       truncLen=c(truncLenF, truncLenR), trimLeft=c(trimLeftF, trimLeftR),
-                                      maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE, 
+                                      maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE,
                                       multithread=multithread))
 cat(ifelse(file.exists(filtsF), ".", "x"), sep="")
 filtsF <- list.files(filtered.dirF, pattern=".fastq.gz$", full.names=TRUE)
@@ -253,9 +257,8 @@ passed.filtering <- track[,"filtered"] > 0
 track[passed.filtering,"denoised"] <- denoisedF
 track[passed.filtering,"merged"] <- rowSums(seqtab)
 track[passed.filtering,"non-chimeric"] <- rowSums(seqtab.nochim)
-head(track)
-#write.table(track, out.track, sep="\t",
-#            row.names=TRUE, col.names=col.names, quote=FALSE)
+write.table(track, out.track, sep="\t", row.names=TRUE, col.names=NA,
+	    quote=FALSE)
 
 ### WRITE OUTPUT AND QUIT ###
 # Formatting as tsv plain-text sequence table table

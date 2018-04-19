@@ -5,6 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
+import importlib
 
 import qiime2.plugin
 from q2_types.per_sample_sequences import (
@@ -14,6 +15,7 @@ from q2_types.feature_data import FeatureData, Sequence
 from q2_types.feature_table import FeatureTable, Frequency
 
 import q2_dada2
+from q2_dada2 import DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt
 
 _CHIM_OPT = {'pooled', 'consensus', 'none'}
 
@@ -49,7 +51,8 @@ plugin.methods.register_function(
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
-             ('representative_sequences', FeatureData[Sequence])],
+             ('representative_sequences', FeatureData[Sequence]),
+             ('denoising_stats', SampleData[DADA2Stats])],
     input_descriptions={
         'demultiplexed_seqs': ('The single-end demultiplexed sequences to be '
                                'denoised.')
@@ -129,7 +132,8 @@ plugin.methods.register_function(
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
-             ('representative_sequences', FeatureData[Sequence])],
+             ('representative_sequences', FeatureData[Sequence]),
+             ('denoising_stats', SampleData[DADA2Stats])],
     input_descriptions={
         'demultiplexed_seqs': ('The paired-end demultiplexed sequences to be '
                                'denoised.')
@@ -229,7 +233,8 @@ plugin.methods.register_function(
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
-             ('representative_sequences', FeatureData[Sequence])],
+             ('representative_sequences', FeatureData[Sequence]),
+             ('denoising_stats', SampleData[DADA2Stats])],
     input_descriptions={
         'demultiplexed_seqs': 'The single-end demultiplexed pyrosequencing '
                               'sequences (e.g. 454, IonTorrent) to be '
@@ -295,3 +300,10 @@ plugin.methods.register_function(
     description='This method denoises single-end pyrosequencing sequences, '
                 'dereplicates them, and filters chimeras.'
 )
+
+
+plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)
+plugin.register_semantic_types(DADA2Stats)
+plugin.register_semantic_type_to_format(
+    SampleData[DADA2Stats], DADA2StatsDirFmt)
+importlib.import_module('q2_dada2._transformer')
