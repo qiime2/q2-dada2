@@ -1,0 +1,12 @@
+sample-id	input	filtered	denoised	merged	non-chimeric
+#q2:types	numeric	numeric	numeric	numeric	numeric
+BAQ2420.2	100	99	99	79	79
+BAQ3473.2	100	99	99	0	0
+BAQ3473.3	100	100	100	18	18
+BAQ4166.2	100	99	99	0	0
+BAQ4166.3	100	97	97	9	9
+PAP130.2	100	98	98	0	0
+YUN1005.3	100	100	100	82	82
+YUN1242.1	100	97	97	73	73
+YUN1242.3	100	99	99	64	64
+YUN3153.3	100	100	100	36	36

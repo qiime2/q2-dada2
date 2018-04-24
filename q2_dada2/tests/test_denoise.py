@@ -10,6 +10,7 @@ import unittest
 
 import skbio
 import biom
+import qiime2
 from qiime2.plugin.testing import TestPluginBase
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
@@ -38,12 +39,15 @@ class TestDenoiseSingle(TestPluginBase):
                           'fasta', constructor=skbio.DNA))
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-stats.tsv'))
 
-        table, rep_seqs = denoise_single(self.demux_seqs, 100)
+        table, rep_seqs, md = denoise_single(self.demux_seqs, 100)
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
 
     def test_override(self):
         with open(self.get_data_path('expected/single-override.tsv')) as fh:
@@ -53,10 +57,12 @@ class TestDenoiseSingle(TestPluginBase):
                           'fasta', constructor=skbio.DNA))
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-override-stats.tsv'))
 
         # NOTE: the test data isn't interesting enough to be impacted by
         # min_fold_parent_over_abundance.
-        table, rep_seqs = denoise_single(
+        table, rep_seqs, md = denoise_single(
             self.demux_seqs, 100, trim_left=10, max_ee=10.5, trunc_q=1,
             n_threads=1, n_reads_learn=2, hashed_feature_ids=False,
             chimera_method='consensus', min_fold_parent_over_abundance=1.1)
@@ -64,6 +70,7 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
 
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):
@@ -101,16 +108,19 @@ class TestDenoiseSingle(TestPluginBase):
                 'fasta', constructor=skbio.DNA))
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/underscore-samples-stats.tsv'))
 
         # Historical NOTE: default used to be `pooled`, so the data still
         # expects that. Since this is only testing underscores, it shouldn't
         # matter much and serves as a regression test to boot.
-        table, rep_seqs = denoise_single(self.demux_seqs, 100,
-                                         chimera_method='pooled')
+        table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
+                                             chimera_method='pooled')
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
 
     def test_no_chimera_method(self):
         with open(self.get_data_path('expected/single-default.tsv')) as fh:
@@ -120,13 +130,17 @@ class TestDenoiseSingle(TestPluginBase):
                           'fasta', constructor=skbio.DNA))
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-stats.tsv'))
 
-        table, rep_seqs = denoise_single(self.demux_seqs, 100,
-                                         chimera_method='none')
+        table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
+                                             chimera_method='none')
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+
+        self.assertEqual(md, exp_md)
 
 
 class TestDenoisePaired(TestPluginBase):
@@ -145,14 +159,17 @@ class TestDenoisePaired(TestPluginBase):
                           'fasta', constructor=skbio.DNA))
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-stats.tsv'))
 
         # NOTE: changing the chimera_method parameter doesn't impact the
         # results for this dataset
-        table, rep_seqs = denoise_paired(self.demux_seqs, 150, 150)
+        table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150)
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
 
     def test_override(self):
         with open(self.get_data_path('expected/paired-override.tsv')) as fh:
@@ -162,10 +179,12 @@ class TestDenoisePaired(TestPluginBase):
                           'fasta', constructor=skbio.DNA))
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-override-stats.tsv'))
 
         # NOTE: the test data isn't interesting enough to be impacted by
         # chimera_method or min_fold_parent_over_abundance.
-        table, rep_seqs = denoise_paired(
+        table, rep_seqs, md = denoise_paired(
             self.demux_seqs, 150, 150, trim_left_f=10, trim_left_r=10,
             max_ee=20.5, trunc_q=0, n_threads=1, n_reads_learn=2,
             hashed_feature_ids=False, chimera_method='consensus',
@@ -174,6 +193,7 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
 
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):
@@ -221,13 +241,16 @@ class TestDenoisePaired(TestPluginBase):
                           'fasta', constructor=skbio.DNA))
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-stats.tsv'))
 
-        table, rep_seqs = denoise_paired(self.demux_seqs, 150, 150,
-                                         chimera_method='none')
+        table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150,
+                                             chimera_method='none')
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
 
 
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
@@ -250,12 +273,15 @@ class TestDenoisePyro(TestPluginBase):
                           'fasta', constructor=skbio.DNA))
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/pyro-default-stats.tsv'))
 
-        table, rep_seqs = denoise_pyro(self.demux_seqs, 100)
+        table, rep_seqs, md = denoise_pyro(self.demux_seqs, 100)
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
 
     def test_trunc_len_bigger_than_max_len(self):
         with self.assertRaisesRegex(ValueError, 'max_len'):
