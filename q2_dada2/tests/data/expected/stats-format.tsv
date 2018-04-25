@@ -1,0 +1,4 @@
+sample-id	input	filtered	denoised	non-chimeric
+#q2:types	numeric	numeric	numeric	numeric
+L1S208	100	99	99	99
+L1S257	100	98	98	98

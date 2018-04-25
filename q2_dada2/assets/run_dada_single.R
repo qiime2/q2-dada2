@@ -25,43 +25,46 @@
 # 2) File path to output tsv file. If already exists, will be overwritten.
 #    Ex: path/to/output_file.tsv
 #
-# 3) File path to directory in which to write the filtered .fastq.gz files. These files are intermediate
+# 3) File path to tracking tsv file. If already exists, will be overwritte.
+#    Ex: path/to/tracking_stats.tsv
+#
+# 4) File path to directory in which to write the filtered .fastq.gz files. These files are intermediate
 #               for the full workflow. Currently they remain after the script finishes.
 #               Directory must already exist.
 #    Ex: path/to/dir/with/fastqgzs/filtered
 #
 ### FILTERING ARGUMENTS ###
 #
-# 4) truncLen - The position at which to truncate reads. Reads shorter
+# 5) truncLen - The position at which to truncate reads. Reads shorter
 #               than truncLen will be discarded.
 #               Special values: 0 - no truncation or length filtering.
 #    Ex: 150
 #
-# 5) trimLeft - The number of nucleotides to remove from the start of
+# 6) trimLeft - The number of nucleotides to remove from the start of
 #               each read. Should be less than truncLen for obvious reasons.
 #    Ex: 0
 #
-# 6) maxEE - Reads with expected errors higher than maxEE are discarded.
+# 7) maxEE - Reads with expected errors higher than maxEE are discarded.
 #    Ex: 2.0
 #
-# 7) truncQ - Reads are truncated at the first instance of quality score truncQ.
+# 8) truncQ - Reads are truncated at the first instance of quality score truncQ.
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
-# 8) maxLen - Remove reads with length greater than maxLen. maxLen is enforced on the raw reads.
+# 9) maxLen - Remove reads with length greater than maxLen. maxLen is enforced on the raw reads.
 #             Default Inf - no maximum.
 #    Ex: 300
 #
 ### CHIMERA ARGUMENTS ###
 #
-# 9) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 10) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 10) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 11) minParentFold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
@@ -69,22 +72,22 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 11) nthreads - The number of threads to use.
+# 12) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available cores and use all.
 #    Ex: 1
 #
-# 12) nreads_learn - The minimum number of reads to learn the error model from.
+# 13) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
 ### GLOBAL OPTION ARGUMENTS ###
 #
-# 13) HOMOPOLYMER_GAP_PENALTY - The cost of gaps in homopolymer regions (>=3 repeated bases).
+# 14) HOMOPOLYMER_GAP_PENALTY - The cost of gaps in homopolymer regions (>=3 repeated bases).
 #                               Default is NULL, which causes homopolymer gaps
 #                               to be treated as normal gaps.
 #    Ex: -1
 #
-# 14) BAND_SIZE - When set, banded Needleman-Wunsch alignments are performed.
+# 15) BAND_SIZE - When set, banded Needleman-Wunsch alignments are performed.
 #                 The default value of BAND_SIZE is 16. Setting BAND_SIZE to a negative
 #                 number turns off banding (i.e. full Needleman-Wunsch).
 #    Ex: 32
@@ -95,20 +98,21 @@ args <- commandArgs(TRUE)
 
 inp.dir <- args[[1]]
 out.path <- args[[2]]
-filtered.dir <- args[[3]]
-truncLen <- as.integer(args[[4]])
-trimLeft <- as.integer(args[[5]])
-maxEE <- as.numeric(args[[6]])
-truncQ <- as.integer(args[[7]])
-maxLen <- if (args[[8]]=='Inf') Inf else as.integer(args[[8]])
-chimeraMethod <- args[[9]]
-minParentFold <- as.numeric(args[[10]])
-nthreads <- as.integer(args[[11]])
-nreads.learn <- as.integer(args[[12]])
+out.track <- args[[3]]
+filtered.dir <- args[[4]]
+truncLen <- as.integer(args[[5]])
+trimLeft <- as.integer(args[[6]])
+maxEE <- as.numeric(args[[7]])
+truncQ <- as.integer(args[[8]])
+maxLen <- if (args[[9]]=='Inf') Inf else as.integer(args[[9]])
+chimeraMethod <- args[[10]]
+minParentFold <- as.numeric(args[[11]])
+nthreads <- as.integer(args[[12]])
+nreads.learn <- as.integer(args[[13]])
 # The following args are not directly exposed to end users in q2-dada2,
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
-HOMOPOLYMER_GAP_PENALTY <- if (args[[13]]=='NULL') NULL else as.integer(args[[13]])
-BAND_SIZE <- as.integer(args[[14]])
+HOMOPOLYMER_GAP_PENALTY <- if (args[[14]]=='NULL') NULL else as.integer(args[[14]])
+BAND_SIZE <- as.integer(args[[15]])
 errQuit <- function(mesg, status=1) {
   message("Error: ", mesg)
   q(status=status)
@@ -224,9 +228,8 @@ colnames(track) <- c("input", "filtered", "denoised", "non-chimeric")
 passed.filtering <- track[,"filtered"] > 0
 track[passed.filtering,"denoised"] <- rowSums(seqtab)
 track[passed.filtering,"non-chimeric"] <- rowSums(seqtab.nochim)
-head(track)
-#write.table(track, out.track, sep="\t",
-#            row.names=TRUE, col.names=col.names, quote=FALSE)
+write.table(track, out.track, sep="\t", row.names=TRUE, col.names=NA,
+	    quote=FALSE)
 
 ### WRITE OUTPUT AND QUIT ###
 # Formatting as tsv plain-text sequence table table

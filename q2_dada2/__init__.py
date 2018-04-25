@@ -8,9 +8,11 @@
 
 from ._denoise import denoise_single, denoise_paired, denoise_pyro
 from ._version import get_versions
+from ._stats import DADA2Stats, DADA2StatsDirFmt, DADA2StatsFormat
 
 
 __version__ = get_versions()['version']
 del get_versions
 
-__all__ = ['denoise_single', 'denoise_paired', 'denoise_pyro']
+__all__ = ['denoise_single', 'denoise_paired', 'denoise_pyro', 'DADA2Stats',
+           'DADA2StatsFormat', 'DADA2StatsDirFmt']

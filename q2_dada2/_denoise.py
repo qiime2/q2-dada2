@@ -14,6 +14,7 @@ import subprocess
 import biom
 import skbio
 import qiime2.util
+import pandas as pd
 
 from q2_types.feature_data import DNAIterator
 from q2_types.per_sample_sequences import (
@@ -84,13 +85,24 @@ def _check_inputs(**kwargs):
                              % (param, arg, explanation))
 
 
-def _denoise_helper(biom_fp, hashed_feature_ids):
+def _filepath_to_sample(fp):
+    return fp.rsplit('_', 4)[0]
+
+
+def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
         table = biom.Table.from_tsv(fh, None, None, None)
+
+    df = pd.read_csv(track_fp, sep='\t', index_col=0)
+    df.index.name = 'sample-id'
+    df = df.rename(index=_filepath_to_sample)
+    metadata = qiime2.Metadata(df)
+
     # Currently the sample IDs in DADA2 are the file names. We make
     # them the sample id part of the filename here.
-    sid_map = {id_: id_.rsplit('_', 4)[0] for id_ in table.ids(axis='sample')}
+    sid_map = {id_: _filepath_to_sample(id_)
+               for id_ in table.ids(axis='sample')}
     table.update_ids(sid_map, axis='sample', inplace=True)
     # The feature IDs in DADA2 are the sequences themselves.
     if hashed_feature_ids:
@@ -105,7 +117,7 @@ def _denoise_helper(biom_fp, hashed_feature_ids):
         rep_sequences = DNAIterator(
             (skbio.DNA(id_, metadata={'id': id_})
              for id_ in table.ids(axis='observation')))
-    return table, rep_sequences
+    return table, rep_sequences, metadata
 
 
 # Since `denoise-single` and `denoise-pyro` are almost identical, break out
@@ -128,8 +140,9 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
+        track_fp = os.path.join(temp_dir_name, 'track.tsv')
         cmd = ['run_dada_single.R',
-               str(demultiplexed_seqs), biom_fp, temp_dir_name,
+               str(demultiplexed_seqs), biom_fp, track_fp, temp_dir_name,
                str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
                str(max_len), str(chimera_method),
                str(min_fold_parent_over_abundance), str(n_threads),
@@ -148,7 +161,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, hashed_feature_ids)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
 
 
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -156,7 +169,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    trunc_q: int=2, chimera_method: str='consensus',
                    min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
-                   ) -> (biom.Table, DNAIterator):
+                   ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
         trunc_len=trunc_len,
@@ -180,7 +193,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    chimera_method: str='consensus',
                    min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                    n_reads_learn: int=1000000, hashed_feature_ids: bool=True
-                   ) -> (biom.Table, DNAIterator):
+                   ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
         raise ValueError("trim_left_f (%r) must be smaller than trunc_len_f"
@@ -192,6 +205,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         tmp_forward = os.path.join(temp_dir, 'forward')
         tmp_reverse = os.path.join(temp_dir, 'reverse')
         biom_fp = os.path.join(temp_dir, 'output.tsv.biom')
+        track_fp = os.path.join(temp_dir, 'track.tsv')
         filt_forward = os.path.join(temp_dir, 'filt_f')
         filt_reverse = os.path.join(temp_dir, 'filt_r')
         for fp in tmp_forward, tmp_reverse, filt_forward, filt_reverse:
@@ -204,7 +218,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                 qiime2.util.duplicate(fp, os.path.join(tmp_reverse, rp.name))
 
         cmd = ['run_dada_paired.R',
-               tmp_forward, tmp_reverse, biom_fp, filt_forward, filt_reverse,
+               tmp_forward, tmp_reverse, biom_fp, track_fp, filt_forward,
+               filt_reverse,
                str(trunc_len_f), str(trunc_len_r),
                str(trim_left_f), str(trim_left_r),
                str(max_ee), str(trunc_q),
@@ -227,7 +242,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, hashed_feature_ids)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
 
 
 def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -236,7 +251,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  chimera_method: str='consensus',
                  min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
                  n_reads_learn: int=250000, hashed_feature_ids: bool=True
-                 ) -> (biom.Table, DNAIterator):
+                 ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
         trunc_len=trunc_len,
