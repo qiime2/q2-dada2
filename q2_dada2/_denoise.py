@@ -165,10 +165,11 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
 
 
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-                   trunc_len: int, trim_left: int=0, max_ee: float=2.0,
-                   trunc_q: int=2, chimera_method: str='consensus',
-                   min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
-                   n_reads_learn: int=1000000, hashed_feature_ids: bool=True
+                   trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
+                   trunc_q: int = 2, chimera_method: str = 'consensus',
+                   min_fold_parent_over_abundance: float = 1.0,
+                   n_threads: int = 1, n_reads_learn: int = 1000000,
+                   hashed_feature_ids: bool = True
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -188,11 +189,12 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    trunc_len_f: int, trunc_len_r: int,
-                   trim_left_f: int=0, trim_left_r: int=0,
-                   max_ee: float=2.0, trunc_q: int=2,
-                   chimera_method: str='consensus',
-                   min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
-                   n_reads_learn: int=1000000, hashed_feature_ids: bool=True
+                   trim_left_f: int = 0, trim_left_r: int = 0,
+                   max_ee: float = 2.0, trunc_q: int = 2,
+                   chimera_method: str = 'consensus',
+                   min_fold_parent_over_abundance: float = 1.0,
+                   n_threads: int = 1, n_reads_learn: int = 1000000,
+                   hashed_feature_ids: bool = True
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
@@ -246,11 +248,12 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
 
 
 def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-                 trunc_len: int, trim_left: int=0, max_ee: float=2.0,
-                 trunc_q: int=2, max_len: int=0,
-                 chimera_method: str='consensus',
-                 min_fold_parent_over_abundance: float=1.0, n_threads: int=1,
-                 n_reads_learn: int=250000, hashed_feature_ids: bool=True
+                 trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
+                 trunc_q: int = 2, max_len: int = 0,
+                 chimera_method: str = 'consensus',
+                 min_fold_parent_over_abundance: float = 1.0,
+                 n_threads: int = 1, n_reads_learn: int = 250000,
+                 hashed_feature_ids: bool = True
                  ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
