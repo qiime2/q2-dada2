@@ -21,7 +21,7 @@ requirements:
     - python 3.5*
     - setuptools
     - biom-format >=2.1.5,<2.2.0
-    - bioconductor-dada2 1.8.0
+    - bioconductor-dada2 1.6.0 r3.4.1_0
     # openjdk is not a real dependency, but, r-base has a post-link and post-
     # activation hook that calls R CMD javareconf, which pokes around for any
     # installations of java. On modern versions of macOS, a binary called
