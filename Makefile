@@ -1,5 +1,7 @@
 .PHONY: all lint test test-cov install dev clean distclean
 
+PYTHON ?= python
+
 all: ;
 
 lint:
@@ -13,7 +15,7 @@ test-cov: all
 	py.test --cov=q2_dada2
 
 install: all
-	python setup.py install
+	$(PYTHON) setup.py install
 
 dev: all
 	pip install -e .
