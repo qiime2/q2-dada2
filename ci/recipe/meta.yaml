@@ -13,15 +13,14 @@ build:
   script: make install
 
 requirements:
-  build:
-    - python 3.5*
+  host:
+    - python {{ python }}
     - setuptools
 
   run:
-    - python 3.5*
-    - setuptools
+    - python {{ python }}
     - biom-format >=2.1.5,<2.2.0
-    # These pins only exists because namespaces where shuffled around and the
+    # These pins only exist because namespaces where shuffled around and the
     # next bioconductor version was uploaded only on OS X and only for
     # biostrings at the moment.
     - bioconductor-biobase 2.38.0
