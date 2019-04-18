@@ -172,7 +172,7 @@ if(length(filts) == 0) { # All reads were filtered out
 ### LEARN ERROR RATES ###
 # Dereplicate enough samples to get nreads.learn total reads
 cat("2) Learning Error Rates\n")
-err <- learnErrors(filts, multithread=multithread,
+err <- learnErrors(filts, nreads=nreads.learn, multithread=multithread,
                    HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE)
 
 ### PROCESS ALL SAMPLES ###

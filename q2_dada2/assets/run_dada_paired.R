@@ -98,8 +98,10 @@
 #
 
 cat(R.version$version.string, "\n")
+errQuit <- function(mesg, status=1) { message("Error: ", mesg); q(status=status) }
 args <- commandArgs(TRUE)
 
+# Assign each of the arguments, in positional order, to an appropriately named R variable
 inp.dirF <- args[[1]]
 inp.dirR <- args[[2]]
 out.path <- args[[3]]
@@ -116,10 +118,6 @@ chimeraMethod <- args[[13]]
 minParentFold <- as.numeric(args[[14]])
 nthreads <- as.integer(args[[15]])
 nreads.learn <- as.integer(args[[16]])
-errQuit <- function(mesg, status=1) {
-  message("Error: ", mesg)
-  q(status=status)
-}
 
 ### VALIDATE ARGUMENTS ###
 
@@ -164,7 +162,9 @@ if(nthreads < 0) {
 ### LOAD LIBRARIES ###
 suppressWarnings(library(methods))
 suppressWarnings(library(dada2))
-cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
+cat("DADA2:", as.character(packageVersion("dada2")), "/",
+    "Rcpp:", as.character(packageVersion("Rcpp")), "/",
+    "RcppParallel:", as.character(packageVersion("RcppParallel")), "\n")
 
 ### TRIM AND FILTER ###
 cat("1) Filtering ")
@@ -185,56 +185,23 @@ if(length(filtsF) == 0) { # All reads were filtered out
 ### LEARN ERROR RATES ###
 # Dereplicate enough samples to get nreads.learn total reads
 cat("2) Learning Error Rates\n")
-NREADS <- 0
-drpsF <- vector("list", length(filtsF))
-drpsR <- vector("list", length(filtsR))
-denoisedF <- rep(0, length(filtsF))
-getN <- function(x) sum(getUniques(x))
-for(i in seq_along(filtsF)) {
-  drpsF[[i]] <- derepFastq(filtsF[[i]])
-  drpsR[[i]] <- derepFastq(filtsR[[i]])
-  NREADS <- NREADS + sum(drpsF[[i]]$uniques)
-  if(NREADS > nreads.learn) { break }
-}
-# Run dada in self-consist mode on those samples
-drpsF <- drpsF[1:i]
-drpsR <- drpsR[1:i]
-cat("2a) Forward Reads\n")
-ddsF <- dada(drpsF, err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
-cat("2b) Reverse Reads\n")
-ddsR <- dada(drpsR, err=NULL, selfConsist=TRUE, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
-if(i==1) {
-  errF <- ddsF$err_out
-  errR <- ddsR$err_out
-} else {
-  errF <- ddsF[[1]]$err_out
-  errR <- ddsR[[1]]$err_out
-}
-cat("\n")
+errF <- learnErrors(filtsF, nreads=nreads.learn, multithread=multithread,
+                    HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE)
+errR <- learnErrors(filtsR, nreads=nreads.learn, multithread=multithread,
+                    HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE)
 
 ### PROCESS ALL SAMPLES ###
-# Process samples used to learn error rates
-mergers <- vector("list", length(filtsF))
-if(i==1) { # breaks list assignment
-  mergers[[1]] <- mergePairs(ddsF, drpsF, ddsR, drpsR)
-  denoisedF[[1]] <- getN(ddsF)
-} else {
-  mergers[1:i] <- mergePairs(ddsF, drpsF, ddsR, drpsR)
-  denoisedF[1:i] <- sapply(ddsF, getN)
-}
-rm(drpsF); rm(drpsR); rm(ddsF); rm(ddsR)
 # Loop over rest in streaming fashion with learned error rates
+mergers <- vector("list", length(filtsF))
 cat("3) Denoise remaining samples ")
-if(i < length(filtsF)) {
-  for(j in seq(i+1,length(filtsF))) {
-    drpF <- derepFastq(filtsF[[j]])
-    { sink("/dev/null"); ddF <- dada(drpF, err=errF, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1); sink(); }
-    drpR <- derepFastq(filtsR[[j]])
-    { sink("/dev/null"); ddR <- dada(drpR, err=errR, multithread=multithread, VECTORIZED_ALIGNMENT=FALSE, SSE=1); sink(); }
-    mergers[[j]] <- mergePairs(ddF, drpF, ddR, drpR)
-    denoisedF[[j]] <- getN(ddF)
-    cat(".")
-  }
+for(j in seq(length(filtsF))) {
+  drpF <- derepFastq(filtsF[[j]])
+  ddF <- dada(drpF, err=errF, multithread=multithread, BAND_SIZE=BAND_SIZE, verbose=FALSE)
+  drpR <- derepFastq(filtsR[[j]])
+  ddR <- dada(drpR, err=errR, multithread=multithread, BAND_SIZE=BAND_SIZE, verbose=FALSE)
+  mergers[[j]] <- mergePairs(ddF, drpF, ddR, drpR)
+  denoisedF[[j]] <- getN(ddF)
+  cat(".")
 }
 cat("\n")
 
