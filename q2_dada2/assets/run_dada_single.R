@@ -6,7 +6,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Ex: Rscript run_dada_single.R input_dir output.tsv filtered_dir 200 0 2.0 2 Inf pooled 1.0 0 1000000 NULL 32
+# Ex: Rscript run_dada_single.R input_dir output.tsv track.tsv filtered_dir 200 0 2.0 2 Inf pooled 1.0 0 1000000 NULL 32
 ####################################################
 
 ####################################################
@@ -130,12 +130,14 @@ if(!dir.exists(inp.dir)) {
   }
 }
 
-# Output path is to be a filename (not a directory) and is to be
+# Output files are to be filenames (not directories) and are to be
 # removed and replaced if already present.
-if(dir.exists(out.path)) {
-  errQuit("Output filename is a directory.")
-} else if(file.exists(out.path)) {
-  invisible(file.remove(out.path))
+for(fn in c(out.path, out.track)) {
+  if(dir.exists(fn)) {
+    errQuit("Output filename ", fn, " is a directory.")
+  } else if(file.exists(fn)) {
+    invisible(file.remove(fn))
+  }
 }
 
 # Convert nthreads to the logical/numeric expected by dada2
@@ -172,8 +174,8 @@ if(length(filts) == 0) { # All reads were filtered out
 ### LEARN ERROR RATES ###
 # Dereplicate enough samples to get nreads.learn total reads
 cat("2) Learning Error Rates\n")
-err <- learnErrors(filts, nreads=nreads.learn, multithread=multithread,
-                   HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE)
+err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread,
+                   HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE))
 
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates

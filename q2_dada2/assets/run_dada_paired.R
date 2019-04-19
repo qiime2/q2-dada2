@@ -8,7 +8,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Rscript run_dada_paired.R input_dirF input_dirR output.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2 pooled 1.0 0 100000
+# Rscript run_dada_paired.R input_dirF input_dirR output.tsv track.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2 pooled 1.0 0 100000
 ####################################################
 
 ####################################################
@@ -99,6 +99,7 @@
 
 cat(R.version$version.string, "\n")
 errQuit <- function(mesg, status=1) { message("Error: ", mesg); q(status=status) }
+getN <- function(x) sum(getUniques(x))
 args <- commandArgs(TRUE)
 
 # Assign each of the arguments, in positional order, to an appropriately named R variable
@@ -140,12 +141,14 @@ if(!(dir.exists(inp.dirF) && dir.exists(inp.dirR))) {
   }
 }
 
-# Output path is to be a filename (not a directory) and is to be
+# Output files are to be filenames (not directories) and are to be
 # removed and replaced if already present.
-if(dir.exists(out.path)) {
-  errQuit("Output filename is a directory.")
-} else if(file.exists(out.path)) {
-  invisible(file.remove(out.path))
+for(fn in c(out.path, out.track)) {
+  if(dir.exists(fn)) {
+    errQuit("Output filename ", fn, " is a directory.")
+  } else if(file.exists(fn)) {
+    invisible(file.remove(fn))
+  }
 }
 
 # Convert nthreads to the logical/numeric expected by dada2
@@ -185,20 +188,19 @@ if(length(filtsF) == 0) { # All reads were filtered out
 ### LEARN ERROR RATES ###
 # Dereplicate enough samples to get nreads.learn total reads
 cat("2) Learning Error Rates\n")
-errF <- learnErrors(filtsF, nreads=nreads.learn, multithread=multithread,
-                    HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE)
-errR <- learnErrors(filtsR, nreads=nreads.learn, multithread=multithread,
-                    HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE)
+errF <- suppressWarnings(learnErrors(filtsF, nreads=nreads.learn, multithread=multithread))
+errR <- suppressWarnings(learnErrors(filtsR, nreads=nreads.learn, multithread=multithread))
 
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates
+denoisedF <- rep(0, length(filtsF))
 mergers <- vector("list", length(filtsF))
 cat("3) Denoise remaining samples ")
 for(j in seq(length(filtsF))) {
   drpF <- derepFastq(filtsF[[j]])
-  ddF <- dada(drpF, err=errF, multithread=multithread, BAND_SIZE=BAND_SIZE, verbose=FALSE)
+  ddF <- dada(drpF, err=errF, multithread=multithread, verbose=FALSE)
   drpR <- derepFastq(filtsR[[j]])
-  ddR <- dada(drpR, err=errR, multithread=multithread, BAND_SIZE=BAND_SIZE, verbose=FALSE)
+  ddR <- dada(drpR, err=errR, multithread=multithread, verbose=FALSE)
   mergers[[j]] <- mergePairs(ddF, drpF, ddR, drpR)
   denoisedF[[j]] <- getN(ddF)
   cat(".")
