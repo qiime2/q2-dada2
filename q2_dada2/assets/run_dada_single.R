@@ -6,7 +6,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Ex: Rscript run_dada_single.R input_dir output.tsv filtered_dir 200 0 2.0 2 Inf pooled 1.0 0 1000000 NULL 32
+# Ex: Rscript run_dada_single.R input_dir output.tsv track.tsv filtered_dir 200 0 2.0 2 Inf pooled 1.0 0 1000000 NULL 32
 ####################################################
 
 ####################################################
@@ -94,8 +94,10 @@
 #
 
 cat(R.version$version.string, "\n")
+errQuit <- function(mesg, status=1) { message("Error: ", mesg); q(status=status) }
 args <- commandArgs(TRUE)
 
+# Assign each of the arguments, in positional order, to an appropriately named R variable
 inp.dir <- args[[1]]
 out.path <- args[[2]]
 out.track <- args[[3]]
@@ -104,7 +106,7 @@ truncLen <- as.integer(args[[5]])
 trimLeft <- as.integer(args[[6]])
 maxEE <- as.numeric(args[[7]])
 truncQ <- as.integer(args[[8]])
-maxLen <- if (args[[9]]=='Inf') Inf else as.integer(args[[9]])
+maxLen <- as.numeric(args[[9]]) # Allows Inf
 chimeraMethod <- args[[10]]
 minParentFold <- as.numeric(args[[11]])
 nthreads <- as.integer(args[[12]])
@@ -113,10 +115,6 @@ nreads.learn <- as.integer(args[[13]])
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
 HOMOPOLYMER_GAP_PENALTY <- if (args[[14]]=='NULL') NULL else as.integer(args[[14]])
 BAND_SIZE <- as.integer(args[[15]])
-errQuit <- function(mesg, status=1) {
-  message("Error: ", mesg)
-  q(status=status)
-}
 
 ### VALIDATE ARGUMENTS ###
 
@@ -132,12 +130,14 @@ if(!dir.exists(inp.dir)) {
   }
 }
 
-# Output path is to be a filename (not a directory) and is to be
+# Output files are to be filenames (not directories) and are to be
 # removed and replaced if already present.
-if(dir.exists(out.path)) {
-  errQuit("Output filename is a directory.")
-} else if(file.exists(out.path)) {
-  invisible(file.remove(out.path))
+for(fn in c(out.path, out.track)) {
+  if(dir.exists(fn)) {
+    errQuit("Output filename ", fn, " is a directory.")
+  } else if(file.exists(fn)) {
+    invisible(file.remove(fn))
+  }
 }
 
 # Convert nthreads to the logical/numeric expected by dada2
@@ -154,7 +154,9 @@ if(nthreads < 0) {
 ### LOAD LIBRARIES ###
 suppressWarnings(library(methods))
 suppressWarnings(library(dada2))
-cat("DADA2 R package version:", as.character(packageVersion("dada2")), "\n")
+cat("DADA2:", as.character(packageVersion("dada2")), "/",
+    "Rcpp:", as.character(packageVersion("Rcpp")), "/",
+    "RcppParallel:", as.character(packageVersion("RcppParallel")), "\n")
 
 ### TRIM AND FILTER ###
 cat("1) Filtering ")
@@ -172,40 +174,19 @@ if(length(filts) == 0) { # All reads were filtered out
 ### LEARN ERROR RATES ###
 # Dereplicate enough samples to get nreads.learn total reads
 cat("2) Learning Error Rates\n")
-NREADS <- 0
-drps <- vector("list", length(filts))
-for(i in seq_along(filts)) {
-  drps[[i]] <- derepFastq(filts[[i]])
-  NREADS <- NREADS + sum(drps[[i]]$uniques)
-  if(NREADS > nreads.learn) { break }
-}
-# Run dada in self-consist mode on those samples
-dds <- vector("list", length(filts))
-if(i==1) { # breaks list assignment
-  dds[[1]] <- dada(drps[[1]], err=NULL, selfConsist=TRUE, multithread=multithread,
-                   HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
-                   BAND_SIZE=BAND_SIZE, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
-} else { # more than one sample, no problem with list assignment
-  dds[1:i] <- dada(drps[1:i], err=NULL, selfConsist=TRUE, multithread=multithread,
-                   HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
-                   BAND_SIZE=BAND_SIZE, VECTORIZED_ALIGNMENT=FALSE, SSE=1)
-}
-err <- dds[[1]]$err_out
-rm(drps)
-cat("\n")
+err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread,
+                   HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE))
 
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates
-cat("3) Denoise remaining samples ")
-if(i < length(filts)) {
-  for(j in seq(i+1,length(filts))) {
-    drp <- derepFastq(filts[[j]])
-    { sink("/dev/null"); dds[[j]] <- dada(drp, err=err, multithread=multithread,
-                                          HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
-                                          BAND_SIZE=BAND_SIZE, VECTORIZED_ALIGNMENT=FALSE,
-                                          SSE=1); sink(); }
-    cat(".")
-  }
+dds <- vector("list", length(filts))
+cat("3) Denoise samples ")
+for(j in seq(length(filts))) {
+  drp <- derepFastq(filts[[j]])
+  dds[[j]] <- dada(drp, err=err, multithread=multithread,
+                   HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
+                   BAND_SIZE=BAND_SIZE, verbose=FALSE)
+  cat(".")
 }
 cat("\n")
 
