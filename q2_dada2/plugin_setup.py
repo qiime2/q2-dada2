@@ -119,7 +119,8 @@ plugin.methods.register_function(
                 'trunc_len_r': qiime2.plugin.Int,
                 'trim_left_f': qiime2.plugin.Int,
                 'trim_left_r': qiime2.plugin.Int,
-                'max_ee': qiime2.plugin.Float,
+                'max_ee_f': qiime2.plugin.Float,
+                'max_ee_r': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
                 'chimera_method': qiime2.plugin.Str %
                 qiime2.plugin.Choices(_CHIM_OPT),
@@ -163,8 +164,10 @@ plugin.methods.register_function(
                         'trimmed due to low quality. This trims the 5\' end '
                         'of the input sequences, which will be the bases that '
                         'were sequenced in the first cycles.'),
-        'max_ee': ('Reads with number of expected errors higher than this '
-                   'value will be discarded.'),
+        'max_ee_f': ('Forward reads with number of expected errors higher '
+                     'than this value will be discarded.'),
+        'max_ee_r': ('Reverse reads with number of expected errors higher '
+                     'than this value will be discarded.'),
         'trunc_q': ('Reads are truncated at the first instance of a quality '
                     'score less than or equal to this value. If the resulting '
                     'read is then shorter than `trunc_len_f` or `trunc_len_r` '

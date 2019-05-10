@@ -15,7 +15,7 @@
 #             DESCRIPTION OF ARGUMENTS             #
 ####################################################
 # NOTE: All numeric arguments should be zero or positive.
-# NOTE: All numeric arguments save maxEE are expected to be integers.
+# NOTE: All numeric arguments save maxEEF/R are expected to be integers.
 # NOTE: Currently the filterered_dirF/R must already exist.
 # NOTE: ALL ARGUMENTS ARE POSITIONAL!
 #
@@ -63,24 +63,28 @@
 #               each reverse read. Should be less than truncLenR.
 #    Ex: 0
 #
-# 11) maxEE - Reads with expected errors higher than maxEE are discarded.
+# 11) maxEEF - Forward reads with expected errors higher than maxEEF are discarded.
 #               Both forward and reverse reads are independently tested.
 #    Ex: 2.0
 #
-# 12) truncQ - Reads are truncated at the first instance of quality score truncQ.
+# 12) maxEER - Reverse reads with expected errors higher than maxEER are discarded.
+#               Both forward and reverse reads are independently tested.
+#    Ex: 2.0
+#
+# 13) truncQ - Reads are truncated at the first instance of quality score truncQ.
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
 ### CHIMERA ARGUMENTS ###
 #
-# 13) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 14) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 14) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 15) minParentFold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
@@ -88,11 +92,11 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 15) nthreads - The number of threads to use.
+# 16) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available and use all.
 #    Ex: 1
 #
-# 16) nreads_learn - The minimum number of reads to learn the error model from.
+# 17) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
@@ -113,12 +117,13 @@ truncLenF <- as.integer(args[[7]])
 truncLenR <- as.integer(args[[8]])
 trimLeftF <- as.integer(args[[9]])
 trimLeftR <- as.integer(args[[10]])
-maxEE <- as.numeric(args[[11]])
-truncQ <- as.integer(args[[12]])
-chimeraMethod <- args[[13]]
-minParentFold <- as.numeric(args[[14]])
-nthreads <- as.integer(args[[15]])
-nreads.learn <- as.integer(args[[16]])
+maxEEF <- as.numeric(args[[11]])
+maxEER <- as.numeric(args[[12]])
+truncQ <- as.integer(args[[13]])
+chimeraMethod <- args[[14]]
+minParentFold <- as.numeric(args[[15]])
+nthreads <- as.integer(args[[16]])
+nreads.learn <- as.integer(args[[17]])
 
 ### VALIDATE ARGUMENTS ###
 
@@ -175,7 +180,7 @@ filtsF <- file.path(filtered.dirF, basename(unfiltsF))
 filtsR <- file.path(filtered.dirR, basename(unfiltsR))
 out <- suppressWarnings(filterAndTrim(unfiltsF, filtsF, unfiltsR, filtsR,
                                       truncLen=c(truncLenF, truncLenR), trimLeft=c(trimLeftF, trimLeftR),
-                                      maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE,
+                                      maxEE=c(maxEEF, maxEER), truncQ=truncQ, rm.phix=TRUE,
                                       multithread=multithread))
 cat(ifelse(file.exists(filtsF), ".", "x"), sep="")
 filtsF <- list.files(filtered.dirF, pattern=".fastq.gz$", full.names=TRUE)
