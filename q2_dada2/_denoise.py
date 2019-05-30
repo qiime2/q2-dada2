@@ -83,7 +83,7 @@ def _check_inputs(**kwargs):
     for param, arg in kwargs.items():
         check_is_valid, explanation = _valid_inputs[param]
         if not check_is_valid(arg):
-            raise ValueError("Argument to %r was %r, should be %s."
+            raise ValueError('Argument to %r was %r, should be %s.'
                              % (param, arg, explanation))
 
 
