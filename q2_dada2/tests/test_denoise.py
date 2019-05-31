@@ -186,7 +186,8 @@ class TestDenoisePaired(TestPluginBase):
         # chimera_method or min_fold_parent_over_abundance.
         table, rep_seqs, md = denoise_paired(
             self.demux_seqs, 150, 150, trim_left_f=10, trim_left_r=10,
-            max_ee=20.5, trunc_q=0, n_threads=1, n_reads_learn=2,
+            max_ee_f=20.5, max_ee_r=20.5, trunc_q=0, n_threads=1,
+            n_reads_learn=2,
             hashed_feature_ids=False, chimera_method='consensus',
             min_fold_parent_over_abundance=1.1)
 
