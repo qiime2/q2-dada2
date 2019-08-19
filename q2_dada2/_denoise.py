@@ -247,7 +247,12 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+        table, rep_sequences, md = _denoise_helper(biom_fp, track_fp,
+                                                   hashed_feature_ids)
+        df = md.to_dataframe()
+        df['percentage-merged'] = [m / d * 100 for m, d in zip(df['merged'],
+                                   df['denoised'])]
+        return table, rep_sequences, qiime2.Metadata(df)
 
 
 def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
