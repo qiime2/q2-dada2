@@ -165,7 +165,6 @@ class TestDenoisePaired(TestPluginBase):
         # NOTE: changing the chimera_method parameter doesn't impact the
         # results for this dataset
         table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150)
-        md.save('/home/anthony/Downloads/test.tsv')
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
