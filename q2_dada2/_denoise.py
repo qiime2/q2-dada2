@@ -75,6 +75,7 @@ _valid_inputs = {
     'demultiplexed_seqs': _SKIP,
     'homopolymer_gap_penalty': _SKIP,
     'band_size': _SKIP,
+    'match_ids': _SKIP,
 }
 
 
@@ -197,7 +198,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True
+                   hashed_feature_ids: bool = True, match_ids: bool = False
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
@@ -229,7 +230,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                str(trim_left_f), str(trim_left_r),
                str(max_ee_f), str(max_ee_r), str(trunc_q),
                str(chimera_method), str(min_fold_parent_over_abundance),
-               str(n_threads), str(n_reads_learn)]
+               str(n_threads), str(n_reads_learn), str(match_ids)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
