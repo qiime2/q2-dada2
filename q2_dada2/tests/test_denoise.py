@@ -246,7 +246,7 @@ class TestDenoisePaired(TestPluginBase):
             self.get_data_path('expected/paired-default-stats.tsv'))
 
         table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150,
-                                             chimera_method='none')
+                                             chimera_method='none', match_ids=True)
 
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),

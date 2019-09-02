@@ -124,6 +124,7 @@ chimeraMethod <- args[[14]]
 minParentFold <- as.numeric(args[[15]])
 nthreads <- as.integer(args[[16]])
 nreads.learn <- as.integer(args[[17]])
+matchIDs <- args[[18]]
 
 ### VALIDATE ARGUMENTS ###
 
@@ -181,7 +182,7 @@ filtsR <- file.path(filtered.dirR, basename(unfiltsR))
 out <- suppressWarnings(filterAndTrim(unfiltsF, filtsF, unfiltsR, filtsR,
                                       truncLen=c(truncLenF, truncLenR), trimLeft=c(trimLeftF, trimLeftR),
                                       maxEE=c(maxEEF, maxEER), truncQ=truncQ, rm.phix=TRUE,
-                                      multithread=multithread))
+                                      multithread=multithread, matchIDs=matchIDs))
 cat(ifelse(file.exists(filtsF), ".", "x"), sep="")
 filtsF <- list.files(filtered.dirF, pattern=".fastq.gz$", full.names=TRUE)
 filtsR <- list.files(filtered.dirR, pattern=".fastq.gz$", full.names=TRUE)
