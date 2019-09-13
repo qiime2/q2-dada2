@@ -203,8 +203,8 @@ plugin.methods.register_function(
                                'across runs of this method. You should only '
                                'merge tables if the exact same parameters are '
                                'used for each run.'),
-        'match_ids': ('If true, mismatched forward and reverse sequences will '
-                      'automatically be matched.')
+        'match_ids': ('If enabled, mismatched forward and reverse sequences '
+                      'will automatically be matched.')
     },
     output_descriptions={
         'table': 'The resulting feature table.',
