@@ -99,6 +99,12 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     df = pd.read_csv(track_fp, sep='\t', index_col=0)
     df.index.name = 'sample-id'
     df = df.rename(index=_filepath_to_sample)
+
+    if 'merged' in df:
+        percentage_merged = [round(m / d * 100, 2) for m,
+                             d in zip(df['merged'], df['denoised'])]
+        df.insert(4, 'percentage-merged', percentage_merged)
+
     metadata = qiime2.Metadata(df)
 
     # Currently the sample IDs in DADA2 are the file names. We make
@@ -119,6 +125,7 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
         rep_sequences = DNAIterator(
             (skbio.DNA(id_, metadata={'id': id_})
              for id_ in table.ids(axis='observation')))
+
     return table, rep_sequences, metadata
 
 
@@ -247,12 +254,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        table, rep_sequences, md = _denoise_helper(biom_fp, track_fp,
-                                                   hashed_feature_ids)
-        df = md.to_dataframe()
-        df['percentage-merged'] = [round(m / d * 100, 2) for m, d
-                                   in zip(df['merged'], df['denoised'])]
-        return table, rep_sequences, qiime2.Metadata(df)
+
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
 
 
 def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,

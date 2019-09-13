@@ -189,6 +189,7 @@ class TestDenoisePaired(TestPluginBase):
             n_reads_learn=2,
             hashed_feature_ids=False, chimera_method='consensus',
             min_fold_parent_over_abundance=1.1)
+
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
