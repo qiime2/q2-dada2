@@ -101,9 +101,10 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     df = df.rename(index=_filepath_to_sample)
 
     if 'merged' in df:
-        percentage_merged = [round(m / d * 100, 2) for m,
-                             d in zip(df['merged'], df['denoised'])]
-        df.insert(4, 'percentage-merged', percentage_merged)
+        percentage_merged = round(df['merged'] / df['denoised'] * 100, 2)
+        # We want to put percentage-merged right after merged
+        inerstion_index = df.columns.get_loc('merged') + 1
+        df.insert(inerstion_index, 'percentage-merged', percentage_merged)
 
     metadata = qiime2.Metadata(df)
 
