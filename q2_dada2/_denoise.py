@@ -100,11 +100,16 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     df.index.name = 'sample-id'
     df = df.rename(index=_filepath_to_sample)
 
+    _add_percentage_column(df, 'filtered', 'input', 'filtered',
+                           'percentage-of-input-filtered')
+
+    _add_percentage_column(df, 'non-chimeric', 'input', 'non-chimeric',
+                           'percentage-of-input-non-chimeric')
+
+    # only calculate percentage merged if paired end
     if 'merged' in df:
-        percentage_merged = round(df['merged'] / df['denoised'] * 100, 2)
-        # We want to put percentage-merged right after merged
-        insertion_loc = df.columns.get_loc('merged') + 1
-        df.insert(insertion_loc, 'percentage-merged', percentage_merged)
+        _add_percentage_column(df, 'merged', 'denoised', 'merged',
+                               'percentage-of-denoised-merged')
 
     metadata = qiime2.Metadata(df)
 
@@ -127,6 +132,15 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
             (skbio.DNA(id_, metadata={'id': id_})
              for id_ in table.ids(axis='observation')))
     return table, rep_sequences, metadata
+
+
+# new_col_loc is the name of the column the new column will be inserted after
+def _add_percentage_column(df, numerator_col, denominator_col,
+                           new_col_loc, new_col_name):
+    new_col = round(df[numerator_col] / df[denominator_col] * 100, 2)
+    new_col = new_col.fillna(0)
+    insertion_loc = df.columns.get_loc(new_col_loc) + 1
+    df.insert(insertion_loc, new_col_name, new_col)
 
 
 # Since `denoise-single` and `denoise-pyro` are almost identical, break out
