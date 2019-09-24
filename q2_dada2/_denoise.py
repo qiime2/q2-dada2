@@ -138,10 +138,14 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
 def _add_percentage_column(df, numerator_col, denominator_col,
                            new_col_loc, new_col_name):
     new_col_df = df
-    new_col = round(df[numerator_col] / df[denominator_col] * 100, 2)
+
+    new_col = round(
+        new_col_df[numerator_col] / new_col_df[denominator_col] * 100, 2)
     new_col = new_col.fillna(0)
-    insertion_loc = df.columns.get_loc(new_col_loc) + 1
+
+    insertion_loc = new_col_df.columns.get_loc(new_col_loc) + 1
     new_col_df.insert(insertion_loc, new_col_name, new_col)
+
     return new_col_df
 
 
