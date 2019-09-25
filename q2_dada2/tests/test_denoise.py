@@ -194,6 +194,7 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+
         self.assertEqual(md, exp_md)
 
     def test_all_reads_filtered(self):

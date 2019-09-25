@@ -100,8 +100,10 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     df.index.name = 'sample-id'
     df = df.rename(index=_filepath_to_sample)
 
-    df = _add_percentage_column(df, 'filtered', 'input', 'filtered',
+    df['temp'] = df['input'] - df['filtered']
+    df = _add_percentage_column(df, 'temp', 'input', 'filtered',
                                 'percentage-of-input-filtered')
+    df = df.drop(columns='temp')
 
     df = _add_percentage_column(df, 'non-chimeric', 'input', 'non-chimeric',
                                 'percentage-of-input-non-chimeric')
