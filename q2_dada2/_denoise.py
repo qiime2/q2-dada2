@@ -100,19 +100,24 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     df.index.name = 'sample-id'
     df = df.rename(index=_filepath_to_sample)
 
-    df['temp'] = df['input'] - df['filtered']
-    df = _add_percentage_column(df, 'temp', 'input', 'filtered',
-                                'percentage-of-input-filtered')
-    df = df.drop(columns='temp')
+    PASSED_FILTER = 'percentage-of-input-passed-filter'
+    NON_CHIMERIC = 'percentage-of-input-non-chimeric'
 
-    df = _add_percentage_column(df, 'non-chimeric', 'input', 'non-chimeric',
-                                'percentage-of-input-non-chimeric')
+    df[PASSED_FILTER] = round(df['filtered'] / df['input'] * 100, 2)
+    df[NON_CHIMERIC] = round(df['non-chimeric'] / df['input'] * 100, 2)
+
+    col_order = ['input', 'filtered', PASSED_FILTER, 'denoised',
+                 'non-chimeric', NON_CHIMERIC]
 
     # only calculate percentage merged if paired end
     if 'merged' in df:
-        df = _add_percentage_column(df, 'merged', 'denoised', 'merged',
-                                    'percentage-of-denoised-merged')
+        MERGED = 'percentage-of-denoised-merged'
+        df[MERGED] = round(df['merged'] / df['denoised'] * 100, 2)
+        col_order.insert(4, 'merged')
+        col_order.insert(5, MERGED)
 
+    df = df[col_order]
+    df.fillna(0, inplace=True)
     metadata = qiime2.Metadata(df)
 
     # Currently the sample IDs in DADA2 are the file names. We make
@@ -134,21 +139,6 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
             (skbio.DNA(id_, metadata={'id': id_})
              for id_ in table.ids(axis='observation')))
     return table, rep_sequences, metadata
-
-
-# new_col_loc is the name of the column the new column will be inserted after
-def _add_percentage_column(df, numerator_col, denominator_col,
-                           new_col_loc, new_col_name):
-    new_col_df = df.copy(deep=True)
-
-    new_col = round(
-        new_col_df[numerator_col] / new_col_df[denominator_col] * 100, 2)
-    new_col = new_col.fillna(0)
-
-    insertion_loc = new_col_df.columns.get_loc(new_col_loc) + 1
-    new_col_df.insert(insertion_loc, new_col_name, new_col)
-
-    return new_col_df
 
 
 # Since `denoise-single` and `denoise-pyro` are almost identical, break out
