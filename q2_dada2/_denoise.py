@@ -102,16 +102,16 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
 
     df['temp'] = df['input'] - df['filtered']
     df = _add_percentage_column(df, 'temp', 'input', 'filtered',
-                                'percentage-of-input-filtered')
+                                'percentage of input passed filter')
     df = df.drop(columns='temp')
 
     df = _add_percentage_column(df, 'non-chimeric', 'input', 'non-chimeric',
-                                'percentage-of-input-non-chimeric')
+                                'percentage of input non-chimeric')
 
     # only calculate percentage merged if paired end
     if 'merged' in df:
-        df = _add_percentage_column(df, 'merged', 'denoised', 'merged',
-                                    'percentage-of-denoised-merged')
+        df = _add_percentage_column(df, 'merged', 'input', 'merged',
+                                    'percentage of input merged')
 
     metadata = qiime2.Metadata(df)
 

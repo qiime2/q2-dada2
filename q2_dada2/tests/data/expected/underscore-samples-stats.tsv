@@ -1,4 +1,4 @@
-sample-id	input	filtered	percentage-of-input-filtered	denoised	non-chimeric	percentage-of-input-non-chimeric
+sample-id	input	filtered	percentage of input passed filter	denoised	non-chimeric	percentage of input non-chimeric
 #q2:types	numeric	numeric	numeric	numeric	numeric	numeric
 L1_S208	100	99	1	94	94	94
 L1_S257	100	98	2	90	90	90

@@ -1,12 +1,12 @@
-sample-id	input	filtered	percentage-of-input-filtered	denoised	merged	percentage-of-denoised-merged	non-chimeric	percentage-of-input-non-chimeric
+sample-id	input	filtered	percentage of input passed filter	denoised	merged	percentage of input merged	non-chimeric	percentage of input non-chimeric
 #q2:types	numeric	numeric	numeric	numeric	numeric	numeric	numeric	numeric
-BAQ2420.2	100	92	8	34	15	44.12	15	15
+BAQ2420.2	100	92	8	34	15	15	15	15
 BAQ3473.2	100	95	5	14	0	0	0	0
-BAQ3473.3	100	92	8	30	16	53.33	16	16
+BAQ3473.3	100	92	8	30	16	16	16	16
 BAQ4166.2	100	92	8	20	0	0	0	0
-BAQ4166.3	100	89	11	26	9	34.62	9	9
-PAP130.2	100	89	11	43	5	11.63	5	5
-YUN1005.3	100	95	5	76	68	89.47	68	68
-YUN1242.1	100	86	14	81	49	60.49	49	49
-YUN1242.3	100	93	7	76	50	65.79	50	50
-YUN3153.3	100	89	11	64	31	48.44	31	31
+BAQ4166.3	100	89	11	26	9	9	9	9
+PAP130.2	100	89	11	43	5	5	5	5
+YUN1005.3	100	95	5	76	68	68	68	68
+YUN1242.1	100	86	14	81	49	49	49	49
+YUN1242.3	100	93	7	76	50	50	50	50
+YUN3153.3	100	89	11	64	31	31	31	31
