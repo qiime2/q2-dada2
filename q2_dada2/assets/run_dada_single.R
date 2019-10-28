@@ -202,7 +202,7 @@ cat("\n")
 if(poolMethod == "pseudo") {
   cat("  Pseudo-pool step ")
   ### TEMPORARY, to be removed once 1.12 makes its way to Q2
-  ### Needed for now to manage pseudo-pooling memory, as 1.10 didn't do this appropriatly.
+  ### Needed for now to manage pseudo-pooling memory, as 1.10 didn't do this appropriately.
   ### pseudo_priors code copied from dada2.R
   st <- makeSequenceTable(dds)
   pseudo_priors <- colnames(st)[colSums(st>0) >= 2 | colSums(st) >= Inf]
