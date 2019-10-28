@@ -55,16 +55,25 @@
 #             Default Inf - no maximum.
 #    Ex: 300
 #
+### SENSITIVITY ARGUMENTS ###
+#
+# 10) poolingMethod - The method used to pool (or not) samples during denoising.
+#             Valid options are:
+#               none: (Default) No pooling, samples are denoised indpendently.
+#               pseudo: Samples are "pseudo-pooled" for denoising.
+#    Ex: none
+#
+#
 ### CHIMERA ARGUMENTS ###
 #
-# 10) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 11) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 11) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 12) minParentFold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
@@ -72,22 +81,22 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 12) nthreads - The number of threads to use.
+# 13) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available cores and use all.
 #    Ex: 1
 #
-# 13) nreads_learn - The minimum number of reads to learn the error model from.
+# 14) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
 ### GLOBAL OPTION ARGUMENTS ###
 #
-# 14) HOMOPOLYMER_GAP_PENALTY - The cost of gaps in homopolymer regions (>=3 repeated bases).
+# 15) HOMOPOLYMER_GAP_PENALTY - The cost of gaps in homopolymer regions (>=3 repeated bases).
 #                               Default is NULL, which causes homopolymer gaps
 #                               to be treated as normal gaps.
 #    Ex: -1
 #
-# 15) BAND_SIZE - When set, banded Needleman-Wunsch alignments are performed.
+# 16) BAND_SIZE - When set, banded Needleman-Wunsch alignments are performed.
 #                 The default value of BAND_SIZE is 16. Setting BAND_SIZE to a negative
 #                 number turns off banding (i.e. full Needleman-Wunsch).
 #    Ex: 32
@@ -107,14 +116,15 @@ trimLeft <- as.integer(args[[6]])
 maxEE <- as.numeric(args[[7]])
 truncQ <- as.integer(args[[8]])
 maxLen <- as.numeric(args[[9]]) # Allows Inf
-chimeraMethod <- args[[10]]
-minParentFold <- as.numeric(args[[11]])
-nthreads <- as.integer(args[[12]])
-nreads.learn <- as.integer(args[[13]])
+poolMethod <- args[[10]]
+chimeraMethod <- args[[11]]
+minParentFold <- as.numeric(args[[12]])
+nthreads <- as.integer(args[[13]])
+nreads.learn <- as.integer(args[[14]])
 # The following args are not directly exposed to end users in q2-dada2,
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
-HOMOPOLYMER_GAP_PENALTY <- if (args[[14]]=='NULL') NULL else as.integer(args[[14]])
-BAND_SIZE <- as.integer(args[[15]])
+HOMOPOLYMER_GAP_PENALTY <- if (args[[15]]=='NULL') NULL else as.integer(args[[14]])
+BAND_SIZE <- as.integer(args[[16]])
 
 ### VALIDATE ARGUMENTS ###
 
@@ -189,6 +199,27 @@ for(j in seq(length(filts))) {
   cat(".")
 }
 cat("\n")
+if(poolMethod == "pseudo") {
+  cat("  Pseudo-pool step ")
+  ### TEMPORARY, to be removed once 1.12 makes its way to Q2
+  ### Needed for now to manage pseudo-pooling memory, as 1.10 didn't do this appropriatly.
+  ### pseudo_priors code copied from dada2.R
+  st <- makeSequenceTable(dds)
+  pseudo_priors <- colnames(st)[colSums(st>0) >= 2 | colSums(st) >= Inf]
+  rm(st)
+  ### \pseudo_priors code copied from dada2.R
+  ### code copied from previous loop through samples in this script
+  for(j in seq(length(filts))) {
+    drp <- derepFastq(filts[[j]])
+    dds[[j]] <- dada(drp, err=err, multithread=multithread,
+                     priors = pseudo_priors,
+                     HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
+                     BAND_SIZE=BAND_SIZE, verbose=FALSE)
+    cat(".")
+  }
+  cat("\n")
+  ### \code copied from previous loop through samples in this script
+}
 
 # Make sequence table
 seqtab <- makeSequenceTable(dds)
