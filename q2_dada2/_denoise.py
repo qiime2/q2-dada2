@@ -103,21 +103,25 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     PASSED_FILTER = 'percentage of input passed filter'
     NON_CHIMERIC = 'percentage of input non-chimeric'
 
-    df[PASSED_FILTER] = round(df['filtered'] / df['input'] * 100, 2)
-    df[NON_CHIMERIC] = round(df['non-chimeric'] / df['input'] * 100, 2)
+    round_cols = {PASSED_FILTER: 2, NON_CHIMERIC: 2}
+
+    df[PASSED_FILTER] = df['filtered'] / df['input'] * 100
+    df[NON_CHIMERIC] = df['non-chimeric'] / df['input'] * 100
 
     col_order = ['input', 'filtered', PASSED_FILTER, 'denoised',
                  'non-chimeric', NON_CHIMERIC]
 
-    # only calculate percentage merged if paired end
+    # only calculate percentage of input merged if paired end
     if 'merged' in df:
-        MERGED = 'percentage of inputmerged'
-        df[MERGED] = round(df['merged'] / df['input'] * 100, 2)
+        MERGED = 'percentage of input merged'
+        round_cols[MERGED] = 2
+        df[MERGED] = df['merged'] / df['input'] * 100
         col_order.insert(4, 'merged')
         col_order.insert(5, MERGED)
 
     df = df[col_order]
     df.fillna(0, inplace=True)
+    df = df.round(round_cols)
     metadata = qiime2.Metadata(df)
 
     # Currently the sample IDs in DADA2 are the file names. We make

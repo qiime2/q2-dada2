@@ -1,4 +1,4 @@
-sample-id	input	filtered	percentage of input passed filter	denoised	merged	percentage of inputmerged	non-chimeric	percentage of input non-chimeric
+sample-id	input	filtered	percentage of input passed filter	denoised	merged	percentage of input merged	non-chimeric	percentage of input non-chimeric
 #q2:types	numeric	numeric	numeric	numeric	numeric	numeric	numeric	numeric
 BAQ2420.2	100	99	99	44	21	21	21	21
 BAQ3473.2	100	99	99	18	0	0	0	0
