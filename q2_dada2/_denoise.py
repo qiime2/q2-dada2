@@ -238,7 +238,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                     "No reads passed the filter. trunc_len_f (%r) or"
                     " trunc_len_r (%r) may be individually longer than"
                     " read lengths, or trunc_len_f + trunc_len_r may be"
-                    " shorter than the length of the amplicon + 20"
+                    " shorter than the length of the amplicon + 12"
                     " nucleotides (the length of the overlap). Alternatively,"
                     " other arguments (such as max_ee or trunc_q) may be"
                     " preventing reads from passing the filter."
