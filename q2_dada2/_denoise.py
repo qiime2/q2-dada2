@@ -89,6 +89,7 @@ def _check_inputs(**kwargs):
             raise ValueError('Argument to %r was %r, should be %s.'
                              % (param, arg, explanation))
 
+
 def _filepath_to_sample(fp):
     return fp.rsplit('_', 4)[0]
 
