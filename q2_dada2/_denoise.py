@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016-2019, QIIME 2 development team.
+# Copyright (c) 2016-2020, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -85,6 +85,7 @@ def _check_inputs(**kwargs):
         if not check_is_valid(arg):
             raise ValueError('Argument to %r was %r, should be %s.'
                              % (param, arg, explanation))
+
 
 def _filepath_to_sample(fp):
     return fp.rsplit('_', 4)[0]
