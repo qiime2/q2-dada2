@@ -86,7 +86,6 @@ def _check_inputs(**kwargs):
             raise ValueError('Argument to %r was %r, should be %s.'
                              % (param, arg, explanation))
 
-
 def _filepath_to_sample(fp):
     return fp.rsplit('_', 4)[0]
 
@@ -189,6 +188,14 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         band_size='16')
 
 
+def _strip_barcode(filename):
+    split_filename = filename.split('_')
+    pre_barcode = split_filename[0:-4]
+    post_barcode = split_filename[-3:]
+
+    return '_'.join(pre_barcode + post_barcode)
+
+
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    trunc_len_f: int, trunc_len_r: int,
                    trim_left_f: int = 0, trim_left_r: int = 0,
@@ -217,10 +224,15 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             os.mkdir(fp)
         for rp, view in demultiplexed_seqs.sequences.iter_views(FastqGzFormat):
             fp = str(view)
-            if 'R1_001.fastq' in rp.name:
-                qiime2.util.duplicate(fp, os.path.join(tmp_forward, rp.name))
-            elif 'R2_001.fastq' in rp.name:
-                qiime2.util.duplicate(fp, os.path.join(tmp_reverse, rp.name))
+
+            name_sans_barcode = _strip_barcode(rp.name)
+
+            if 'R1_001.fastq' in name_sans_barcode:
+                qiime2.util.duplicate(fp, os.path.join(tmp_forward,
+                                      name_sans_barcode))
+            elif 'R2_001.fastq' in name_sans_barcode:
+                qiime2.util.duplicate(fp, os.path.join(tmp_reverse,
+                                      name_sans_barcode))
 
         cmd = ['run_dada_paired.R',
                tmp_forward, tmp_reverse, biom_fp, track_fp, filt_forward,
