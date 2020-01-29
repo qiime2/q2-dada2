@@ -142,7 +142,7 @@ plugin.methods.register_function(
                         'will be the bases that were sequenced in the last '
                         'cycles. Reads that are shorter than this value '
                         'will be discarded. After this parameter is applied '
-                        'there must still be at least a 20 nucleotide overlap '
+                        'there must still be at least a 12 nucleotide overlap '
                         'between the forward and reverse reads. If 0 is '
                         'provided, no truncation or length filtering will be '
                         'performed'),
@@ -156,7 +156,7 @@ plugin.methods.register_function(
                         'will be the bases that were sequenced in the last '
                         'cycles. Reads that are shorter than this value '
                         'will be discarded. After this parameter is applied '
-                        'there must still be at least a 20 nucleotide overlap '
+                        'there must still be at least a 12 nucleotide overlap '
                         'between the forward and reverse reads. If 0 is '
                         'provided, no truncation or length filtering will be '
                         'performed'),
