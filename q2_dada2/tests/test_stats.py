@@ -29,6 +29,7 @@ class TestStatsBoilerplate(TestPluginBase):
             format = DADA2StatsFormat(filepath, mode='r')
             # Should pass without error
             format.validate()
+            self.assertTrue(True)
 
     def test_dada2_stats_format_to_metadata(self):
         _, obs = self.transform_format(DADA2StatsFormat, qiime2.Metadata,
@@ -52,3 +53,4 @@ class TestStatsBoilerplate(TestPluginBase):
                                           dtype=int))
         # It shouldn't error
         transformer(md)
+        self.assertTrue(True)
