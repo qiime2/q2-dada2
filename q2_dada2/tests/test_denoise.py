@@ -296,15 +296,15 @@ class TestDenoisePyro(TestPluginBase):
 class TestUtils(TestPluginBase):
     package = 'q2_dada2.tests'
 
-    def test_check_featureless_table_single_sample(self):
-        fp = self.get_data_path('single_sample.tsv')
+    def test_check_featureless_table_single_feature(self):
+        fp = self.get_data_path('single_feature.tsv')
 
         # should not raise an error
         _check_featureless_table(fp)
 
         self.assertTrue(True)
 
-    def test_check_featureless_table_no_samples(self):
+    def test_check_featureless_table_no_features(self):
         fp = self.get_data_path('no_asvs.tsv')
 
         with self.assertRaisesRegex(ValueError, "No features"):
