@@ -17,6 +17,7 @@ from q2_types.per_sample_sequences import (
     SingleLanePerSamplePairedEndFastqDirFmt)
 
 from q2_dada2 import denoise_single, denoise_paired, denoise_pyro
+from q2_dada2._denoise import _check_featureless_table
 
 
 def _sort_seqs(seqs):
@@ -290,6 +291,24 @@ class TestDenoisePyro(TestPluginBase):
 
         # Shouldn't fail when max_len > trunc_len
         denoise_pyro(self.demux_seqs, 100, max_len=160)
+
+
+class TestUtils(TestPluginBase):
+    package = 'q2_dada2.tests'
+
+    def test_check_featureless_table_single_feature(self):
+        fp = self.get_data_path('single_feature.tsv')
+
+        # should not raise an error
+        _check_featureless_table(fp)
+
+        self.assertTrue(True)
+
+    def test_check_featureless_table_no_features(self):
+        fp = self.get_data_path('no_asvs.tsv')
+
+        with self.assertRaisesRegex(ValueError, "No features"):
+            _check_featureless_table(fp)
 
 
 if __name__ == '__main__':
