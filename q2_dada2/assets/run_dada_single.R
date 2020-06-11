@@ -57,11 +57,11 @@
 #
 ### SENSITIVITY ARGUMENTS ###
 #
-# 10) poolingMethod - The method used to pool (or not) samples during denoising.
+# 10) poolMethod - The method used to pool (or not) samples during denoising.
 #             Valid options are:
-#               none: (Default) No pooling, samples are denoised indpendently.
+#               independent: (Default) No pooling, samples are denoised indpendently.
 #               pseudo: Samples are "pseudo-pooled" for denoising.
-#    Ex: none
+#    Ex: independent
 #
 #
 ### CHIMERA ARGUMENTS ###
