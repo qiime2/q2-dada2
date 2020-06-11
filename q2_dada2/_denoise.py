@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016-2019, QIIME 2 development team.
+# Copyright (c) 2016-2020, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -38,8 +38,8 @@ def run_commands(cmds, verbose=True):
 
 def _check_featureless_table(fp):
     with open(fp) as fh:
-        # There is a comment line and a header before the feature data
-        for line_count, _ in zip(range(3), fh):
+        # There is a header before the feature data
+        for line_count, _ in zip(range(1, 3), fh):
             pass
     if line_count < 2:
         raise ValueError("No features remain after denoising. Try adjusting "
@@ -268,7 +268,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                     "No reads passed the filter. trunc_len_f (%r) or"
                     " trunc_len_r (%r) may be individually longer than"
                     " read lengths, or trunc_len_f + trunc_len_r may be"
-                    " shorter than the length of the amplicon + 20"
+                    " shorter than the length of the amplicon + 12"
                     " nucleotides (the length of the overlap). Alternatively,"
                     " other arguments (such as max_ee or trunc_q) may be"
                     " preventing reads from passing the filter."
