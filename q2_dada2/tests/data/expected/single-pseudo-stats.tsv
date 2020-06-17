@@ -1,0 +1,18 @@
+sample-id	input	filtered	percentage of input passed filter	denoised	non-chimeric	percentage of input non-chimeric
+#q2:types	numeric	numeric	numeric	numeric	numeric	numeric
+L1S208	100	99	99	88	88	88
+L1S257	100	98	98	90	90	90
+L1S57	100	99	99	90	90	90
+L1S76	100	99	99	95	95	95
+L2S155	100	72	72	62	62	62
+L2S175	100	75	75	67	67	67
+L2S309	100	70	70	64	64	64
+L2S357	100	68	68	58	58	58
+L3S294	100	68	68	59	59	59
+L3S313	100	77	77	68	68	68
+L4S112	100	66	66	61	61	61
+L4S63	100	76	76	64	64	64
+L5S155	100	67	67	60	60	60
+L5S174	100	64	64	51	51	51
+L6S20	100	66	66	56	56	56
+L6S68	100	53	53	45	45	45
