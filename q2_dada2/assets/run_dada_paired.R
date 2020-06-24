@@ -129,11 +129,12 @@ trimLeftR <- as.integer(args[[10]])
 maxEEF <- as.numeric(args[[11]])
 maxEER <- as.numeric(args[[12]])
 truncQ <- as.integer(args[[13]])
-poolMethod <- args[[14]]
-chimeraMethod <- args[[15]]
-minParentFold <- as.numeric(args[[16]])
-nthreads <- as.integer(args[[17]])
-nreads.learn <- as.integer(args[[18]])
+minOverlap <- as.integer(args[14])
+poolMethod <- args[[15]]
+chimeraMethod <- args[[16]]
+minParentFold <- as.numeric(args[[17]])
+nthreads <- as.integer(args[[18]])
+nreads.learn <- as.integer(args[[19]])
 
 ### VALIDATE ARGUMENTS ###
 
@@ -252,7 +253,7 @@ if(poolMethod == "pseudo") {
 for(j in seq(length(filtsF))) {
   drpF <- derepFastq(filtsF[[j]])
   drpR <- derepFastq(filtsR[[j]])
-  mergers[[j]] <- mergePairs(ddsF[[j]], drpF, ddsR[[j]], drpR)
+  mergers[[j]] <- mergePairs(ddsF[[j]], drpF, ddsR[[j]], drpR, minOverlap)
   denoisedF[[j]] <- getN(ddsF[[j]])
   cat(".")
 }

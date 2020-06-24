@@ -274,7 +274,6 @@ class TestDenoisePaired(TestPluginBase):
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
 
-
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
 # just a variation of denoise-single. These tests should serve as regression
 # or integration tests (depending on perspective).
