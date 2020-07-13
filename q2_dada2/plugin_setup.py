@@ -73,15 +73,17 @@ plugin.methods.register_function(
         'trunc_q': ('Reads are truncated at the first instance of a quality '
                     'score less than or equal to this value. If the resulting '
                     'read is then shorter than `trunc_len`, it is discarded.'),
-        'pooling_method': ('The method used to pool samples for denoising. '
-                           '"independent": Samples are denoised independently. '
-                           '"pseudo": The pseudo-pooling method is used to '
-                           'approximate pooling of samples. In short, samples '
-                           'are denoised independently once, ASVs detected '
-                           'in at least 2 samples are recorded, and samples '
-                           'are denoised independently a second time, but '
-                           'this time with prior knowledge of the recorded '
-                           'ASVs and thus higher sensitivity to those ASVs.'),
+        'pooling_method': (
+            'The method used to pool samples for denoising. '
+            '"independent": Samples are denoised independently. '
+            '"pseudo": The pseudo-pooling method is used to '
+            'approximate pooling of samples. In short, samples '
+            'are denoised independently once, ASVs detected '
+            'in at least 2 samples are recorded, and samples '
+            'are denoised independently a second time, but '
+            'this time with prior knowledge of the recorded '
+            'ASVs and thus higher sensitivity to those ASVs.'
+        ),
         'chimera_method': ('The method used to remove chimeras. '
                            '"none": No chimera removal is performed. '
                            '"pooled": All reads are pooled prior to chimera '
