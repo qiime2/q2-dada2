@@ -1,0 +1,5 @@
+sample-id,filename,direction
+V130,V130_166_L001_R1_001.fastq.gz,forward
+V130,V130_742_L001_R2_001.fastq.gz,reverse
+V130_2,V130_2_167_L001_R1_001.fastq.gz,forward
+V130_2,V130_2_743_L001_R2_001.fastq.gz,reverse
