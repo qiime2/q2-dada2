@@ -18,7 +18,7 @@ import pandas as pd
 
 from q2_types.feature_data import DNAIterator
 from q2_types.per_sample_sequences import (
-    FastqGzFormat, SingleLanePerSampleSingleEndFastqDirFmt,
+    SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt)
 
 
