@@ -212,14 +212,6 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         band_size='16')
 
 
-def _strip_barcode(filename):
-    split_filename = filename.split('_')
-    pre_barcode = split_filename[0:-4]
-    post_barcode = split_filename[-3:]
-
-    return '_'.join(pre_barcode + post_barcode)
-
-
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    trunc_len_f: int, trunc_len_r: int,
                    trim_left_f: int = 0, trim_left_r: int = 0,
@@ -244,19 +236,18 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         track_fp = os.path.join(temp_dir, 'track.tsv')
         filt_forward = os.path.join(temp_dir, 'filt_f')
         filt_reverse = os.path.join(temp_dir, 'filt_r')
+        manifest_df = demultiplexed_seqs.manifest.view(pd.DataFrame)
+
         for fp in tmp_forward, tmp_reverse, filt_forward, filt_reverse:
             os.mkdir(fp)
-        for rp, view in demultiplexed_seqs.sequences.iter_views(FastqGzFormat):
-            fp = str(view)
+        for _, fps in manifest_df.iterrows():
+            fwd_fp = fps['forward']
+            rev_fp = fps['reverse']
 
-            name_sans_barcode = _strip_barcode(rp.name)
-
-            if 'R1_001.fastq' in name_sans_barcode:
-                qiime2.util.duplicate(fp, os.path.join(tmp_forward,
-                                      name_sans_barcode))
-            elif 'R2_001.fastq' in name_sans_barcode:
-                qiime2.util.duplicate(fp, os.path.join(tmp_reverse,
-                                      name_sans_barcode))
+            qiime2.util.duplicate(fwd_fp, os.path.join(tmp_forward,
+                                  os.path.basename(fps['forward'])))
+            qiime2.util.duplicate(rev_fp, os.path.join(tmp_reverse,
+                                  os.path.basename(fps['reverse'])))
 
         cmd = ['run_dada_paired.R',
                tmp_forward, tmp_reverse, biom_fp, track_fp, filt_forward,
