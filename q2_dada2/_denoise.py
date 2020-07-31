@@ -107,7 +107,7 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, paired=False):
     # filename to force the files to sort by id and pair up properly
     # see https://github.com/qiime2/q2-dada2/issues/102
     filepath_to_sample = _filepath_to_sample_paired if paired \
-                         else _filepath_to_sample_single
+        else _filepath_to_sample_single
 
     df = pd.read_csv(track_fp, sep='\t', index_col=0)
     df.index.name = 'sample-id'
