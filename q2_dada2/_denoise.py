@@ -90,18 +90,28 @@ def _check_inputs(**kwargs):
                              % (param, arg, explanation))
 
 
-def _filepath_to_sample(fp):
+def _filepath_to_sample_single(fp):
     return fp.rsplit('_', 4)[0]
 
 
-def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
+def _filepath_to_sample_paired(fp):
+    return fp.rsplit('_', 3)[0]
+
+
+def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, paired=False):
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
         table = biom.Table.from_tsv(fh, None, None, None)
 
+    # If we used denoise_paired the barcode was already stripped from the
+    # filename to force the files to sort by id and pair up properly
+    # see https://github.com/qiime2/q2-dada2/issues/102
+    filepath_to_sample = _filepath_to_sample_paired if paired \
+                         else _filepath_to_sample_single
+
     df = pd.read_csv(track_fp, sep='\t', index_col=0)
     df.index.name = 'sample-id'
-    df = df.rename(index=_filepath_to_sample)
+    df = df.rename(index=filepath_to_sample)
 
     PASSED_FILTER = 'percentage of input passed filter'
     NON_CHIMERIC = 'percentage of input non-chimeric'
@@ -129,7 +139,7 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
 
     # Currently the sample IDs in DADA2 are the file names. We make
     # them the sample id part of the filename here.
-    sid_map = {id_: _filepath_to_sample(id_)
+    sid_map = {id_: filepath_to_sample(id_)
                for id_ in table.ids(axis='sample')}
     table.update_ids(sid_map, axis='sample', inplace=True)
     # The feature IDs in DADA2 are the sequences themselves.
@@ -250,10 +260,13 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             fwd_fp = fps['forward']
             rev_fp = fps['reverse']
 
+            fwd_no_barcode = _remove_barcode(os.path.basename(fps['forward']))
+            rev_no_barcode = _remove_barcode(os.path.basename(fps['reverse']))
+
             qiime2.util.duplicate(fwd_fp, os.path.join(tmp_forward,
-                                  os.path.basename(fps['forward'])))
+                                                       fwd_no_barcode))
             qiime2.util.duplicate(rev_fp, os.path.join(tmp_reverse,
-                                  os.path.basename(fps['reverse'])))
+                                                       rev_no_barcode))
 
         cmd = ['run_dada_paired.R',
                tmp_forward, tmp_reverse, biom_fp, track_fp, filt_forward,
@@ -281,7 +294,19 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
+                               paired=True)
+
+
+def _remove_barcode(filename):
+    cut = filename.rsplit('_', 3)
+    id_ = cut[0].rsplit('_', 1)[0]
+
+    cut = cut[1:]
+    cut.insert(0, id_)
+
+    return('_'.join(cut))
 
 
 def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
