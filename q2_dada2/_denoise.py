@@ -38,8 +38,8 @@ def run_commands(cmds, verbose=True):
 
 def _check_featureless_table(fp):
     with open(fp) as fh:
-        # There is a header before the feature data
-        for line_count, _ in zip(range(1, 3), fh):
+        # There is a comment line and a header before the feature data
+        for line_count, _ in zip(range(3), fh):
             pass
     if line_count < 2:
         raise ValueError("No features remain after denoising. Try adjusting "
