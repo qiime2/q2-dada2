@@ -75,25 +75,16 @@
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
-### SENSITIVITY ARGUMENTS ###
-#
-# 14) poolMethod - The method used to pool (or not) samples during denoising.
-#             Valid options are:
-#               independent: (Default) No pooling, samples are denoised indpendently.
-#               pseudo: Samples are "pseudo-pooled" for denoising.
-#    Ex: independent
-#
-#
 ### CHIMERA ARGUMENTS ###
 #
-# 15) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 14) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 16) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 15) minParentFold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
@@ -101,11 +92,11 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 17) nthreads - The number of threads to use.
+# 16) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available and use all.
 #    Ex: 1
 #
-# 18) nreads_learn - The minimum number of reads to learn the error model from.
+# 17) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
@@ -129,11 +120,10 @@ trimLeftR <- as.integer(args[[10]])
 maxEEF <- as.numeric(args[[11]])
 maxEER <- as.numeric(args[[12]])
 truncQ <- as.integer(args[[13]])
-poolMethod <- args[[14]]
-chimeraMethod <- args[[15]]
-minParentFold <- as.numeric(args[[16]])
-nthreads <- as.integer(args[[17]])
-nreads.learn <- as.integer(args[[18]])
+chimeraMethod <- args[[14]]
+minParentFold <- as.numeric(args[[15]])
+nthreads <- as.integer(args[[16]])
+nreads.learn <- as.integer(args[[17]])
 
 ### VALIDATE ARGUMENTS ###
 
@@ -209,51 +199,15 @@ errR <- suppressWarnings(learnErrors(filtsR, nreads=nreads.learn, multithread=mu
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates
 denoisedF <- rep(0, length(filtsF))
-ddsF <- vector("list", length(filtsF))
-ddsR <- vector("list", length(filtsF))
 mergers <- vector("list", length(filtsF))
-cat("3) Denoise samples ")
-
+cat("3) Denoise remaining samples ")
 for(j in seq(length(filtsF))) {
   drpF <- derepFastq(filtsF[[j]])
-  ddsF[[j]] <- dada(drpF, err=errF, multithread=multithread, verbose=FALSE)
+  ddF <- dada(drpF, err=errF, multithread=multithread, verbose=FALSE)
   drpR <- derepFastq(filtsR[[j]])
-  ddsR[[j]] <- dada(drpR, err=errR, multithread=multithread, verbose=FALSE)
-  cat(".")
-}
-cat("\n")
-if(poolMethod == "pseudo") {
-  cat("  Pseudo-pool step ")
-  ### TEMPORARY, to be removed once 1.12 makes its way to Q2
-  ### Needed for now to manage pseudo-pooling memory, as 1.10 didn't do this appropriately.
-  ### pseudo_priors code copied from dada2.R
-  stF <- makeSequenceTable(ddsF)
-  pseudo_priorsF <- colnames(stF)[colSums(stF>0) >= 2 | colSums(stF) >= Inf]
-  rm(stF)
-  stR <- makeSequenceTable(ddsR)
-  pseudo_priorsR <- colnames(stR)[colSums(stR>0) >= 2 | colSums(stR) >= Inf]
-  rm(stR)
-  ### \pseudo_priors code copied from dada2.R
-  ### code copied from previous loop through samples in this script
-  for(j in seq(length(filtsF))) {
-    drpF <- derepFastq(filtsF[[j]])
-    ddsF[[j]] <- dada(drpF, err=errF, priors=pseudo_priorsF,
-                      multithread=multithread, verbose=FALSE)
-    drpR <- derepFastq(filtsR[[j]])
-    ddsR[[j]] <- dada(drpR, err=errR, priors=pseudo_priorsR,
-                      multithread=multithread, verbose=FALSE)
-    cat(".")
-  }
-  cat("\n")
-  ### \code copied from previous loop through samples in this script
-}
-
-### Now loop through and do merging
-for(j in seq(length(filtsF))) {
-  drpF <- derepFastq(filtsF[[j]])
-  drpR <- derepFastq(filtsR[[j]])
-  mergers[[j]] <- mergePairs(ddsF[[j]], drpF, ddsR[[j]], drpR)
-  denoisedF[[j]] <- getN(ddsF[[j]])
+  ddR <- dada(drpR, err=errR, multithread=multithread, verbose=FALSE)
+  mergers[[j]] <- mergePairs(ddF, drpF, ddR, drpR)
+  denoisedF[[j]] <- getN(ddF)
   cat(".")
 }
 cat("\n")

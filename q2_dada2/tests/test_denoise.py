@@ -143,26 +143,6 @@ class TestDenoiseSingle(TestPluginBase):
 
         self.assertEqual(md, exp_md)
 
-    def test_pseudo_pooling(self):
-        with open(self.get_data_path('expected/single-pseudo.tsv')) as fh:
-            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
-        exp_rep_seqs = list(
-            skbio.io.read(self.get_data_path('expected/single-pseudo.fasta'),
-                          'fasta', constructor=skbio.DNA))
-        for seq in exp_rep_seqs:
-            del seq.metadata['description']
-        exp_md = qiime2.Metadata.load(
-            self.get_data_path('expected/single-pseudo-stats.tsv'))
-
-        table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
-                                             pooling_method='pseudo')
-
-        self.assertEqual(table, exp_table)
-        self.assertEqual(_sort_seqs(rep_seqs),
-                         _sort_seqs(exp_rep_seqs))
-
-        self.assertEqual(md, exp_md)
-
 
 class TestDenoisePaired(TestPluginBase):
     package = 'q2_dada2.tests'
@@ -308,9 +288,7 @@ class TestDenoisePyro(TestPluginBase):
 
         table, rep_seqs, md = denoise_pyro(self.demux_seqs, 100)
 
-        self.assertEqual(
-            table,
-            exp_table.sort_order(table.ids('observation'), axis='observation'))
+        self.assertEqual(table, exp_table)
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
