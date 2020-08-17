@@ -74,7 +74,7 @@ plugin.methods.register_function(
                     'score less than or equal to this value. If the resulting '
                     'read is then shorter than `trunc_len`, it is discarded.'),
         'pooling_method': ('The method used to pool samples for denoising. '
-                           '"independent": Samples are denoised independently. '
+                           '"independent": Samples are denoised indpendently. '
                            '"pseudo": The pseudo-pooling method is used to '
                            'approximate pooling of samples. In short, samples '
                            'are denoised independently once, ASVs detected '
