@@ -253,7 +253,7 @@ if(poolMethod == "pseudo") {
 for(j in seq(length(filtsF))) {
   drpF <- derepFastq(filtsF[[j]])
   drpR <- derepFastq(filtsR[[j]])
-  mergers[[j]] <- mergePairs(ddsF[[j]], drpF, ddsR[[j]], drpR, minOverlap)
+  mergers[[j]] <- mergePairs(ddsF[[j]], drpF, ddsR[[j]], drpR, minOverlap=minOverlap)
   denoisedF[[j]] <- getN(ddsF[[j]])
   cat(".")
 }

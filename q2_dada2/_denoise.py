@@ -259,7 +259,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                str(trunc_len_f), str(trunc_len_r),
                str(trim_left_f), str(trim_left_r),
                str(max_ee_f), str(max_ee_r), str(trunc_q),
-               str(pooling_method),
+               str(min_overlap), str(pooling_method),
                str(chimera_method), str(min_fold_parent_over_abundance),
                str(n_threads), str(n_reads_learn)]
         try:
