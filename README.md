@@ -1,6 +1,5 @@
-# DADA2 QIIME 2 plugin
+# q2-dada2
 
-[![Build Status](https://travis-ci.org/qiime2/q2-dada2.svg?branch=master)](https://travis-ci.org/qiime2/q2-dada2)
-[![Coverage Status](https://coveralls.io/repos/github/qiime2/q2-dada2/badge.svg?branch=master)](https://coveralls.io/github/qiime2/q2-dada2?branch=master)
+![](https://github.com/qiime2/q2-dada2/workflows/ci/badge.svg)
 
-This package contains the DADA2 QIIME 2 plugin. To learn how to use this, see https://qiime2.org.
+This is a QIIME 2 plugin. For details on QIIME 2, see https://qiime2.org.
