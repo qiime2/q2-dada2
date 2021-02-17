@@ -47,4 +47,4 @@ jobs:
       with:
         package-name: q2-dada2
         build-target: staging
-        additional-tests: py.test --pyargs q2_dada2
+        additional-tests: py.test --pyargs q2_dada2 --capture=tee-sys
