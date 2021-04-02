@@ -15,6 +15,7 @@ import biom
 import skbio
 import qiime2.util
 import pandas as pd
+import numpy as np
 
 from q2_types.feature_data import DNAIterator
 from q2_types.per_sample_sequences import (
@@ -132,6 +133,12 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     sid_map = {id_: _filepath_to_sample(id_)
                for id_ in table.ids(axis='sample')}
     table.update_ids(sid_map, axis='sample', inplace=True)
+    # Reintroduce empty samples dropped by dada2.
+    table_cols = table.ids(axis='observation')
+    table_rows = list(set(df.index) - set(table.ids()))
+    table_to_add = biom.Table(np.zeros((len(table_cols), len(table_rows))), table_cols, table_rows, type = "OTU table")
+    table = table.concat(table_to_add)
+
     # The feature IDs in DADA2 are the sequences themselves.
     if hashed_feature_ids:
         # Make feature IDs the md5 sums of the sequences.
