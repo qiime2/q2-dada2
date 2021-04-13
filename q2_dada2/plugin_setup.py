@@ -191,8 +191,8 @@ plugin.methods.register_function(
                     'read is then shorter than `trunc_len_f` or `trunc_len_r` '
                     '(depending on the direction of the read) it is '
                     'discarded.'),
-        'min_overlap': ('The minimum number of matched overlapping reads '
-                        'needed to merge two sequences.'),
+        'min_overlap': ('The minimum length of the overlap required for '
+                        'merging the forward and reverse reads.'),
         'pooling_method': ('The method used to pool samples for denoising. '
                            '"independent": Samples are denoised indpendently. '
                            '"pseudo": The pseudo-pooling method is used to '
