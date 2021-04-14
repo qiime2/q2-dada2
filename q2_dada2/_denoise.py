@@ -55,6 +55,7 @@ _CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'},
              'pooled, consensus or none')
 # Better to choose to skip, than to implicitly ignore things that KeyError
 _SKIP = (lambda x: True, '')
+_BOOL = (lambda x: x in {True, False}, "Boolean")
 _valid_inputs = {
     'trunc_len': _WHOLE_NUM,
     'trunc_len_f': _WHOLE_NUM,
@@ -79,6 +80,7 @@ _valid_inputs = {
     'demultiplexed_seqs': _SKIP,
     'homopolymer_gap_penalty': _SKIP,
     'band_size': _SKIP,
+    "retain_all_samples": _BOOL
 }
 
 
@@ -95,7 +97,7 @@ def _filepath_to_sample(fp):
     return fp.rsplit('_', 4)[0]
 
 
-def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
+def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples):
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
         table = biom.Table.from_tsv(fh, None, None, None)
@@ -136,12 +138,12 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     # Reintroduce empty samples dropped by dada2.
     table_cols = table.ids(axis='observation')
     table_rows = list(set(df.index) - set(table.ids()))
-    print(df.index, table.ids())
     table_to_add = biom.Table(np.zeros((len(table_cols), len(table_rows))),
                               table_cols, table_rows,
                               type="OTU table")
     table = table.concat(table_to_add)
-
+    if not retain_all_samples:
+        table = table.remove_empty(axis="sample", inplace=False)
     # The feature IDs in DADA2 are the sequences themselves.
     if hashed_feature_ids:
         # Make feature IDs the md5 sums of the sequences.
@@ -166,7 +168,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
                     min_fold_parent_over_abundance,
                     n_threads, n_reads_learn, hashed_feature_ids,
-                    homopolymer_gap_penalty, band_size):
+                    homopolymer_gap_penalty, band_size, retain_all_samples):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
@@ -200,7 +202,8 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
+                               retain_all_samples)
 
 
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -209,7 +212,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True
+                   hashed_feature_ids: bool = True,
+                   retain_all_samples: bool = True
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -225,7 +229,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='NULL',
-        band_size='16')
+        band_size='16',
+        retain_all_samples=retain_all_samples)
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -236,7 +241,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True
+                   hashed_feature_ids: bool = True,
+                   retain_all_samples: bool = True
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
@@ -255,7 +261,6 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         for fp in tmp_forward, tmp_reverse, filt_forward, filt_reverse:
             os.mkdir(fp)
         for rp, view in demultiplexed_seqs.sequences.iter_views(FastqGzFormat):
-            print(rp.name)
             fp = str(view)
             if 'R1_001.fastq' in rp.name:
                 qiime2.util.duplicate(fp, os.path.join(tmp_forward, rp.name))
@@ -288,7 +293,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
+                               retain_all_samples)
 
 
 def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -298,7 +304,8 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  chimera_method: str = 'consensus',
                  min_fold_parent_over_abundance: float = 1.0,
                  n_threads: int = 1, n_reads_learn: int = 250000,
-                 hashed_feature_ids: bool = True
+                 hashed_feature_ids: bool = True,
+                 retain_all_samples: bool = True
                  ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -314,4 +321,5 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='-1',
-        band_size='32')
+        band_size='32',
+        retain_all_samples=retain_all_samples)

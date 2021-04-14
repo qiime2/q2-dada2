@@ -173,7 +173,6 @@ class TestDenoisePaired(TestPluginBase):
         super().setUp()
         self.demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
             self.get_data_path('sample_seqs_paired'), 'r')
-        print(vars(self.demux_seqs))
 
     def test_defaults(self):
         with open(self.get_data_path('expected/paired-default.tsv')) as fh:
@@ -191,8 +190,26 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        print(md.to_dataframe())
-        print(exp_md.to_dataframe())
+        self.assertEqual(md, exp_md)
+
+    def test_remove_empty(self):
+        with open(self.get_data_path('expected/paired-remove-empty-default.tsv'
+                                     )) as fh:
+            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+        exp_rep_seqs = list(
+            skbio.io.read(self.get_data_path('expected/paired-default.fasta'),
+                          'fasta', constructor=skbio.DNA))
+        for seq in exp_rep_seqs:
+            del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-stats.tsv'))
+        # NOTE: changing the chimera_method parameter doesn't impact the
+        # results for this dataset
+        table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150,
+                                             retain_all_samples=False)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
+        self.assertEqual(_sort_seqs(rep_seqs),
+                         _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
 
     def test_override(self):
