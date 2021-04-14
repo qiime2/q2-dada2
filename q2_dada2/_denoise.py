@@ -137,8 +137,8 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     table_cols = table.ids(axis='observation')
     table_rows = list(set(df.index) - set(table.ids()))
     table_to_add = biom.Table(np.zeros((len(table_cols), len(table_rows))),
-                                table_cols, table_rows,
-                                type="OTU table")
+                              table_cols, table_rows,
+                              type="OTU table")
     table = table.concat(table_to_add)
 
     # The feature IDs in DADA2 are the sequences themselves.
