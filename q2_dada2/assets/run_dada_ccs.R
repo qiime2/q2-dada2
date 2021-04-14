@@ -6,8 +6,9 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Ex: Rscript run_dada_single.R input_dir output.tsv track.tsv primer_removed_dir filtered_dir
-# front adapter 2 FALSE 0 0 2.0 2 20 Inf pseudo pooled 1.0 0 1000000
+# Ex: Rscript run_dada_single.R input_dir output.tsv track.tsv
+#       primer_removed_dir filtered_dir front adapter 2 FALSE 0 0 2.0 2 20 Inf
+#       pseudo pooled 1.0 0 1000000
 ####################################################
 
 ####################################################
@@ -30,14 +31,16 @@
 # 3) File path to tracking tsv file. If already exists, will be overwritte.
 #    Ex: path/to/tracking_stats.tsv
 #
-# 4) File path to directory in which to write the primer.removed .fastq.gz files. These files are intermediate
-#               for the full workflow. Currently they remain after the script finishes.
-#               Directory must already exist.
+# 4) File path to directory in which to write the primer.removed .fastq.gz
+#                 files. These files are intermediate for the full workflow.
+#                 Currently they remain after the script finishes.
+#                 Directory must already exist.
 #    Ex: path/to/dir/with/fastqgzs/primerremoved
 #
-# 5) File path to directory in which to write the filtered .fastq.gz files. These files are intermediate
-#               for the full workflow. Currently they remain after the script finishes.
-#               Directory must already exist.
+# 5) File path to directory in which to write the filtered .fastq.gz files.
+#                 These files are intermediate for the full workflow.
+#                 Currently they remain after the script finishes.
+#                 Directory must already exist.
 #    Ex: path/to/dir/with/fastqgzs/filtered
 #
 ### PRIMER REMOVING ARGUMENTS ###
@@ -58,35 +61,38 @@
 ### FILTERING ARGUMENTS ###
 #
 # 10) truncLen - The position at which to truncate reads. Reads shorter
-#               than truncLen will be discarded.
-#               Special values: 0 - no truncation or length filtering.
+#                than truncLen will be discarded.
+#                Special values: 0 - no truncation or length filtering.
 #     Ex: 150
 #
 # 11) trimLeft - The number of nucleotides to remove from the start of
-#               each read. Should be less than truncLen for obvious reasons.
+#                each read. Should be less than truncLen for obvious reasons.
 #     Ex: 0
 #
 # 12) maxEE - Reads with expected errors higher than maxEE are discarded.
 #     Ex: 2.0
 #
 # 13) truncQ - Reads are truncated at the first instance of quality score truncQ.
-#                If the read is then shorter than truncLen, it is discarded.
+#              If the read is then shorter than truncLen, it is discarded.
 #     Ex: 2
 #
-# 14) minLen - Remove reads with length shorter than minLen. minLen is enforced after trimming and truncation.
+# 14) minLen - Remove reads with length shorter than minLen. minLen is enforced
+#              after trimming and truncation.
 #              Default Inf - no maximum.
 #     Ex: 20
 #
-# 15) maxLen - Remove reads with length greater than maxLen. maxLen is enforced on the raw reads.
-#             Default Inf - no maximum.
+# 15) maxLen - Remove reads with length greater than maxLen. maxLen is enforced
+#              on the raw reads.
+#              Default Inf - no maximum.
 #    Ex: 300
 #
 ### SENSITIVITY ARGUMENTS ###
 #
 # 16) poolMethod - The method used to pool (or not) samples during denoising.
-#             Valid options are:
-#               independent: (Default) No pooling, samples are denoised indpendently.
-#               pseudo: Samples are "pseudo-pooled" for denoising.
+#                  Valid options are:
+#          independent: (Default) No pooling, samples are denoised indpendently.
+#
+#          pseudo: Samples are "pseudo-pooled" for denoising.
 #    Ex: independent
 #
 #
@@ -95,14 +101,15 @@
 # 17) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
-#               consensus: Chimeras are detect in samples individually, and a consensus decision
-#                           is made for each sequence variant.
+#               consensus: Chimeras are detect in samples individually, and a
+#                          consensus decision is made for each sequence variant.
 #    Ex: consensus
 #
-# 18) minParentFold - The minimum abundance of potential "parents" of a sequence being
-#               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
-#               tested. Values should be greater than or equal to 1 (i.e. parents should be more
-#               abundant than the sequence being tested).
+# 18) minParentFold - The minimum abundance of potential "parents" of a sequence
+#                     being tested as chimeric, expressed as a fold-change
+#                     versus the abundance of the sequence being tested. Values
+#                     should be greater than or equal to 1 (i.e. parents should
+#                     be more abundant than the sequence being tested).
 #    Ex: 1.0
 #
 ### SPEED ARGUMENTS ###
@@ -202,11 +209,9 @@ if(length(nop) == 0) { # All reads were filtered out
 ### TRIM AND FILTER ###
 cat("2) Filtering\n")
 filts <- file.path(filtered.dir, basename(nop))
-out <- suppressWarnings(filterAndTrim(nop, filts,
-  truncLen = truncLen, trimLeft = trimLeft,
-  maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
-  multithread = multithread, maxLen = maxLen, minLen = minLen, minQ = 3
-))
+out <- suppressWarnings(filterAndTrim(nop, filts, truncLen = truncLen, trimLeft = trimLeft,
+                                      maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
+                                      multithread = multithread, maxLen = maxLen, minLen = minLen, minQ = 3))
 cat(ifelse(file.exists(filts), ".", "x"), sep="")
 filts <- list.files(filtered.dir, pattern=".fastq.gz$", full.names=TRUE)
 cat("\n")
@@ -217,8 +222,9 @@ if(length(filts) == 0) { # All reads were filtered out
 ### LEARN ERROR RATES ###
 # Dereplicate enough samples to get nreads.learn total reads
 cat("3) Learning Error Rates\n")
-err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn,errorEstimationFunction=dada2:::PacBioErrfun,
-                                    multithread=multithread,BAND_SIZE=32))
+err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn,
+                                    errorEstimationFunction=dada2:::PacBioErrfun,
+                                    multithread=multithread, BAND_SIZE=32))
 
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates
@@ -273,7 +279,7 @@ passed.filtering <- track[,"filtered"] > 0
 track[passed.filtering,"denoised"] <- rowSums(seqtab)
 track[passed.filtering,"non-chimeric"] <- rowSums(seqtab.nochim)
 write.table(track, out.track, sep="\t", row.names=TRUE, col.names=NA,
-	    quote=FALSE)
+	          quote=FALSE)
 
 ### WRITE OUTPUT AND QUIT ###
 # Formatting as tsv plain-text sequence table table

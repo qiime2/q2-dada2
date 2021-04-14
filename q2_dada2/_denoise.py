@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016-2020, QIIME 2 development team.
+# Copyright (c) 2016-2021, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -66,6 +66,7 @@ _valid_inputs = {
     'max_ee_f': _NAT_NUM,
     'max_ee_r': _NAT_NUM,
     'trunc_q': _WHOLE_NUM,
+    'min_overlap': _WHOLE_NUM,
     'min_len': _WHOLE_NUM,
     'max_len': _WHOLE_NUM,
     'pooling_method': _POOL_STR,
@@ -127,60 +128,13 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
         col_order.insert(4, 'merged')
         col_order.insert(5, MERGED)
 
-    df = df[col_order]
-    df.fillna(0, inplace=True)
-    df = df.round(round_cols)
-    metadata = qiime2.Metadata(df)
-
-    # Currently the sample IDs in DADA2 are the file names. We make
-    # them the sample id part of the filename here.
-    sid_map = {id_: _filepath_to_sample(id_)
-               for id_ in table.ids(axis='sample')}
-    table.update_ids(sid_map, axis='sample', inplace=True)
-    # The feature IDs in DADA2 are the sequences themselves.
-    if hashed_feature_ids:
-        # Make feature IDs the md5 sums of the sequences.
-        fid_map = {id_: hashlib.md5(id_.encode('utf-8')).hexdigest()
-                   for id_ in table.ids(axis='observation')}
-        table.update_ids(fid_map, axis='observation', inplace=True)
-
-        rep_sequences = DNAIterator((skbio.DNA(k, metadata={'id': v})
-                                     for k, v in fid_map.items()))
-    else:
-        rep_sequences = DNAIterator(
-            (skbio.DNA(id_, metadata={'id': id_})
-             for id_ in table.ids(axis='observation')))
-    return table, rep_sequences, metadata
-
-def _denoise_helper2(biom_fp, track_fp, hashed_feature_ids):
-    _check_featureless_table(biom_fp)
-    with open(biom_fp) as fh:
-        table = biom.Table.from_tsv(fh, None, None, None)
-
-    df = pd.read_csv(track_fp, sep='\t', index_col=0)
-    df.index.name = 'sample-id'
-    df = df.rename(index=_filepath_to_sample)
-
-    PASSED_FILTER = 'percentage of input passed filter'
-    NON_CHIMERIC = 'percentage of input non-chimeric'
-    PASSED_PRIMERREMOVE = 'percentage of input primer-removed'
-
-    round_cols = {PASSED_FILTER: 2, NON_CHIMERIC: 2, PASSED_PRIMERREMOVE: 2}
-
-    df[PASSED_FILTER] = df['filtered'] / df['input'] * 100
-    df[NON_CHIMERIC] = df['non-chimeric'] / df['input'] * 100
-    df[PASSED_PRIMERREMOVE] = df['primer-removed'] / df['input'] * 100
-
-    col_order = ['input', 'primer-removed', PASSED_PRIMERREMOVE, 'filtered', PASSED_FILTER, 'denoised',
-                 'non-chimeric', NON_CHIMERIC]
-
-    # only calculate percentage of input merged if paired end
-    if 'merged' in df:
-        MERGED = 'percentage of input merged'
-        round_cols[MERGED] = 2
-        df[MERGED] = df['merged'] / df['input'] * 100
-        col_order.insert(4, 'merged')
-        col_order.insert(5, MERGED)
+    # only calculate percentage of input primer-removed if ccs
+    if 'primer-removed' in df:
+        PASSED_PRIMERREMOVE = 'percentage of input primer-removed'
+        round_cols[PASSED_PRIMERREMOVE] = 2
+        df[PASSED_PRIMERREMOVE] = df['primer-removed'] / df['input'] * 100
+        col_order.insert(1, 'primer-removed')
+        col_order.insert(2, PASSED_PRIMERREMOVE)
 
     df = df[col_order]
     df.fillna(0, inplace=True)
@@ -206,6 +160,7 @@ def _denoise_helper2(biom_fp, track_fp, hashed_feature_ids):
             (skbio.DNA(id_, metadata={'id': id_})
              for id_ in table.ids(axis='observation')))
     return table, rep_sequences, metadata
+
 
 # Since `denoise-single` and `denoise-pyro` are almost identical, break out
 # the bulk of the functionality to this helper util. Typechecking is assumed
@@ -281,7 +236,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    trunc_len_f: int, trunc_len_r: int,
                    trim_left_f: int = 0, trim_left_r: int = 0,
                    max_ee_f: float = 2.0, max_ee_r: float = 2.0,
-                   trunc_q: int = 2, pooling_method: str = 'independent',
+                   trunc_q: int = 2, min_overlap: int = 12,
+                   pooling_method: str = 'independent',
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
@@ -316,7 +272,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                str(trunc_len_f), str(trunc_len_r),
                str(trim_left_f), str(trim_left_r),
                str(max_ee_f), str(max_ee_r), str(trunc_q),
-               str(pooling_method),
+               str(min_overlap), str(pooling_method),
                str(chimera_method), str(min_fold_parent_over_abundance),
                str(n_threads), str(n_reads_learn)]
         try:
@@ -366,8 +322,9 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-                 front: str, adapter: str,  max_mismatch: int = 2, indels: bool = False,
-                 trunc_len: int = 0, trim_left: int = 0, max_ee: float = 2.0,
+                 front: str, adapter: str,  max_mismatch: int = 2, 
+                 indels: bool = False, trunc_len: int = 0, 
+                 trim_left: int = 0, max_ee: float = 2.0,
                  trunc_q: int = 2, min_len: int = 20, max_len: int = 0,
                  pooling_method: str = 'independent',
                  chimera_method: str = 'consensus',
@@ -413,4 +370,4 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper2(biom_fp, track_fp, hashed_feature_ids)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
