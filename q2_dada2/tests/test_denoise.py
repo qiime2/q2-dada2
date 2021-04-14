@@ -24,6 +24,10 @@ def _sort_seqs(seqs):
     return sorted(list(seqs), key=lambda x: x.metadata['id'])
 
 
+def _sort_table(table):
+    return table.sort(axis="sample").sort(axis="observation")
+
+
 class TestDenoiseSingle(TestPluginBase):
     package = 'q2_dada2.tests'
 
@@ -44,10 +48,8 @@ class TestDenoiseSingle(TestPluginBase):
             self.get_data_path('expected/single-default-stats.tsv'))
 
         table, rep_seqs, md = denoise_single(self.demux_seqs, 100)
-
-        self.assertEqual(table, exp_table)
-        self.assertEqual(_sort_seqs(rep_seqs),
-                         _sort_seqs(exp_rep_seqs))
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
+        self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
 
     def test_override(self):
@@ -68,7 +70,7 @@ class TestDenoiseSingle(TestPluginBase):
             n_threads=1, n_reads_learn=2, hashed_feature_ids=False,
             chimera_method='consensus', min_fold_parent_over_abundance=1.1)
 
-        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
@@ -118,7 +120,7 @@ class TestDenoiseSingle(TestPluginBase):
         table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
                                              chimera_method='pooled')
 
-        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
@@ -137,7 +139,7 @@ class TestDenoiseSingle(TestPluginBase):
         table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
                                              chimera_method='none')
 
-        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
 
@@ -157,7 +159,7 @@ class TestDenoiseSingle(TestPluginBase):
         table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
                                              pooling_method='pseudo')
 
-        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
 
@@ -171,6 +173,7 @@ class TestDenoisePaired(TestPluginBase):
         super().setUp()
         self.demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
             self.get_data_path('sample_seqs_paired'), 'r')
+        print(vars(self.demux_seqs))
 
     def test_defaults(self):
         with open(self.get_data_path('expected/paired-default.tsv')) as fh:
@@ -182,14 +185,14 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-default-stats.tsv'))
-
         # NOTE: changing the chimera_method parameter doesn't impact the
         # results for this dataset
         table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150)
-
-        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
+        print(md.to_dataframe())
+        print(exp_md.to_dataframe())
         self.assertEqual(md, exp_md)
 
     def test_override(self):
@@ -211,8 +214,7 @@ class TestDenoisePaired(TestPluginBase):
             n_reads_learn=2,
             hashed_feature_ids=False, chimera_method='consensus',
             min_fold_parent_over_abundance=1.1)
-
-        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
@@ -269,7 +271,7 @@ class TestDenoisePaired(TestPluginBase):
         table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150,
                                              chimera_method='none')
 
-        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)

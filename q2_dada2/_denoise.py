@@ -136,6 +136,7 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     # Reintroduce empty samples dropped by dada2.
     table_cols = table.ids(axis='observation')
     table_rows = list(set(df.index) - set(table.ids()))
+    print(df.index, table.ids())
     table_to_add = biom.Table(np.zeros((len(table_cols), len(table_rows))),
                               table_cols, table_rows,
                               type="OTU table")
@@ -254,6 +255,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         for fp in tmp_forward, tmp_reverse, filt_forward, filt_reverse:
             os.mkdir(fp)
         for rp, view in demultiplexed_seqs.sequences.iter_views(FastqGzFormat):
+            print(rp.name)
             fp = str(view)
             if 'R1_001.fastq' in rp.name:
                 qiime2.util.duplicate(fp, os.path.join(tmp_forward, rp.name))
