@@ -50,6 +50,6 @@ jobs:
     - uses: qiime2/action-library-packaging@alpha1
       with:
         package-name: q2-dada2
-        build-target: staged
+        build-target: tested
         additional-tests: py.test --pyargs q2_dada2
         library-token: ${{ secrets.LIBRARY_TOKEN }}
