@@ -322,16 +322,16 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-                 front: str, adapter: str,  max_mismatch: int = 2, 
-                 indels: bool = False, trunc_len: int = 0, 
-                 trim_left: int = 0, max_ee: float = 2.0,
-                 trunc_q: int = 2, min_len: int = 20, max_len: int = 0,
-                 pooling_method: str = 'independent',
-                 chimera_method: str = 'consensus',
-                 min_fold_parent_over_abundance: float = 3.5,
-                 n_threads: int = 1, n_reads_learn: int = 1000000,
-                 hashed_feature_ids: bool = True
-                 ) -> (biom.Table, DNAIterator, qiime2.Metadata):
+                front: str, adapter: str,  max_mismatch: int = 2,
+                indels: bool = False, trunc_len: int = 0,
+                trim_left: int = 0, max_ee: float = 2.0,
+                trunc_q: int = 2, min_len: int = 20, max_len: int = 0,
+                pooling_method: str = 'independent',
+                chimera_method: str = 'consensus',
+                min_fold_parent_over_abundance: float = 3.5,
+                n_threads: int = 1, n_reads_learn: int = 1000000,
+                hashed_feature_ids: bool = True
+                ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
