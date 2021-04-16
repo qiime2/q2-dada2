@@ -55,7 +55,7 @@ _CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'},
              'pooled, consensus or none')
 # Better to choose to skip, than to implicitly ignore things that KeyError
 _SKIP = (lambda x: True, '')
-_BOOL = (lambda x: x in {True, False}, "Boolean")
+_BOOL = (lambda x: isinstance(x, bool), "Boolean")
 _valid_inputs = {
     'trunc_len': _WHOLE_NUM,
     'trunc_len_f': _WHOLE_NUM,
