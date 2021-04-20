@@ -35,6 +35,7 @@ jobs:
   build-and-test:
     needs: lint
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -52,4 +53,4 @@ jobs:
         package-name: q2-dada2
         build-target: tested
         additional-tests: py.test --pyargs q2_dada2
-        library-token: ${{ secrets.LIBRARY_TOKEN }}
+        library-token:
