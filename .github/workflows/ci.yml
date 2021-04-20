@@ -48,7 +48,7 @@ jobs:
     - name: set up git repo for versioneer
       run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
 
-    - uses: qiime2/action-library-packaging@alpha1
+    - uses: qiime2/action-library-packaging@083b1227179251145965ff08d2183a6f4a8adaaa
       with:
         package-name: q2-dada2
         build-target: tested
