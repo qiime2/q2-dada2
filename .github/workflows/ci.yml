@@ -51,5 +51,5 @@ jobs:
       with:
         package-name: q2-dada2
         build-target: tested
-        additional-tests: py.test --pyargs q2_dada2
+        # additional-tests: py.test --pyargs q2_dada2
         library-token: ${{ secrets.LIBRARY_TOKEN }}
