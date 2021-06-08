@@ -141,6 +141,8 @@ plugin.methods.register_function(
                 'max_ee_f': qiime2.plugin.Float,
                 'max_ee_r': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
+                'min_overlap': qiime2.plugin.Int %
+                qiime2.plugin.Range(4, None),
                 'pooling_method': qiime2.plugin.Str %
                 qiime2.plugin.Choices(_POOL_OPT),
                 'chimera_method': qiime2.plugin.Str %
@@ -195,6 +197,8 @@ plugin.methods.register_function(
                     'read is then shorter than `trunc_len_f` or `trunc_len_r` '
                     '(depending on the direction of the read) it is '
                     'discarded.'),
+        'min_overlap': ('The minimum length of the overlap required for '
+                        'merging the forward and reverse reads.'),
         'pooling_method': ('The method used to pool samples for denoising. '
                            '"independent": Samples are denoised indpendently. '
                            '"pseudo": The pseudo-pooling method is used to '
