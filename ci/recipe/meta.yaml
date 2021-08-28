@@ -33,10 +33,13 @@ requirements:
     # present. By including openjdk on osx hosts, this pop-up is prevented at
     # installation and activation time of the environment.
     - openjdk # [osx]
-    - qiime2 {{ release }}.*
-    - q2-types {{ release }}.*
+    - qiime2 {{ qiime2 }}
+    - q2-types {{ q2_types }}
 
 test:
+  requires:
+    - pytest
+
   imports:
     - q2_dada2
     - qiime2.plugins.dada2
