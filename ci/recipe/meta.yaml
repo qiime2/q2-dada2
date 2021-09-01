@@ -1,6 +1,5 @@
 {% set data = load_setup_py_data() %}
 {% set version = data.get('version') or 'placehold' %}
-{% set release = '.'.join(version.split('.')[:2]) %}
 
 package:
   name: q2-dada2
@@ -33,11 +32,13 @@ requirements:
     # present. By including openjdk on osx hosts, this pop-up is prevented at
     # installation and activation time of the environment.
     - openjdk # [osx]
-    - qiime2 {{ qiime2 }}
-    - q2-types {{ q2_types }}
+    - qiime2 {{ qiime2_epoch }}.*
+    - q2-types {{ qiime2_epoch }}.*
 
 test:
   requires:
+    - qiime2 >={{ qiime2 }}
+    - q2-types >={{ q2_types }}
     - pytest
 
   imports:
