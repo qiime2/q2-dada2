@@ -1,0 +1,10 @@
+sample-id,filename,direction
+R3_3_P2C2,R3_3_P2C2_0_L001_R1_001.fastq.gz,forward
+R9_1_P2C2,R9_1_P2C2_1_L001_R1_001.fastq.gz,forward
+R3_1_P2C2,R3_1_P2C2_2_L001_R1_001.fastq.gz,forward
+R3_2_P2C2,R3_2_P2C2_3_L001_R1_001.fastq.gz,forward
+R9_3_P2C2,R9_3_P2C2_4_L001_R1_001.fastq.gz,forward
+R9_4_P2C2,R9_4_P2C2_5_L001_R1_001.fastq.gz,forward
+R9_1B_P2C2,R9_1B_P2C2_6_L001_R1_001.fastq.gz,forward
+R9_2_P2C2,R9_2_P2C2_7_L001_R1_001.fastq.gz,forward
+R11_1_P2C2,R11_1_P2C2_8_L001_R1_001.fastq.gz,forward
