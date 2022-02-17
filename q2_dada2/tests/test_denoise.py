@@ -334,33 +334,34 @@ class TestUtils(TestPluginBase):
 
 
 class TestDenoiseCCS(TestPluginBase):
-     package = 'q2_dada2.tests'
+    package = 'q2_dada2.tests'
 
-     def setUp(self):
-         super().setUp()
-         self.demux_seqs = SingleLanePerSampleSingleEndFastqDirFmt(
-             self.get_data_path('sample_seqs_ccs'), 'r')
+    def setUp(self):
+        super().setUp()
+        self.demux_seqs = SingleLanePerSampleSingleEndFastqDirFmt(
+            self.get_data_path('sample_seqs_ccs'), 'r')
 
-     def test_defaults(self):
-         with open(self.get_data_path('expected/ccs-default.tsv')) as fh:
-             exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
-         exp_rep_seqs = list(
-             skbio.io.read(self.get_data_path('expected/ccs-default.fasta'),
-                           'fasta', constructor=skbio.DNA))
-         for seq in exp_rep_seqs:
-             del seq.metadata['description']
-         exp_md = qiime2.Metadata.load(
-             self.get_data_path('expected/ccs-default-stats.tsv'))
- 
-         table, rep_seqs, md = denoise_ccs(
-                                   self.demux_seqs,
-                                   front="AGRGTTYGATYMTGGCTCAG",
-                                   adapter="RGYTACCTTGTTACGACTT",)
- 
-         self.assertEqual(table, exp_table)
-         self.assertEqual(_sort_seqs(rep_seqs),
-                          _sort_seqs(exp_rep_seqs))
-         self.assertEqual(md, exp_md)
+    def test_defaults(self):
+        with open(self.get_data_path('expected/ccs-default.tsv')) as fh:
+            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+        exp_rep_seqs = list(
+            skbio.io.read(self.get_data_path('expected/ccs-default.fasta'),
+                          'fasta', constructor=skbio.DNA))
+        for seq in exp_rep_seqs:
+            del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/ccs-default-stats.tsv'))
+
+        table, rep_seqs, md = denoise_ccs(
+                                  self.demux_seqs,
+                                  front="AGRGTTYGATYMTGGCTCAG",
+                                  adapter="RGYTACCTTGTTACGACTT",)
+
+        self.assertEqual(table, exp_table)
+        self.assertEqual(_sort_seqs(rep_seqs),
+                         _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
+
 
 if __name__ == '__main__':
     unittest.main()
