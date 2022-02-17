@@ -30,6 +30,7 @@ setup(
                            'data/expected/*',
                            'data/underscore_samples/*',
                            'data/sample_seqs_single/*',
+                           'data/sample_seqs_ccs/*',
                            'data/sample_seqs_paired/*']
     },
     entry_points={
