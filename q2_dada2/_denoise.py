@@ -61,11 +61,13 @@ _valid_inputs = {
     'trim_left': _WHOLE_NUM,
     'trim_left_f': _WHOLE_NUM,
     'trim_left_r': _WHOLE_NUM,
+    'max_mismatch': _WHOLE_NUM,
     'max_ee': _NAT_NUM,
     'max_ee_f': _NAT_NUM,
     'max_ee_r': _NAT_NUM,
     'trunc_q': _WHOLE_NUM,
     'min_overlap': _WHOLE_NUM,
+    'min_len': _WHOLE_NUM,
     'max_len': _WHOLE_NUM,
     'pooling_method': _POOL_STR,
     'chimera_method': _CHIM_STR,
@@ -79,6 +81,9 @@ _valid_inputs = {
     'demultiplexed_seqs': _SKIP,
     'homopolymer_gap_penalty': _SKIP,
     'band_size': _SKIP,
+    'front': _SKIP,
+    'adapter': _SKIP,
+    'indels': _SKIP,
 }
 
 
@@ -122,6 +127,14 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
         df[MERGED] = df['merged'] / df['input'] * 100
         col_order.insert(4, 'merged')
         col_order.insert(5, MERGED)
+
+    # only calculate percentage of input primer-removed if ccs
+    if 'primer-removed' in df:
+        PASSED_PRIMERREMOVE = 'percentage of input primer-removed'
+        round_cols[PASSED_PRIMERREMOVE] = 2
+        df[PASSED_PRIMERREMOVE] = df['primer-removed'] / df['input'] * 100
+        col_order.insert(1, 'primer-removed')
+        col_order.insert(2, PASSED_PRIMERREMOVE)
 
     df = df[col_order]
     df.fillna(0, inplace=True)
@@ -306,3 +319,55 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='-1',
         band_size='32')
+
+
+def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
+                front: str, adapter: str,  max_mismatch: int = 2,
+                indels: bool = False, trunc_len: int = 0,
+                trim_left: int = 0, max_ee: float = 2.0,
+                trunc_q: int = 2, min_len: int = 20, max_len: int = 0,
+                pooling_method: str = 'independent',
+                chimera_method: str = 'consensus',
+                min_fold_parent_over_abundance: float = 3.5,
+                n_threads: int = 1, n_reads_learn: int = 1000000,
+                hashed_feature_ids: bool = True
+                ) -> (biom.Table, DNAIterator, qiime2.Metadata):
+    _check_inputs(**locals())
+    if trunc_len != 0 and trim_left >= trunc_len:
+        raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
+                         % (trim_left, trunc_len))
+    if max_len != 0 and max_len < trunc_len:
+        raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
+                         % (trunc_len, max_len))
+    # Coerce for `run_dada_ccs.R`
+    max_len = 'Inf' if max_len == 0 else max_len
+
+    with tempfile.TemporaryDirectory() as temp_dir_name:
+        biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
+        track_fp = os.path.join(temp_dir_name, 'track.tsv')
+        nop_fp = os.path.join(temp_dir_name, 'nop')
+        filt_fp = os.path.join(temp_dir_name, 'filt')
+        for fp in nop_fp, filt_fp:
+            os.mkdir(fp)
+
+        cmd = ['run_dada_ccs.R',
+               str(demultiplexed_seqs), biom_fp, track_fp, nop_fp, filt_fp,
+               str(front), str(adapter), str(max_mismatch), str(indels),
+               str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
+               str(min_len), str(max_len), str(pooling_method),
+               str(chimera_method), str(min_fold_parent_over_abundance),
+               str(n_threads), str(n_reads_learn)]
+        try:
+            run_commands([cmd])
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 2:
+                raise ValueError(
+                    "No reads passed the filter. trunc_len (%r) may be longer"
+                    " than read lengths, or other arguments (such as max_ee"
+                    " or trunc_q) may be preventing reads from passing the"
+                    " filter." % trunc_len)
+            else:
+                raise Exception("An error was encountered while running DADA2"
+                                " in R (return code %d), please inspect stdout"
+                                " and stderr to learn more." % e.returncode)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
