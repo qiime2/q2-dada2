@@ -8,7 +8,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Rscript run_dada_paired.R input_dirF input_dirR output.tsv track.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2 pooled 1.0 0 100000
+# Rscript run_dada_paired.R input_dirF input_dirR output.tsv track.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2.0 2 12 independent pooled 1.0 0 100000
 ####################################################
 
 ####################################################
@@ -75,9 +75,17 @@
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
+#
+### PAIRS MERGING ARGUMENTS ###
+#
+# 14) minOverlap - The minimum length of the overlap required for merging
+#                the forward and reverse reads.
+#    Ex: 12
+#
+#
 ### SENSITIVITY ARGUMENTS ###
 #
-# 14) poolMethod - The method used to pool (or not) samples during denoising.
+# 15) poolMethod - The method used to pool (or not) samples during denoising.
 #             Valid options are:
 #               independent: (Default) No pooling, samples are denoised indpendently.
 #               pseudo: Samples are "pseudo-pooled" for denoising.
@@ -86,14 +94,14 @@
 #
 ### CHIMERA ARGUMENTS ###
 #
-# 15) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 16) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 16) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 17) minParentFold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
@@ -101,11 +109,11 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 17) nthreads - The number of threads to use.
+# 18) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available and use all.
 #    Ex: 1
 #
-# 18) nreads_learn - The minimum number of reads to learn the error model from.
+# 19) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
