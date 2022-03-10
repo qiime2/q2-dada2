@@ -8,7 +8,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Rscript run_dada_paired.R input_dirF input_dirR output.tsv track.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2.0 2 12 independent pooled 1.0 0 100000
+# Rscript run_dada_paired.R input_dirF input_dirR output.tsv track.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2.0 2 12 independent pooled 1.0 True 0 100000
 ####################################################
 
 ####################################################
@@ -107,13 +107,18 @@
 #               abundant than the sequence being tested).
 #    Ex: 1.0
 #
+# 18) allowOneOff - Bimeras that are one-off from exact are also identified if the allowOneOff
+#               argument is TRUE. If FALSE, a sequence will be identified as bimera if it is one 
+#               mismatch or indel away from an exact bimera.
+#    Ex: FALSE
+#
 ### SPEED ARGUMENTS ###
 #
-# 18) nthreads - The number of threads to use.
+# 19) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available and use all.
 #    Ex: 1
 #
-# 19) nreads_learn - The minimum number of reads to learn the error model from.
+# 20) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
@@ -141,8 +146,9 @@ minOverlap <- as.integer(args[14])
 poolMethod <- args[[15]]
 chimeraMethod <- args[[16]]
 minParentFold <- as.numeric(args[[17]])
-nthreads <- as.integer(args[[18]])
-nreads.learn <- as.integer(args[[19]])
+allowOneOff <- as.logical(args[[18]])
+nthreads <- as.integer(args[[19]])
+nreads.learn <- as.integer(args[[20]])
 
 ### VALIDATE ARGUMENTS ###
 
@@ -273,7 +279,7 @@ seqtab <- makeSequenceTable(mergers)
 # Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
 if(chimeraMethod %in% c("pooled", "consensus")) {
-  seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
+  seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, allowOneOff=allowOneOff, multithread=multithread)
 } else { # No chimera removal, copy seqtab to seqtab.nochim
   seqtab.nochim <- seqtab
 }

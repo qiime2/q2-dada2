@@ -6,7 +6,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Ex: Rscript run_dada_single.R input_dir output.tsv track.tsv filtered_dir 200 0 2.0 2 Inf pooled 1.0 0 1000000 NULL 32
+# Ex: Rscript run_dada_single.R input_dir output.tsv track.tsv filtered_dir 200 0 2.0 2 Inf independent pooled 1.0 TRUE 0 1000000 NULL 32
 ####################################################
 
 ####################################################
@@ -79,6 +79,12 @@
 #               abundant than the sequence being tested).
 #    Ex: 1.0
 #
+# 13) allowOneOff - Bimeras that are one-off from exact are also identified if the allowOneOff
+#               argument is TRUE. If FALSE, a sequence will be identified as bimera if it is one 
+#               mismatch or indel away from an exact bimera.
+#    Ex: FALSE
+#
+#
 ### SPEED ARGUMENTS ###
 #
 # 13) nthreads - The number of threads to use.
@@ -88,6 +94,7 @@
 # 14) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
+#
 #
 ### GLOBAL OPTION ARGUMENTS ###
 #
@@ -119,12 +126,13 @@ maxLen <- as.numeric(args[[9]]) # Allows Inf
 poolMethod <- args[[10]]
 chimeraMethod <- args[[11]]
 minParentFold <- as.numeric(args[[12]])
-nthreads <- as.integer(args[[13]])
-nreads.learn <- as.integer(args[[14]])
+allowOneOff <- as.logical(args[[13]])
+nthreads <- as.integer(args[[14]])
+nreads.learn <- as.integer(args[[15]])
 # The following args are not directly exposed to end users in q2-dada2,
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
-HOMOPOLYMER_GAP_PENALTY <- if (args[[15]]=='NULL') NULL else as.integer(args[[15]])
-BAND_SIZE <- as.integer(args[[16]])
+HOMOPOLYMER_GAP_PENALTY <- if (args[[16]]=='NULL') NULL else as.integer(args[[15]])
+BAND_SIZE <- as.integer(args[[17]])
 
 ### VALIDATE ARGUMENTS ###
 
@@ -227,7 +235,7 @@ seqtab <- makeSequenceTable(dds)
 ### Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
 if(chimeraMethod %in% c("pooled", "consensus")) {
-  seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
+  seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, allowOneOff=allowOneOff, multithread=multithread)
 } else { # No chimera removal, copy seqtab to seqtab.nochim
   seqtab.nochim <- seqtab
 }
