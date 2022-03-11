@@ -52,8 +52,7 @@ _POOL_STR = (lambda x: x in {'pseudo', 'independent'},
              'pseudo or independent')
 _CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'},
              'pooled, consensus or none')
-_BOOLEAN = (lambda x: type(x) is bool,
-             'True or False')
+_BOOLEAN = (lambda x: type(x) is bool, 'True or False')
 # Better to choose to skip, than to implicitly ignore things that KeyError
 _SKIP = (lambda x: True, '')
 _valid_inputs = {
@@ -178,8 +177,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                str(demultiplexed_seqs), biom_fp, track_fp, temp_dir_name,
                str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
                str(max_len), str(pooling_method), str(chimera_method),
-               str(min_fold_parent_over_abundance), 
-               str(allow_one_off),
+               str(min_fold_parent_over_abundance), str(allow_one_off),
                str(n_threads),
                str(n_reads_learn), str(homopolymer_gap_penalty),
                str(band_size)]
