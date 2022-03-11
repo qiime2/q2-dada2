@@ -87,23 +87,23 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 13) nthreads - The number of threads to use.
+# 14) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available cores and use all.
 #    Ex: 1
 #
-# 14) nreads_learn - The minimum number of reads to learn the error model from.
+# 15) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
 #
 ### GLOBAL OPTION ARGUMENTS ###
 #
-# 15) HOMOPOLYMER_GAP_PENALTY - The cost of gaps in homopolymer regions (>=3 repeated bases).
+# 16) HOMOPOLYMER_GAP_PENALTY - The cost of gaps in homopolymer regions (>=3 repeated bases).
 #                               Default is NULL, which causes homopolymer gaps
 #                               to be treated as normal gaps.
 #    Ex: -1
 #
-# 16) BAND_SIZE - When set, banded Needleman-Wunsch alignments are performed.
+# 17) BAND_SIZE - When set, banded Needleman-Wunsch alignments are performed.
 #                 The default value of BAND_SIZE is 16. Setting BAND_SIZE to a negative
 #                 number turns off banding (i.e. full Needleman-Wunsch).
 #    Ex: 32
