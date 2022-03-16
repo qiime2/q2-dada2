@@ -131,7 +131,7 @@ nthreads <- as.integer(args[[14]])
 nreads.learn <- as.integer(args[[15]])
 # The following args are not directly exposed to end users in q2-dada2,
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
-HOMOPOLYMER_GAP_PENALTY <- if (args[[16]]=='NULL') NULL else as.integer(args[[15]])
+HOMOPOLYMER_GAP_PENALTY <- if (args[[16]]=='NULL') NULL else as.integer(args[[16]])
 BAND_SIZE <- as.integer(args[[17]])
 
 ### VALIDATE ARGUMENTS ###
