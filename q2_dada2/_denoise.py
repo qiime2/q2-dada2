@@ -184,6 +184,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
     with tempfile.TemporaryDirectory() as temp_dir_name:
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
+
         cmd = ['run_dada_single.R',
                str(demultiplexed_seqs), biom_fp, track_fp, temp_dir_name,
                str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
@@ -357,6 +358,121 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                str(min_len), str(max_len), str(pooling_method),
                str(chimera_method), str(min_fold_parent_over_abundance),
                str(n_threads), str(n_reads_learn)]
+        try:
+            run_commands([cmd])
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 2:
+                raise ValueError(
+                    "No reads passed the filter. trunc_len (%r) may be longer"
+                    " than read lengths, or other arguments (such as max_ee"
+                    " or trunc_q) may be preventing reads from passing the"
+                    " filter." % trunc_len)
+            else:
+                raise Exception("An error was encountered while running DADA2"
+                                " in R (return code %d), please inspect stdout"
+                                " and stderr to learn more." % e.returncode)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+
+def testing_denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
+                front: str, adapter: str,  max_mismatch: int = 2,
+                indels: bool = False, trunc_len: int = 0,
+                trim_left: int = 0, max_ee: float = 2.0,
+                trunc_q: int = 2, min_len: int = 20, max_len: int = 0,
+                pooling_method: str = 'independent',
+                chimera_method: str = 'consensus',
+                min_fold_parent_over_abundance: float = 3.5,
+                n_threads: int = 1, n_reads_learn: int = 1000000,
+                hashed_feature_ids: bool = True
+                ) -> (biom.Table, DNAIterator, qiime2.Metadata):
+    _check_inputs(**locals())
+    if trunc_len != 0 and trim_left >= trunc_len:
+        raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
+                         % (trim_left, trunc_len))
+    if max_len != 0 and max_len < trunc_len:
+        raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
+                         % (trunc_len, max_len))
+    # Coerce for `run_dada_ccs.R`
+    max_len = 'Inf' if max_len == 0 else max_len
+
+    with tempfile.TemporaryDirectory() as temp_dir_name:
+        biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
+        track_fp = os.path.join(temp_dir_name, 'track.tsv')
+        nop_fp = os.path.join(temp_dir_name, 'nop')
+        filt_fp = os.path.join(temp_dir_name, 'filt')
+        for fp in nop_fp, filt_fp:
+            os.mkdir(fp)
+
+        cmd = ['run_dada_single_and_ccs.R',
+               str(demultiplexed_seqs), biom_fp, track_fp, nop_fp, filt_fp,
+               str(front), str(adapter), str(max_mismatch), str(indels), str(trunc_len),
+               str(trim_left), str(max_ee), str(trunc_q), str(min_len), str(max_len),
+               str(pooling_method), str(chimera_method), str(min_fold_parent_over_abundance), str(n_threads), str(n_reads_learn),
+               str('NULL'), str('32')]
+        try:
+            run_commands([cmd])
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 2:
+                raise ValueError(
+                    "No reads passed the filter. trunc_len (%r) may be longer"
+                    " than read lengths, or other arguments (such as max_ee"
+                    " or trunc_q) may be preventing reads from passing the"
+                    " filter." % trunc_len)
+            else:
+                raise Exception("An error was encountered while running DADA2"
+                                " in R (return code %d), please inspect stdout"
+                                " and stderr to learn more." % e.returncode)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+
+def testing_denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
+                   trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
+                   trunc_q: int = 2, pooling_method: str = 'independent',
+                   chimera_method: str = 'consensus',
+                   min_fold_parent_over_abundance: float = 1.0,
+                   n_threads: int = 1, n_reads_learn: int = 1000000,
+                   hashed_feature_ids: bool = True
+                   ) -> (biom.Table, DNAIterator, qiime2.Metadata):
+    return testing_secondary_denoise_single(
+        demultiplexed_seqs=demultiplexed_seqs,
+        trunc_len=trunc_len,
+        trim_left=trim_left,
+        max_ee=max_ee,
+        trunc_q=trunc_q,
+        max_len=0,
+        pooling_method=pooling_method,
+        chimera_method=chimera_method,
+        min_fold_parent_over_abundance=min_fold_parent_over_abundance,
+        n_threads=n_threads,
+        n_reads_learn=n_reads_learn,
+        hashed_feature_ids=hashed_feature_ids,
+        homopolymer_gap_penalty='NULL',
+        band_size='16')
+
+
+def testing_secondary_denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
+                    max_len, pooling_method, chimera_method,
+                    min_fold_parent_over_abundance,
+                    n_threads, n_reads_learn, hashed_feature_ids,
+                    homopolymer_gap_penalty, band_size):
+    _check_inputs(**locals())
+    if trunc_len != 0 and trim_left >= trunc_len:
+        raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
+                         % (trim_left, trunc_len))
+    if max_len != 0 and max_len < trunc_len:
+        raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
+                         % (trunc_len, max_len))
+    # Coerce for `run_dada_single.R`
+    max_len = 'Inf' if max_len == 0 else max_len
+
+    with tempfile.TemporaryDirectory() as temp_dir_name:
+        biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
+        track_fp = os.path.join(temp_dir_name, 'track.tsv')
+
+        cmd = ['run_dada_single_and_ccs.R',
+               str(demultiplexed_seqs), biom_fp, track_fp, str('NULL'),temp_dir_name,
+               str('NULL'), str('NULL'), str('NULL'), str('NULL'), str(trunc_len),
+               str(trim_left), str(max_ee), str(trunc_q), str('NULL'), str(max_len),
+               str(pooling_method), str(chimera_method),str(min_fold_parent_over_abundance), str(n_threads), str(n_reads_learn),
+               str(homopolymer_gap_penalty), str(band_size)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:

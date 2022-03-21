@@ -23,7 +23,8 @@ setup(
     description="Apply DADA2 to generate denoised sequence variants. ",
     scripts=['q2_dada2/assets/run_dada_single.R',
              'q2_dada2/assets/run_dada_paired.R',
-             'q2_dada2/assets/run_dada_ccs.R'],
+             'q2_dada2/assets/run_dada_ccs.R',
+             'q2_dada2/assets/run_dada_single_and_ccs.R'],
     package_data={
         'q2_dada2': ['citations.bib'],
         'q2_dada2.tests': ['data/*',
