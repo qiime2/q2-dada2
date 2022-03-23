@@ -80,7 +80,7 @@
 #    Ex: 1.0
 #
 # 13) allowOneOff - Bimeras that are one-off from exact are also identified if the allowOneOff
-#               argument is TRUE. If FALSE, a sequence will be identified as bimera if it is one 
+#               argument is TRUE. If TRUE, a sequence will be identified as bimera if it is one 
 #               mismatch or indel away from an exact bimera.
 #    Ex: FALSE
 #

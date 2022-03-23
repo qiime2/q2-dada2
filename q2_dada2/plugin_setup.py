@@ -101,8 +101,8 @@ plugin.methods.register_function(
             'chimera_method is "none".'),
         'allow_one_off': (
             'Bimeras that are one-off from exact are also '
-            'identified if the allowOneOff argument is TRUE.'
-            'If FALSE, a sequence will be identified as bimera if it is one '
+            'identified if the `allow_one_off` argument is True.'
+            'If True, a sequence will be identified as bimera if it is one '
             'mismatch or indel away from an exact bimera.'),
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
@@ -225,8 +225,8 @@ plugin.methods.register_function(
             'chimera_method is "none".'),
         'allow_one_off': (
             'Bimeras that are one-off from exact are also '
-            'identified if the allowOneOff argument is TRUE.'
-            'If FALSE, a sequence will be identified as bimera if it is one '
+            'identified if the `allow_one_off` argument is True'
+            'If True, a sequence will be identified as bimera if it is one '
             'mismatch or indel away from an exact bimera.'),
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
@@ -328,8 +328,8 @@ plugin.methods.register_function(
             'chimera_method is "none".',
         'allow_one_off': (
             'Bimeras that are one-off from exact are also '
-            'identified if the allowOneOff argument is True. '
-            'If False, a sequence will be identified as bimera if it is one '
+            'identified if the `allow_one_off` argument is True. '
+            'If True, a sequence will be identified as bimera if it is one '
             'mismatch or indel away from an exact bimera.'),
         'n_threads': 'The number of threads to use for multithreaded '
                      'processing. If 0 is provided, all available cores will '
