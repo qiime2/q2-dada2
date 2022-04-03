@@ -19,45 +19,71 @@
 #
 ### FILE SYSTEM ARGUMENTS ###
 #
-# 1) File path to directory with the .fastq.gz files to be processed.
+# 1) input_directory - File path to directory with the .fastq.gz files to be processed.
 #    Ex: path/to/dir/with/fastqgzs
 #
-# 2) File path to output tsv file. If already exists, will be overwritten.
+# 2) output_path - File path to output tsv file. If already exists, will be overwritten.
 #    Ex: path/to/output_file.tsv
 #
-# 3) File path to tracking tsv file. If already exists, will be overwritte.
+# 3) output_track - File path to tracking tsv file. If already exists, will be overwritte.
 #    Ex: path/to/tracking_stats.tsv
 #
-# 4) File path to directory in which to write the filtered .fastq.gz files. These files are intermediate
-#               for the full workflow. Currently they remain after the script finishes.
-#               Directory must already exist.
+# 4) removed_primer_directory - File path to directory in which to write the primer.removed .fastq.gz
+#                 files. These files are intermediate for the full workflow.
+#                 Currently they remain after the script finishes.
+#                 Directory must already exist.
+#    Ex: path/to/dir/with/fastqgzs/primerremoved
+#
+# 5) filtered_directory - File path to directory in which to write the filtered .fastq.gz files.
+#                 These files are intermediate for the full workflow.
+#                 Currently they remain after the script finishes.
+#                 Directory must already exist.
 #    Ex: path/to/dir/with/fastqgzs/filtered
+#
+### PRIMER REMOVING ARGUMENTS ###
+#
+# 6) forward_primer - Primer front of Pacbio CCS sequences.
+#    Ex: 'AGRGTTYGATYMTGGCTCAG'
+#
+# 7) reverse_primer - Primer adapter of Pacbio CCS sequences.
+#    Ex: 'RGYTACCTTGTTACGACTT'
+#
+# 8) max_mismatch - The number of mismatches to tolerate when matching
+#                  reads to primer sequences.
+#    Ex: 2
+#
+# 9) indels - Allow insertions or deletions of bases when matching adapters.
+#    Ex: FALSE
 #
 ### FILTERING ARGUMENTS ###
 #
-# 5) truncLen - The position at which to truncate reads. Reads shorter
-#               than truncLen will be discarded.
+# 10) tuncation_length - The position at which to truncate reads. Reads shorter
+#               than tuncation_length  will be discarded.
 #               Special values: 0 - no truncation or length filtering.
 #    Ex: 150
 #
-# 6) trimLeft - The number of nucleotides to remove from the start of
-#               each read. Should be less than truncLen for obvious reasons.
+# 11) trim_left - The number of nucleotides to remove from the start of
+#               each read. Should be less than tuncation_length  for obvious reasons.
 #    Ex: 0
 #
-# 7) maxEE - Reads with expected errors higher than maxEE are discarded.
+# 12) max_expected_errors - Reads with expected errors higher than maxEE are discarded.
 #    Ex: 2.0
 #
-# 8) truncQ - Reads are truncated at the first instance of quality score truncQ.
-#                If the read is then shorter than truncLen, it is discarded.
+# 13) tuncation_quality_score - Reads are truncated at the first instance of quality score tuncation_quality_score.
+#                If the read is then shorter than tuncation_length , it is discarded.
 #    Ex: 2
 #
-# 9) maxLen - Remove reads with length greater than maxLen. maxLen is enforced on the raw reads.
+# 14) min_length - Remove reads with length shorter than min_length. min_length is enforced
+#              after trimming and truncation.
+#              Default Inf - no maximum.
+#
+# 15) max_length - Remove reads with length greater than max_length. max_length is enforced on the raw reads.
 #             Default Inf - no maximum.
 #    Ex: 300
 #
 ### SENSITIVITY ARGUMENTS ###
 #
-# 10) poolMethod - The method used to pool (or not) samples during denoising.
+# 16) pooling_method- The method used to pool (or not) samples during denoising.
 #             Valid options are:
 #               independent: (Default) No pooling, samples are denoised indpendently.
 #               pseudo: Samples are "pseudo-pooled" for denoising.
@@ -66,14 +92,14 @@
 #
 ### CHIMERA ARGUMENTS ###
 #
-# 11) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 17) chimera_method - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 12) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 18) min_parental_fold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
@@ -81,62 +107,128 @@
 #
 ### SPEED ARGUMENTS ###
 #
-# 13) nthreads - The number of threads to use.
+# 19) num_threads - The number of threads to use.
 #                 Special values: 0 - detect available cores and use all.
 #    Ex: 1
 #
-# 14) nreads_learn - The minimum number of reads to learn the error model from.
+# 20) learn_min_reads - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
 ### GLOBAL OPTION ARGUMENTS ###
 #
-# 15) HOMOPOLYMER_GAP_PENALTY - The cost of gaps in homopolymer regions (>=3 repeated bases).
+# 21) homopolymer_gap_penalty - The cost of gaps in homopolymer regions (>=3 repeated bases).
 #                               Default is NULL, which causes homopolymer gaps
 #                               to be treated as normal gaps.
 #    Ex: -1
 #
-# 16) BAND_SIZE - When set, banded Needleman-Wunsch alignments are performed.
-#                 The default value of BAND_SIZE is 16. Setting BAND_SIZE to a negative
+# 22) band_size - When set, banded Needleman-Wunsch alignments are performed.
+#                 The default value of band_size is 16. Setting BAND_SIZE to a negative
 #                 number turns off banding (i.e. full Needleman-Wunsch).
 #    Ex: 32
 #
 
+#install.packages("optparse", repos='http://cran.us.r-project.org')
+library("optparse")
+
+
 cat(R.version$version.string, "\n")
 errQuit <- function(mesg, status=1) { message("Error: ", mesg); q(status=status) }
-args <- commandArgs(TRUE)
+
+option_list = list(
+  make_option(c("--input_directory"), action="store", default='NULL', type='character',
+              help="File path to directory with the .fastq.gz files to be processed"),
+  make_option(c("--output_path"), action="store", default='NULL', type='character',
+              help="File path to output tsv file. If already exists, will be overwritten"),
+  make_option(c("--output_track"), action="store", default='NULL', type='character',
+              help="File path to tracking tsv file. If already exists, will be overwritten"),
+  make_option(c("--removed_primer_directory"), action="store", default='NULL', type='character',
+              help="File path to directory in which to write the primer.removed .fastq.gz files"),
+  make_option(c("--filtered_directory"), action="store", default='NULL', type='character',
+              help="File path to directory in which to write the filtered .fastq.gz files. These files are intermediate"),
+  
+  make_option(c("--forward_primer"), action="store", default='NULL', type='character',
+              help="Primer front of Pacbio CCS sequences"),
+  make_option(c("--reverse_primer"), action="store", default='NULL', type='character',
+              help="Primer adapter of Pacbio CCS sequences"),
+  make_option(c("--max_mismatch"), action="store", default='NULL', type='character',
+              help="The number of mismatches to tolerate when matching reads to primer sequences."),
+  make_option(c("--indels"), action="store", default='NULL', type='character',
+              help="Allow insertions or deletions of bases when matching adapters"),
+  
+  make_option(c("--tuncation_length"), action="store", default='NULL', type='character',
+              help="The position at which to truncate reads. Reads shorter then tuncation_length will be discarded."),
+  make_option(c("--trim_left"), action="store", default='NULL', type='character',
+              help="The number of nucleotides to remove from the start of each read. Should be less than tuncation_length for obvious reasons"),
+  make_option(c("--max_expected_errors"), action="store", default='NULL', type='character',
+              help="Reads with expected errors higher than max_expected_errors are discarded"),
+  make_option(c("--tuncation_quality_score"), action="store", default='NULL', type='character',
+              help="Reads are truncated at the first instance of quality score tuncation_quality_score.If the read is then shorter than tuncation_length, it is discarded"),
+  make_option(c("--min_length"), action="store", default='NULL', type='character',
+              help="Remove reads with length shorter than min_length. min_length is enforced after trimming and truncation."),
+  make_option(c("--max_length"), action="store", default='NULL', type='character',
+              help="Remove reads with length greater than max_length. max_length is enforced on the raw reads."),
+  
+  make_option(c("--pooling_method"), action="store", default='NULL', type='character',
+              help="The method used to pool (or not) samples during denoising (independent/pseudo)"),
+  
+  make_option(c("--chimera_method"), action="store", default='NULL', type='character',
+              help="The method used to remove chimeras (none/pooled/consensus)"),
+  make_option(c("--min_parental_fold"), action="store", default='NULL', type='character',
+              help="The minimum abundance of potential parents of a sequence being tested as chimeric, expressed as a fold-change versus the abundance of the sequence being tested. Values should be greater than or equal to 1"),
+  
+  make_option(c("--num_threads"), action="store", default='NULL', type='character',
+              help="The number of threads to use"),
+  make_option(c("--learn_min_reads"), action="store", default='NULL', type='character',
+              help="The minimum number of reads to learn the error model from"),
+  
+  make_option(c("--homopolymer_gap_penalty"), action="store", default='NULL', type='character',
+              help="The cost of gaps in homopolymer regions (>=3 repeated bases).Default is NULL, which causes homopolymer gaps to be treated as normal gaps."),
+  make_option(c("--band_size"), action="store", default='NULL', type='character',
+              help="When set, banded Needleman-Wunsch alignments are performed.")
+)
+opt = parse_args(OptionParser(option_list=option_list))
+
 
 # Assign each of the arguments, in positional order, to an appropriately named R variable
-inp.dir <- args[[1]]
-out.path <- args[[2]]
-out.track <- args[[3]]
-primer.removed.dir <- args[[4]] #added from CCS arguments
-filtered.dir <- args[[5]]
+inp.dir <- opt$input_directory
+out.path <- opt$output_path
+out.track <- opt$output_track
+primer.removed.dir <- opt$removed_primer_directory #added from CCS arguments
+filtered.dir <- opt$filtered_directory
 
 
-primerF <- args[[6]] #added from CCS arguments
-primerR <- args[[7]] #added from CCS arguments
-maxMismatch <- as.numeric(args[[8]])#added from CCS arguments
-indels <- as.logical(args[[9]])#added from CCS arguments
+primerF <- opt$forward_primer #added from CCS arguments
+primerR <- opt$reverse_primer #added from CCS arguments
+maxMismatch <- as.numeric(opt$max_mismatch) #added from CCS arguments
+indels <- as.logical(opt$indels)  #added from CCS arguments
 
-truncLen <- as.integer(args[[10]])
-trimLeft <- as.integer(args[[11]])
-maxEE <- as.numeric(args[[12]])
-truncQ <- as.integer(args[[13]])
-minLen <- as.numeric(args[[14]])#added from CCS arguments
-maxLen <- as.numeric(args[[15]]) # Allows Inf
+truncLen <- as.integer(opt$tuncation_length)
+trimLeft <- as.integer(opt$trim_left)
+maxEE <- as.numeric(opt$max_expected_errors)
+truncQ <- as.integer(opt$tuncation_quality_score)
+minLen <- as.numeric(opt$min_length) #added from CCS arguments
+maxLen <- as.numeric(opt$max_length) # Allows Inf
 
-poolMethod <- args[[16]]
+poolMethod <- opt$pooling_method
 
-chimeraMethod <- args[[17]]
-minParentFold <- as.numeric(args[[18]])
+chimeraMethod <- opt$chimera_method
+minParentFold <- as.numeric(opt$min_parental_fold)
 
-nthreads <- as.integer(args[[19]])
-nreads.learn <- as.integer(args[[20]])
+nthreads <- as.integer(opt$num_threads)
+nreads.learn <- as.integer(opt$learn_min_reads)
 # The following args are not directly exposed to end users in q2-dada2,
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
-HOMOPOLYMER_GAP_PENALTY <- if (args[[21]]=='NULL') NULL else as.integer(args[[21]])
-BAND_SIZE <- as.integer(args[[22]])
+if (opt$homopolymer_gap_penalty=='NULL'){
+  HOMOPOLYMER_GAP_PENALTY<-NULL
+}else{
+  HOMOPOLYMER_GAP_PENALTY<-as.integer(opt$homopolymer_gap_penalty)
+  if(HOMOPOLYMER_GAP_PENALTY>0){
+    HOMOPOLYMER_GAP_PENALTY<-HOMOPOLYMER_GAP_PENALTY*(-1)
+  }
+}
+  
+BAND_SIZE <- as.integer(opt$band_size)
 
 ### VALIDATE ARGUMENTS ###
 
