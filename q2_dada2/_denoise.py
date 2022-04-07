@@ -198,15 +198,15 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             elif 'R2_001.fastq' in rp.name:
                 qiime2.util.duplicate(fp, os.path.join(tmp_reverse, rp.name))
 
-        cmd = ['run_dada_paired.R',
-               tmp_forward, tmp_reverse, biom_fp, track_fp, filt_forward,
-               filt_reverse,
-               str(trunc_len_f), str(trunc_len_r),
-               str(trim_left_f), str(trim_left_r),
-               str(max_ee_f), str(max_ee_r), str(trunc_q),
-               str(min_overlap), str(pooling_method),
-               str(chimera_method), str(min_fold_parent_over_abundance),
-               str(n_threads), str(n_reads_learn)]
+        cmd = ['run_dada_single_and_ccs.R',
+               '--input_directory', tmp_forward, '--input_directory_reverse', tmp_reverse, '--output_path', biom_fp, '--output_track', track_fp,
+               '--filtered_directory',filt_forward,'--filtered_directory_reverse', filt_reverse,
+               '--tuncation_length',str(trunc_len_f), '--tuncation_length_reverse', str(trunc_len_r),
+               '--trim_left', str(trim_left_f), '--trim_left_reverse', str(trim_left_r),
+               '--max_expected_errors',  str(max_ee_f), '--max_expected_errors_reverse', str(max_ee_r), '--tuncation_quality_score',str(trunc_q),
+               '--min_overlap', str(min_overlap), '--pooling_method',str(pooling_method),
+               '--chimera_method', str(chimera_method), '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--num_threads', str(n_threads), '--learn_min_reads', str(n_reads_learn)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
