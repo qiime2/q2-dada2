@@ -230,8 +230,6 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
 # the bulk of the functionality to this helper util. Typechecking is assumed
 # to have occurred in the calling functions, this is primarily for making
 # sure that DADA2 is able to do what it needs to do.
-
-
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
                    trunc_q: int = 2, pooling_method: str = 'independent',
@@ -294,7 +292,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
     if max_len != 0 and max_len < trunc_len:
         raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
                          % (trunc_len, max_len))
-    # Coerce for `run_dada_single.R`
+    # Coerce for single end read analysis
     max_len = 'Inf' if max_len == 0 else max_len
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
@@ -342,7 +340,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
     if max_len != 0 and max_len < trunc_len:
         raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
                          % (trunc_len, max_len))
-    # Coerce for `run_dada_ccs.R`
+    # Coerce for ccs read analysis
     max_len = 'Inf' if max_len == 0 else max_len
 
     with tempfile.TemporaryDirectory() as temp_dir_name:

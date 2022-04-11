@@ -227,8 +227,7 @@ if (opt$homopolymer_gap_penalty=='NULL'){
     HOMOPOLYMER_GAP_PENALTY<-HOMOPOLYMER_GAP_PENALTY*(-1)
   }
 }
-  
-BAND_SIZE <- as.integer(opt$band_size)
+  BAND_SIZE <- as.integer(opt$band_size)
 
 ### VALIDATE ARGUMENTS ###
 
@@ -274,7 +273,7 @@ cat("DADA2:", as.character(packageVersion("dada2")), "/",
 
 ### Remove Primers ###
 
-if(primer.removed.dir!='NULL'){
+if(primer.removed.dir!='NULL'){ #for CCS read analysis
   cat("1) Removing Primers\n")
   nop <- file.path(primer.removed.dir, basename(unfilts))
   prim <- suppressWarnings(removePrimers(unfilts, nop, primerF, dada2:::rc(primerR),
@@ -290,12 +289,12 @@ if(primer.removed.dir!='NULL'){
 
 ### TRIM AND FILTER ###
 cat("2) Filtering ")
-if(primer.removed.dir!='NULL'){
+if(primer.removed.dir!='NULL'){ #for CCS read analysis
   filts <- file.path(filtered.dir, basename(nop))
   out <- suppressWarnings(filterAndTrim(nop, filts, truncLen = truncLen, trimLeft = trimLeft,
                                         maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
                                         multithread = multithread, maxLen = maxLen, minLen = minLen, minQ = 3))
-}else{
+}else{#for sinlge/pyro read analysis
   filts <- file.path(filtered.dir, basename(unfilts))
   out <- suppressWarnings(filterAndTrim(unfilts, filts, truncLen=truncLen, trimLeft=trimLeft,
                                         maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE,
@@ -311,11 +310,11 @@ if(length(filts) == 0) { # All reads were filtered out
 ### LEARN ERROR RATES ###
 # Dereplicate enough samples to get nreads.learn total reads
 cat("3) Learning Error Rates\n")
-if(primer.removed.dir!='NULL'){
+if(primer.removed.dir!='NULL'){#for CCS read analysis
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn,
                                       errorEstimationFunction=dada2:::PacBioErrfun,
                                       multithread=multithread, BAND_SIZE=BAND_SIZE))
-}else{
+}else{#for sinlge/pyro read analysis
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread,
                                       HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE))
 }
@@ -367,10 +366,10 @@ if(chimeraMethod %in% c("pooled", "consensus")) {
 ### REPORT READ FRACTIONS THROUGH PIPELINE ###
 cat("6) Report read numbers through the pipeline\n")
 # Handle edge cases: Samples lost in filtering; One sample
-if(primer.removed.dir!='NULL'){
+if(primer.removed.dir!='NULL'){ #for CCS read analysis
   track <- cbind(prim,out[ ,2], matrix(0, nrow=nrow(out), ncol=2))
   colnames(track) <- c("input", "primer-removed","filtered", "denoised", "non-chimeric")
-}else{
+}else{#for sinlge/pyro read analysis
   track <- cbind(out, matrix(0, nrow=nrow(out), ncol=2))
   colnames(track) <- c("input", "filtered", "denoised", "non-chimeric")
 }
