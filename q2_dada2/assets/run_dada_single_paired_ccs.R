@@ -253,7 +253,7 @@ if (opt$homopolymer_gap_penalty=='NULL'){
 }else{
   HOMOPOLYMER_GAP_PENALTY<-as.integer(opt$homopolymer_gap_penalty)
   if(HOMOPOLYMER_GAP_PENALTY>0){
-    HOMOPOLYMER_GAP_PENALTY<-HOMOPOLYMER_GAP_PENALTY*(-1)
+    HOMOPOLYMER_GAP_PENALTY<-HOMOPOLYMER_GAP_PENALTY*(-1) #negative numbers cannot be passed using optparse, so we convert it here
   }
 }
 BAND_SIZE <- if(opt$band_size=='NULL') NULL else as.integer(opt$band_size)
@@ -283,6 +283,8 @@ if(!dir.exists(inp.dir)) {
   }
 
 }
+
+
 
 # Output files are to be filenames (not directories) and are to be
 # removed and replaced if already present.
@@ -338,7 +340,7 @@ if(primer.removed.dir!='NULL'){ #for CCS read analysis
 
 }else{  
   filts <- file.path(filtered.dir, basename(unfilts))
-  if(inp.dirR!='NULL'){
+  if(inp.dirR!='NULL'){#for paired read analysis
     filtsR <- file.path(filtered.dirR, basename(unfiltsR))
     out <- suppressWarnings(filterAndTrim(unfilts, filts, unfiltsR, filtsR,
                                           truncLen=c(truncLen, truncLenR), trimLeft=c(trimLeft, trimLeftR),
@@ -372,12 +374,12 @@ if(primer.removed.dir!='NULL'){#for CCS read analysis
                                       errorEstimationFunction=dada2:::PacBioErrfun,
                                       multithread=multithread, BAND_SIZE=BAND_SIZE))
 
-}else if(inp.dirR!='NULL'){
+}else if(inp.dirR!='NULL'){#for paired read analysis
   
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread))
   errR <- suppressWarnings(learnErrors(filtsR, nreads=nreads.learn, multithread=multithread))
   
-}else{
+}else{#for sinlge/pyro read analysis
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread,
                                       HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE))
 }
@@ -385,7 +387,7 @@ if(primer.removed.dir!='NULL'){#for CCS read analysis
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates
 
-if(inp.dirR =='NULL'){
+if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   dds <- vector("list", length(filts))
   cat("4) Denoise samples ")
   cat("\n")
@@ -419,7 +421,7 @@ if(inp.dirR =='NULL'){
   
   # Make sequence table
   seqtab <- makeSequenceTable(dds)
-}else{
+}else{#for paired read analysis
   denoisedF <- rep(0, length(filts))
   ddsF <- vector("list", length(filts))
   ddsR <- vector("list", length(filts))

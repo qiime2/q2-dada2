@@ -198,7 +198,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             elif 'R2_001.fastq' in rp.name:
                 qiime2.util.duplicate(fp, os.path.join(tmp_reverse, rp.name))
 
-        cmd = ['run_dada_single_and_ccs.R',
+        cmd = ['run_dada_single_paired_ccs.R',
                '--input_directory', tmp_forward, '--input_directory_reverse', tmp_reverse, '--output_path', biom_fp, '--output_track', track_fp,
                '--filtered_directory',filt_forward,'--filtered_directory_reverse', filt_reverse,
                '--tuncation_length',str(trunc_len_f), '--tuncation_length_reverse', str(trunc_len_r),
@@ -299,7 +299,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
 
-        cmd = ['run_dada_single_and_ccs.R',
+        cmd = ['run_dada_single_paired_ccs.R',
                '--input_directory', str(demultiplexed_seqs), '--output_path',biom_fp, '--output_track', track_fp, '--filtered_directory', temp_dir_name,
                '--tuncation_length',str(trunc_len), '--trim_left', str(trim_left), '--max_expected_errors',str(max_ee), '--tuncation_quality_score',str(trunc_q),
                '--max_length', str(max_len), '--pooling_method',str(pooling_method), '--chimera_method', str(chimera_method),
@@ -351,7 +351,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         for fp in nop_fp, filt_fp:
             os.mkdir(fp)
 
-        cmd = ['run_dada_single_and_ccs.R',
+        cmd = ['run_dada_single_paired_ccs.R',
                '--input_directory', str(demultiplexed_seqs), '--output_path', biom_fp, '--output_track', track_fp,
                '--removed_primer_directory', nop_fp,'--filtered_directory', filt_fp,
                '--forward_primer', str(front), '--reverse_primer', str(adapter), '--max_mismatch', str(max_mismatch),
