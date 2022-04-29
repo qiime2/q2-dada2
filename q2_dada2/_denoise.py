@@ -162,8 +162,6 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     return table, rep_sequences, metadata
 
 
-
-
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    trunc_len_f: int, trunc_len_r: int,
                    trim_left_f: int = 0, trim_left_r: int = 0,
@@ -199,13 +197,19 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                 qiime2.util.duplicate(fp, os.path.join(tmp_reverse, rp.name))
 
         cmd = ['run_dada_single_paired_ccs.R',
-               '--input_directory', tmp_forward, '--input_directory_reverse', tmp_reverse, '--output_path', biom_fp, '--output_track', track_fp,
-               '--filtered_directory',filt_forward,'--filtered_directory_reverse', filt_reverse,
-               '--tuncation_length',str(trunc_len_f), '--tuncation_length_reverse', str(trunc_len_r),
+               '--input_directory', tmp_forward, '--input_directory_reverse', tmp_reverse,
+               '--output_path', biom_fp, '--output_track', track_fp,
+               '--filtered_directory', filt_forward,
+               '--filtered_directory_reverse', filt_reverse,
+               '--tuncation_length',str(trunc_len_f),
+               '--tuncation_length_reverse', str(trunc_len_r),
                '--trim_left', str(trim_left_f), '--trim_left_reverse', str(trim_left_r),
-               '--max_expected_errors',  str(max_ee_f), '--max_expected_errors_reverse', str(max_ee_r), '--tuncation_quality_score',str(trunc_q),
-               '--min_overlap', str(min_overlap), '--pooling_method',str(pooling_method),
-               '--chimera_method', str(chimera_method), '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--max_expected_errors', str(max_ee_f),
+               '--max_expected_errors_reverse', str(max_ee_r),
+               '--tuncation_quality_score', str(trunc_q),
+               '--min_overlap', str(min_overlap), '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
                '--num_threads', str(n_threads), '--learn_min_reads', str(n_reads_learn)]
         try:
             run_commands([cmd])
@@ -225,6 +229,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
         return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+
 
 # Since `denoise-single` and `denoise-pyro` are almost identical, break out
 # the bulk of the functionality to this helper util. Typechecking is assumed
@@ -253,6 +258,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='NULL',
         band_size='16')
+
 
 def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
@@ -300,11 +306,16 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
 
         cmd = ['run_dada_single_paired_ccs.R',
-               '--input_directory', str(demultiplexed_seqs), '--output_path',biom_fp, '--output_track', track_fp, '--filtered_directory', temp_dir_name,
-               '--tuncation_length',str(trunc_len), '--trim_left', str(trim_left), '--max_expected_errors',str(max_ee), '--tuncation_quality_score',str(trunc_q),
-               '--max_length', str(max_len), '--pooling_method',str(pooling_method), '--chimera_method', str(chimera_method),
-               '--min_parental_fold', str(min_fold_parent_over_abundance), '--num_threads', str(n_threads), '--learn_min_reads',str(n_reads_learn),
-               '--homopolymer_gap_penalty',str(homopolymer_gap_penalty), '--band_size',str(band_size)]
+               '--input_directory', str(demultiplexed_seqs), '--output_path', biom_fp,
+               '--output_track', track_fp, '--filtered_directory', temp_dir_name,
+               '--tuncation_length', str(trunc_len), '--trim_left', str(trim_left),
+               '--max_expected_errors', str(max_ee), '--tuncation_quality_score', str(trunc_q),
+               '--max_length', str(max_len), '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--num_threads', str(n_threads), '--learn_min_reads', str(n_reads_learn),
+               '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
+               '--band_size', str(band_size)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -319,7 +330,6 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
         return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
-
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -352,14 +362,18 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
             os.mkdir(fp)
 
         cmd = ['run_dada_single_paired_ccs.R',
-               '--input_directory', str(demultiplexed_seqs), '--output_path', biom_fp, '--output_track', track_fp,
-               '--removed_primer_directory', nop_fp,'--filtered_directory', filt_fp,
-               '--forward_primer', str(front), '--reverse_primer', str(adapter), '--max_mismatch', str(max_mismatch),
-               '--indels', str(indels), '--tuncation_length', str(trunc_len), '--trim_left', str(trim_left),
-               '--max_expected_errors', str(max_ee), '--tuncation_quality_score', str(trunc_q), '--min_length', str(min_len),
-               '--max_length', str(max_len), '--pooling_method', str(pooling_method), '--chimera_method', str(chimera_method),
-               '--min_parental_fold', str(min_fold_parent_over_abundance), '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn), '--homopolymer_gap_penalty', str('NULL'), '--band_size', str('32')]
+               '--input_directory', str(demultiplexed_seqs), '--output_path', biom_fp,
+               '--output_track', track_fp, '--removed_primer_directory', nop_fp,
+               '--filtered_directory', filt_fp,'--forward_primer', str(front),
+               '--reverse_primer', str(adapter), '--max_mismatch', str(max_mismatch),
+               '--indels', str(indels), '--tuncation_length', str(trunc_len),
+               '--trim_left', str(trim_left), '--max_expected_errors', str(max_ee),
+               '--tuncation_quality_score', str(trunc_q), '--min_length', str(min_len),
+               '--max_length', str(max_len), '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--num_threads', str(n_threads), '--learn_min_reads', str(n_reads_learn),
+               '--homopolymer_gap_penalty', str('NULL'), '--band_size', str('32')]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -374,5 +388,3 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
         return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
-
-
