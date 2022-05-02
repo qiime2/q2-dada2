@@ -128,21 +128,17 @@
 #    Ex: 32
 #
 
-#install.packages("optparse", repos='http://cran.us.r-project.org')
 library("optparse")
-
 
 cat(R.version$version.string, "\n")
 errQuit <- function(mesg, status=1) { message("Error: ", mesg); q(status=status) }
-getN <- function(x) sum(getUniques(x)) #Function added from paired processing
+getN <- function(x) sum(getUniques(x)) #Function added from paired read processing
 
 option_list = list(
   make_option(c("--input_directory"), action="store", default='NULL', type='character',
               help="File path to directory with the .fastq.gz files to be processed"),
-  
   make_option(c("--input_directory_reverse"), action="store", default='NULL', type='character',
               help="File path to reverse directory with the .fastq.gz files to be processed. Only used in paired-end processing"),
-  
   make_option(c("--output_path"), action="store", default='NULL', type='character',
               help="File path to output tsv file. If already exists, will be overwritten"),
   make_option(c("--output_track"), action="store", default='NULL', type='character',
@@ -151,10 +147,8 @@ option_list = list(
               help="File path to directory in which to write the primer.removed .fastq.gz files"),
   make_option(c("--filtered_directory"), action="store", default='NULL', type='character',
               help="File path to directory in which to write the filtered .fastq.gz files. These files are intermediate"),
-  
   make_option(c("--filtered_directory_reverse"), action="store", default='NULL', type='character',
               help="File path to directory in which to write the reverse filtered .fastq.gz files. These files are intermediate. Only used in paired-end processing"),
-  
   make_option(c("--forward_primer"), action="store", default='NULL', type='character',
               help="Primer front of Pacbio CCS sequences"),
   make_option(c("--reverse_primer"), action="store", default='NULL', type='character',
@@ -163,48 +157,36 @@ option_list = list(
               help="The number of mismatches to tolerate when matching reads to primer sequences."),
   make_option(c("--indels"), action="store", default='NULL', type='character',
               help="Allow insertions or deletions of bases when matching adapters"),
-  
   make_option(c("--tuncation_length"), action="store", default='NULL', type='character',
               help="The position at which to truncate reads. Reads shorter then tuncation_length will be discarded."),
-  
   make_option(c("--tuncation_length_reverse"), action="store", default='NULL', type='character',
               help="The position at which to truncate reverse reads. Reads shorter then tuncation_length will be discarded. Only used in paired-end processing"),
-  
   make_option(c("--trim_left"), action="store", default='NULL', type='character',
               help="The number of nucleotides to remove from the start of each read. Should be less than tuncation_length for obvious reasons"),
-  
   make_option(c("--trim_left_reverse"), action="store", default='NULL', type='character',
               help="The number of nucleotides to remove from the start of each reverse read. Should be less than tuncation_length for obvious reasons. Only used in paired-end processing"),
-  
   make_option(c("--max_expected_errors"), action="store", default='NULL', type='character',
               help="Reads with expected errors higher than max_expected_errors are discarded"),
-  
   make_option(c("--max_expected_errors_reverse"), action="store", default='NULL', type='character',
               help="Reverse reads with expected errors higher than max_expected_errors are discarded. Only used in paired-end processing"),
-  
   make_option(c("--tuncation_quality_score"), action="store", default='NULL', type='character',
               help="Reads are truncated at the first instance of quality score tuncation_quality_score.If the read is then shorter than tuncation_length, it is discarded"),
   make_option(c("--min_length"), action="store", default='NULL', type='character',
               help="Remove reads with length shorter than min_length. min_length is enforced after trimming and truncation."),
   make_option(c("--max_length"), action="store", default='NULL', type='character',
               help="Remove reads with length greater than max_length. max_length is enforced on the raw reads."),
-  
   make_option(c("--min_overlap"), action="store", default='NULL', type='character',
               help="Minimum overlap allowed between reads"),
-  
   make_option(c("--pooling_method"), action="store", default='NULL', type='character',
               help="The method used to pool (or not) samples during denoising (independent/pseudo)"),
-  
   make_option(c("--chimera_method"), action="store", default='NULL', type='character',
               help="The method used to remove chimeras (none/pooled/consensus)"),
   make_option(c("--min_parental_fold"), action="store", default='NULL', type='character',
               help="The minimum abundance of potential parents of a sequence being tested as chimeric, expressed as a fold-change versus the abundance of the sequence being tested. Values should be greater than or equal to 1"),
-  
   make_option(c("--num_threads"), action="store", default='NULL', type='character',
               help="The number of threads to use"),
   make_option(c("--learn_min_reads"), action="store", default='NULL', type='character',
               help="The minimum number of reads to learn the error model from"),
-  
   make_option(c("--homopolymer_gap_penalty"), action="store", default='NULL', type='character',
               help="The cost of gaps in homopolymer regions (>=3 repeated bases).Default is NULL, which causes homopolymer gaps to be treated as normal gaps."),
   make_option(c("--band_size"), action="store", default='NULL', type='character',
@@ -221,13 +203,10 @@ out.track <- opt$output_track
 primer.removed.dir <- opt$removed_primer_directory #added from CCS arguments
 filtered.dir <- opt$filtered_directory
 filtered.dirR<- opt$filtered_directory_reverse #added from paired arguments
-
-
 primerF <- opt$forward_primer #added from CCS arguments
 primerR <- opt$reverse_primer #added from CCS arguments
 maxMismatch <- if(opt$max_mismatch=='NULL') NULL else as.numeric(opt$max_mismatch) #added from CCS arguments
 indels <- if(opt$indels=='NULL') NULL else as.logical(opt$indels)  #added from CCS arguments
-
 truncLen <- if(opt$tuncation_length=='NULL') NULL else as.integer(opt$tuncation_length)
 truncLenR <- if(opt$tuncation_length_reverse=='NULL') NULL else as.integer(opt$tuncation_length_reverse) #added from paired arguments
 trimLeft <- if(opt$trim_left=='NULL') NULL else as.integer(opt$trim_left)
@@ -238,12 +217,9 @@ truncQ <- if(opt$tuncation_quality_score=='NULL') NULL else as.integer(opt$tunca
 minLen <- if(opt$min_length=='NULL') NULL else as.numeric(opt$min_length) #added from CCS arguments
 maxLen <- if(opt$max_length=='NULL') NULL else as.numeric(opt$max_length) # Allows Inf
 minOverlap <- if(opt$min_overlap=='NULL') NULL else as.integer(opt$min_overlap) #added from paired arguments
-
 poolMethod <- opt$pooling_method
-
 chimeraMethod <- opt$chimera_method
 minParentFold <- if(opt$min_parental_fold=='NULL') NULL else as.numeric(opt$min_parental_fold)
-
 nthreads <- if(opt$num_threads=='NULL') NULL else as.integer(opt$num_threads)
 nreads.learn <- if(opt$learn_min_reads=='NULL') NULL else as.integer(opt$learn_min_reads)
 # The following args are not directly exposed to end users in q2-dada2,
@@ -258,9 +234,7 @@ if (opt$homopolymer_gap_penalty=='NULL'){
 }
 BAND_SIZE <- if(opt$band_size=='NULL') NULL else as.integer(opt$band_size)
 
-
 ### VALIDATE ARGUMENTS ###
-
 # Input directory is expected to contain .fastq.gz file(s)
 # that have not yet been filtered and globally trimmed
 # to the same length.
@@ -283,8 +257,6 @@ if(!dir.exists(inp.dir)) {
   }
 
 }
-
-
 
 # Output files are to be filenames (not directories) and are to be
 # removed and replaced if already present.
@@ -315,7 +287,6 @@ cat("DADA2:", as.character(packageVersion("dada2")), "/",
     "RcppParallel:", as.character(packageVersion("RcppParallel")), "\n")
 
 ### Remove Primers ###
-
 if(primer.removed.dir!='NULL'){ #for CCS read analysis
   cat("1) Removing Primers\n")
   nop <- file.path(primer.removed.dir, basename(unfilts))
@@ -337,7 +308,6 @@ if(primer.removed.dir!='NULL'){ #for CCS read analysis
   out <- suppressWarnings(filterAndTrim(nop, filts, truncLen = truncLen, trimLeft = trimLeft,
                                         maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
                                         multithread = multithread, maxLen = maxLen, minLen = minLen, minQ = 3))
-
 }else{  
   filts <- file.path(filtered.dir, basename(unfilts))
   if(inp.dirR!='NULL'){#for paired read analysis
@@ -346,13 +316,11 @@ if(primer.removed.dir!='NULL'){ #for CCS read analysis
                                           truncLen=c(truncLen, truncLenR), trimLeft=c(trimLeft, trimLeftR),
                                           maxEE=c(maxEE, maxEER), truncQ=truncQ, rm.phix=TRUE,
                                           multithread=multithread))
-    
   }else{#for sinlge/pyro read analysis
     out <- suppressWarnings(filterAndTrim(unfilts, filts, truncLen=truncLen, trimLeft=trimLeft,
                                           maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE,
                                           multithread=multithread, maxLen=maxLen))
   }
-    
 }
 
 cat(ifelse(file.exists(filts), ".", "x"), sep="")
@@ -418,7 +386,6 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
     cat("\n")
     ### \code copied from previous loop through samples in this script
   }
-  
   # Make sequence table
   seqtab <- makeSequenceTable(dds)
 }else{#for paired read analysis
@@ -471,7 +438,6 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
     cat(".")
   }
   cat("\n")
-  
   # Make sequence table
   seqtab <- makeSequenceTable(mergers)
   
@@ -512,9 +478,7 @@ if(inp.dirR =='NULL'){
   track[passed.filtering,"non-chimeric"] <- rowSums(seqtab.nochim)
   write.table(track, out.track, sep="\t", row.names=TRUE, col.names=NA,
               quote=FALSE)
-
 }
-
 
 ### WRITE OUTPUT AND QUIT ###
 # Formatting as tsv plain-text sequence table table
