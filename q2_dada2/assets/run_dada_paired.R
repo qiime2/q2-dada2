@@ -8,7 +8,7 @@
 # table. It is intended for use with the QIIME2 plugin
 # for DADA2.
 #
-# Rscript run_dada_paired.R input_dirF input_dirR output.tsv track.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2 pooled 1.0 0 100000
+# Rscript run_dada_paired.R input_dirF input_dirR output.tsv track.tsv filtered_dirF filtered_dirR 240 160 0 0 2.0 2.0 2 12 independent pooled 1.0 True 0 100000
 ####################################################
 
 ####################################################
@@ -75,9 +75,17 @@
 #                If the read is then shorter than truncLen, it is discarded.
 #    Ex: 2
 #
+#
+### PAIRS MERGING ARGUMENTS ###
+#
+# 14) minOverlap - The minimum length of the overlap required for merging
+#                the forward and reverse reads.
+#    Ex: 12
+#
+#
 ### SENSITIVITY ARGUMENTS ###
 #
-# 14) poolMethod - The method used to pool (or not) samples during denoising.
+# 15) poolMethod - The method used to pool (or not) samples during denoising.
 #             Valid options are:
 #               independent: (Default) No pooling, samples are denoised indpendently.
 #               pseudo: Samples are "pseudo-pooled" for denoising.
@@ -86,26 +94,31 @@
 #
 ### CHIMERA ARGUMENTS ###
 #
-# 15) chimeraMethod - The method used to remove chimeras. Valid options are:
+# 16) chimeraMethod - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
 #               consensus: Chimeras are detect in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
-# 16) minParentFold - The minimum abundance of potential "parents" of a sequence being
+# 17) minParentFold - The minimum abundance of potential "parents" of a sequence being
 #               tested as chimeric, expressed as a fold-change versus the abundance of the sequence being
 #               tested. Values should be greater than or equal to 1 (i.e. parents should be more
 #               abundant than the sequence being tested).
 #    Ex: 1.0
 #
+# 18) allowOneOff - Bimeras that are one-off from exact are also identified if the allowOneOff
+#               argument is TRUE. If TRUE, a sequence will be identified as bimera if it is one 
+#               mismatch or indel away from an exact bimera.
+#    Ex: FALSE
+#
 ### SPEED ARGUMENTS ###
 #
-# 17) nthreads - The number of threads to use.
+# 19) nthreads - The number of threads to use.
 #                 Special values: 0 - detect available and use all.
 #    Ex: 1
 #
-# 18) nreads_learn - The minimum number of reads to learn the error model from.
+# 20) nreads_learn - The minimum number of reads to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
@@ -133,8 +146,9 @@ minOverlap <- as.integer(args[14])
 poolMethod <- args[[15]]
 chimeraMethod <- args[[16]]
 minParentFold <- as.numeric(args[[17]])
-nthreads <- as.integer(args[[18]])
-nreads.learn <- as.integer(args[[19]])
+allowOneOff <- as.logical(args[[18]])
+nthreads <- as.integer(args[[19]])
+nreads.learn <- as.integer(args[[20]])
 
 ### VALIDATE ARGUMENTS ###
 
@@ -265,7 +279,7 @@ seqtab <- makeSequenceTable(mergers)
 # Remove chimeras
 cat("4) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
 if(chimeraMethod %in% c("pooled", "consensus")) {
-  seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, multithread=multithread)
+  seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, allowOneOff=allowOneOff, multithread=multithread)
 } else { # No chimera removal, copy seqtab to seqtab.nochim
   seqtab.nochim <- seqtab
 }

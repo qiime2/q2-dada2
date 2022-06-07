@@ -52,6 +52,7 @@ _POOL_STR = (lambda x: x in {'pseudo', 'independent'},
              'pseudo or independent')
 _CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'},
              'pooled, consensus or none')
+_BOOLEAN = (lambda x: type(x) is bool, 'True or False')
 # Better to choose to skip, than to implicitly ignore things that KeyError
 _SKIP = (lambda x: True, '')
 _valid_inputs = {
@@ -72,6 +73,7 @@ _valid_inputs = {
     'pooling_method': _POOL_STR,
     'chimera_method': _CHIM_STR,
     'min_fold_parent_over_abundance': _NAT_NUM,
+    'allow_one_off': _BOOLEAN,
     'n_threads': _WHOLE_NUM,
     # 0 is technically allowed, but we don't want to support it because it only
     # takes all reads from the first sample (alphabetically by sample id)
@@ -168,7 +170,7 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
 # sure that DADA2 is able to do what it needs to do.
 def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
-                    min_fold_parent_over_abundance,
+                    min_fold_parent_over_abundance, allow_one_off,
                     n_threads, n_reads_learn, hashed_feature_ids,
                     homopolymer_gap_penalty, band_size):
     _check_inputs(**locals())
@@ -188,7 +190,8 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                str(demultiplexed_seqs), biom_fp, track_fp, temp_dir_name,
                str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
                str(max_len), str(pooling_method), str(chimera_method),
-               str(min_fold_parent_over_abundance), str(n_threads),
+               str(min_fold_parent_over_abundance), str(allow_one_off),
+               str(n_threads),
                str(n_reads_learn), str(homopolymer_gap_penalty),
                str(band_size)]
         try:
@@ -212,6 +215,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    trunc_q: int = 2, pooling_method: str = 'independent',
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
+                   allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
@@ -225,6 +229,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         pooling_method=pooling_method,
         chimera_method=chimera_method,
         min_fold_parent_over_abundance=min_fold_parent_over_abundance,
+        allow_one_off=allow_one_off,
         n_threads=n_threads,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
@@ -240,6 +245,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    pooling_method: str = 'independent',
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
+                   allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
@@ -274,6 +280,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                str(max_ee_f), str(max_ee_r), str(trunc_q),
                str(min_overlap), str(pooling_method),
                str(chimera_method), str(min_fold_parent_over_abundance),
+               str(allow_one_off),
                str(n_threads), str(n_reads_learn)]
         try:
             run_commands([cmd])
@@ -301,6 +308,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  pooling_method: str = 'independent',
                  chimera_method: str = 'consensus',
                  min_fold_parent_over_abundance: float = 1.0,
+                 allow_one_off: bool = False,
                  n_threads: int = 1, n_reads_learn: int = 250000,
                  hashed_feature_ids: bool = True
                  ) -> (biom.Table, DNAIterator, qiime2.Metadata):
@@ -314,6 +322,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         pooling_method=pooling_method,
         chimera_method=chimera_method,
         min_fold_parent_over_abundance=min_fold_parent_over_abundance,
+        allow_one_off=allow_one_off,
         n_threads=n_threads,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
