@@ -25,7 +25,7 @@
 # 2) output_path - File path to output tsv file. If already exists, will be overwritten.
 #    Ex: path/to/output_file.tsv
 #
-# 3) output_track - File path to tracking tsv file. If already exists, will be overwritte.
+# 3) output_track - File path to tracking tsv file. If already exists, will be overwritten.
 #    Ex: path/to/tracking_stats.tsv
 #
 # 4) removed_primer_directory - File path to directory in which to write the primer.removed .fastq.gz
@@ -57,20 +57,20 @@
 #
 ### FILTERING ARGUMENTS ###
 #
-# 10) tuncation_length - The position at which to truncate reads. Reads shorter
-#               than tuncation_length  will be discarded.
+# 10) truncation_length - The position at which to truncate reads. Reads shorter
+#               than truncation_length  will be discarded.
 #               Special values: 0 - no truncation or length filtering.
 #    Ex: 150
 #
 # 11) trim_left - The number of nucleotides to remove from the start of
-#               each read. Should be less than tuncation_length  for obvious reasons.
+#               each read. Should be less than truncation_length  for obvious reasons.
 #    Ex: 0
 #
 # 12) max_expected_errors - Reads with expected errors higher than maxEE are discarded.
 #    Ex: 2.0
 #
-# 13) tuncation_quality_score - Reads are truncated at the first instance of quality score tuncation_quality_score.
-#                If the read is then shorter than tuncation_length , it is discarded.
+# 13) truncation_quality_score - Reads are truncated at the first instance of quality score truncation_quality_score.
+#                If the read is then shorter than truncation_length , it is discarded.
 #    Ex: 2
 #
 # 14) min_length - Remove reads with length shorter than min_length. min_length is enforced
@@ -95,7 +95,7 @@
 # 17) chimera_method - The method used to remove chimeras. Valid options are:
 #               none: No chimera removal is performed.
 #               pooled: All reads are pooled prior to chimera detection.
-#               consensus: Chimeras are detect in samples individually, and a consensus decision
+#               consensus: Chimeras are detected in samples individually, and a consensus decision
 #                           is made for each sequence variant.
 #    Ex: consensus
 #
@@ -157,20 +157,20 @@ option_list = list(
               help="The number of mismatches to tolerate when matching reads to primer sequences."),
   make_option(c("--indels"), action="store", default='NULL', type='character',
               help="Allow insertions or deletions of bases when matching adapters"),
-  make_option(c("--tuncation_length"), action="store", default='NULL', type='character',
-              help="The position at which to truncate reads. Reads shorter then tuncation_length will be discarded."),
-  make_option(c("--tuncation_length_reverse"), action="store", default='NULL', type='character',
-              help="The position at which to truncate reverse reads. Reads shorter then tuncation_length will be discarded. Only used in paired-end processing"),
+  make_option(c("--truncation_length"), action="store", default='NULL', type='character',
+              help="The position at which to truncate reads. Reads shorter then truncation_length will be discarded."),
+  make_option(c("--truncation_length_reverse"), action="store", default='NULL', type='character',
+              help="The position at which to truncate reverse reads. Reads shorter then truncation_length will be discarded. Only used in paired-end processing"),
   make_option(c("--trim_left"), action="store", default='NULL', type='character',
-              help="The number of nucleotides to remove from the start of each read. Should be less than tuncation_length for obvious reasons"),
+              help="The number of nucleotides to remove from the start of each read. Should be less than truncation_length for obvious reasons"),
   make_option(c("--trim_left_reverse"), action="store", default='NULL', type='character',
-              help="The number of nucleotides to remove from the start of each reverse read. Should be less than tuncation_length for obvious reasons. Only used in paired-end processing"),
+              help="The number of nucleotides to remove from the start of each reverse read. Should be less than truncation_length for obvious reasons. Only used in paired-end processing"),
   make_option(c("--max_expected_errors"), action="store", default='NULL', type='character',
               help="Reads with expected errors higher than max_expected_errors are discarded"),
   make_option(c("--max_expected_errors_reverse"), action="store", default='NULL', type='character',
               help="Reverse reads with expected errors higher than max_expected_errors are discarded. Only used in paired-end processing"),
-  make_option(c("--tuncation_quality_score"), action="store", default='NULL', type='character',
-              help="Reads are truncated at the first instance of quality score tuncation_quality_score.If the read is then shorter than tuncation_length, it is discarded"),
+  make_option(c("--truncation_quality_score"), action="store", default='NULL', type='character',
+              help="Reads are truncated at the first instance of quality score truncation_quality_score.If the read is then shorter than truncation_length, it is discarded"),
   make_option(c("--min_length"), action="store", default='NULL', type='character',
               help="Remove reads with length shorter than min_length. min_length is enforced after trimming and truncation."),
   make_option(c("--max_length"), action="store", default='NULL', type='character',
@@ -203,17 +203,17 @@ out.track <- opt$output_track
 primer.removed.dir <- opt$removed_primer_directory #added from CCS arguments
 filtered.dir <- opt$filtered_directory
 filtered.dirR<- opt$filtered_directory_reverse #added from paired arguments
-primerF <- opt$forward_primer #added from CCS arguments
+primer <- opt$forward_primer #added from CCS arguments
 primerR <- opt$reverse_primer #added from CCS arguments
 maxMismatch <- if(opt$max_mismatch=='NULL') NULL else as.numeric(opt$max_mismatch) #added from CCS arguments
 indels <- if(opt$indels=='NULL') NULL else as.logical(opt$indels)  #added from CCS arguments
-truncLen <- if(opt$tuncation_length=='NULL') NULL else as.integer(opt$tuncation_length)
-truncLenR <- if(opt$tuncation_length_reverse=='NULL') NULL else as.integer(opt$tuncation_length_reverse) #added from paired arguments
+truncLen <- if(opt$truncation_length=='NULL') NULL else as.integer(opt$truncation_length)
+truncLenR <- if(opt$truncation_length_reverse=='NULL') NULL else as.integer(opt$truncation_length_reverse) #added from paired arguments
 trimLeft <- if(opt$trim_left=='NULL') NULL else as.integer(opt$trim_left)
 trimLeftR<-if(opt$trim_left_reverse=='NULL') NULL else as.integer(opt$trim_left_reverse) #added from paired arguments
 maxEE <- if(opt$max_expected_errors=='NULL') NULL else as.numeric(opt$max_expected_errors)
 maxEER <- if(opt$max_expected_errors_reverse=='NULL') NULL else as.numeric(opt$max_expected_errors_reverse) #added from paired arguments
-truncQ <- if(opt$tuncation_quality_score=='NULL') NULL else as.integer(opt$tuncation_quality_score)
+truncQ <- if(opt$truncation_quality_score=='NULL') NULL else as.integer(opt$truncation_quality_score)
 minLen <- if(opt$min_length=='NULL') NULL else as.numeric(opt$min_length) #added from CCS arguments
 maxLen <- if(opt$max_length=='NULL') NULL else as.numeric(opt$max_length) # Allows Inf
 minOverlap <- if(opt$min_overlap=='NULL') NULL else as.integer(opt$min_overlap) #added from paired arguments
@@ -290,7 +290,7 @@ cat("DADA2:", as.character(packageVersion("dada2")), "/",
 if(primer.removed.dir!='NULL'){ #for CCS read analysis
   cat("1) Removing Primers\n")
   nop <- file.path(primer.removed.dir, basename(unfilts))
-  prim <- suppressWarnings(removePrimers(unfilts, nop, primerF, dada2:::rc(primerR),
+  prim <- suppressWarnings(removePrimers(unfilts, nop, primer, dada2:::rc(primerR),
                                          max.mismatch = maxMismatch, allow.indels = indels,
                                          orient = TRUE, verbose = TRUE))
   cat(ifelse(file.exists(nop), ".", "x"), sep="")
@@ -379,7 +379,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
     for(j in seq(length(filts))) {
       drp <- derepFastq(filts[[j]])
       dds[[j]] <- dada(drp, err=err, multithread=multithread,
-                       priors = pseudo_priors, HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
+                       priors=pseudo_priors, HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
                        BAND_SIZE=BAND_SIZE, verbose=FALSE)
       cat(".")
     }
@@ -458,7 +458,7 @@ if(inp.dirR =='NULL'){
   # Handle edge cases: Samples lost in filtering; One sample
   if(primer.removed.dir!='NULL'){ #for CCS read analysis
     track <- cbind(prim,out[ ,2], matrix(0, nrow=nrow(out), ncol=2))
-    colnames(track) <- c("input", "primer-removed","filtered", "denoised", "non-chimeric")
+    colnames(track) <- c("input", "primer-removed", "filtered", "denoised", "non-chimeric")
   }else{ #for sinlge/pyro read analysis
     track <- cbind(out, matrix(0, nrow=nrow(out), ncol=2))
     colnames(track) <- c("input", "filtered", "denoised", "non-chimeric")

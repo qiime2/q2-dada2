@@ -468,6 +468,7 @@ plugin.methods.register_function(
                 'https://github.com/benjjneb/LRASManuscript'
 )
 
+
 plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)
 plugin.register_semantic_types(DADA2Stats)
 plugin.register_semantic_type_to_format(
