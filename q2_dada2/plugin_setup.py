@@ -377,6 +377,7 @@ plugin.methods.register_function(
                 'chimera_method': qiime2.plugin.Str %
                 qiime2.plugin.Choices(_CHIM_OPT),
                 'min_fold_parent_over_abundance': qiime2.plugin.Float,
+                'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool},
@@ -458,6 +459,11 @@ plugin.methods.register_function(
             'than or equal to 1 (i.e. parents should be more abundant than '
             'the sequence being tested). Suggest 3.5. '
             'This parameter has no effect if chimera_method is "none".',
+        'allow_one_off': (
+            'Bimeras that are one-off from exact are also '
+            'identified if the `allow_one_off` argument is True. '
+            'If True, a sequence will be identified as bimera if it is one '
+            'mismatch or indel away from an exact bimera.'),
         'n_threads': 'The number of threads to use for multithreaded '
                      'processing. If 0 is provided, all available cores will '
                      'be used.',

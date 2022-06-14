@@ -102,6 +102,10 @@ def _filepath_to_sample(fp):
     return fp.rsplit('_', 4)[0]
 
 
+# Since `denoise-single` and `denoise-pyro` are almost identical, break out
+# the bulk of the functionality to this helper util. Typechecking is assumed
+# to have occurred in the calling functions, this is primarily for making
+# sure that DADA2 is able to do what it needs to do.
 def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
@@ -164,10 +168,6 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids):
     return table, rep_sequences, metadata
 
 
-# Since `denoise-single` and `denoise-pyro` are almost identical, break out
-# the bulk of the functionality to this helper util. Typechecking is assumed
-# to have occurred in the calling functions, this is primarily for making
-# sure that DADA2 is able to do what it needs to do.
 def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
                     min_fold_parent_over_abundance, allow_one_off,
@@ -180,20 +180,31 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
     if max_len != 0 and max_len < trunc_len:
         raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
                          % (trunc_len, max_len))
-    # Coerce for `run_dada_single.R`
+    # Coerce for single end read analysis
     max_len = 'Inf' if max_len == 0 else max_len
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
-        cmd = ['run_dada_single.R',
-               str(demultiplexed_seqs), biom_fp, track_fp, temp_dir_name,
-               str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
-               str(max_len), str(pooling_method), str(chimera_method),
-               str(min_fold_parent_over_abundance), str(allow_one_off),
-               str(n_threads),
-               str(n_reads_learn), str(homopolymer_gap_penalty),
-               str(band_size)]
+
+        cmd = ['run_dada.R',
+               '--input_directory', str(demultiplexed_seqs),
+               '--output_path', biom_fp,
+               '--output_track', track_fp,
+               '--filtered_directory', temp_dir_name,
+               '--truncation_length', str(trunc_len),
+               '--trim_left', str(trim_left),
+               '--max_expected_errors', str(max_ee),
+               '--truncation_quality_score', str(trunc_q),
+               '--max_length', str(max_len),
+               '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--allow_one_off', str(allow_one_off),
+               '--num_threads', str(n_threads),
+               '--learn_min_reads', str(n_reads_learn),
+               '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
+               '--band_size', str(band_size)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -272,16 +283,27 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             elif 'R2_001.fastq' in rp.name:
                 qiime2.util.duplicate(fp, os.path.join(tmp_reverse, rp.name))
 
-        cmd = ['run_dada_paired.R',
-               tmp_forward, tmp_reverse, biom_fp, track_fp, filt_forward,
-               filt_reverse,
-               str(trunc_len_f), str(trunc_len_r),
-               str(trim_left_f), str(trim_left_r),
-               str(max_ee_f), str(max_ee_r), str(trunc_q),
-               str(min_overlap), str(pooling_method),
-               str(chimera_method), str(min_fold_parent_over_abundance),
-               str(allow_one_off),
-               str(n_threads), str(n_reads_learn)]
+        cmd = ['run_dada.R',
+               '--input_directory', tmp_forward,
+               '--input_directory_reverse', tmp_reverse,
+               '--output_path', biom_fp,
+               '--output_track', track_fp,
+               '--filtered_directory', filt_forward,
+               '--filtered_directory_reverse', filt_reverse,
+               '--truncation_length', str(trunc_len_f),
+               '--truncation_length_reverse', str(trunc_len_r),
+               '--trim_left', str(trim_left_f),
+               '--trim_left_reverse', str(trim_left_r),
+               '--max_expected_errors', str(max_ee_f),
+               '--max_expected_errors_reverse', str(max_ee_r),
+               '--truncation_quality_score', str(trunc_q),
+               '--min_overlap', str(min_overlap),
+               '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--allow_one_off', str(allow_one_off),
+               '--num_threads', str(n_threads),
+               '--learn_min_reads', str(n_reads_learn)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -326,7 +348,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_threads=n_threads,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
-        homopolymer_gap_penalty='-1',
+        homopolymer_gap_penalty='1',
         band_size='32')
 
 
@@ -338,6 +360,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 pooling_method: str = 'independent',
                 chimera_method: str = 'consensus',
                 min_fold_parent_over_abundance: float = 3.5,
+                allow_one_off: bool = False,
                 n_threads: int = 1, n_reads_learn: int = 1000000,
                 hashed_feature_ids: bool = True
                 ) -> (biom.Table, DNAIterator, qiime2.Metadata):
@@ -348,7 +371,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
     if max_len != 0 and max_len < trunc_len:
         raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
                          % (trunc_len, max_len))
-    # Coerce for `run_dada_ccs.R`
+    # Coerce for ccs read analysis
     max_len = 'Inf' if max_len == 0 else max_len
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
@@ -359,13 +382,30 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         for fp in nop_fp, filt_fp:
             os.mkdir(fp)
 
-        cmd = ['run_dada_ccs.R',
-               str(demultiplexed_seqs), biom_fp, track_fp, nop_fp, filt_fp,
-               str(front), str(adapter), str(max_mismatch), str(indels),
-               str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
-               str(min_len), str(max_len), str(pooling_method),
-               str(chimera_method), str(min_fold_parent_over_abundance),
-               str(n_threads), str(n_reads_learn)]
+        cmd = ['run_dada.R',
+               '--input_directory', str(demultiplexed_seqs),
+               '--output_path', biom_fp,
+               '--output_track', track_fp,
+               '--removed_primer_directory', nop_fp,
+               '--filtered_directory', filt_fp,
+               '--forward_primer', str(front),
+               '--reverse_primer', str(adapter),
+               '--max_mismatch', str(max_mismatch),
+               '--indels', str(indels),
+               '--truncation_length', str(trunc_len),
+               '--trim_left', str(trim_left),
+               '--max_expected_errors', str(max_ee),
+               '--truncation_quality_score', str(trunc_q),
+               '--min_length', str(min_len),
+               '--max_length', str(max_len),
+               '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--allow_one_off', str(allow_one_off),
+               '--num_threads', str(n_threads),
+               '--learn_min_reads', str(n_reads_learn),
+               '--homopolymer_gap_penalty', 'NULL',
+               '--band_size', '32']
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
