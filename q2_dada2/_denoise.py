@@ -386,7 +386,8 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 min_fold_parent_over_abundance: float = 3.5,
                 allow_one_off: bool = False,
                 n_threads: int = 1, n_reads_learn: int = 1000000,
-                hashed_feature_ids: bool = True
+                hashed_feature_ids: bool = True,
+                retain_all_samples: bool = True
                 ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
@@ -443,4 +444,4 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples)
