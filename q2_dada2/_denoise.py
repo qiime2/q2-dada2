@@ -85,7 +85,7 @@ _valid_inputs = {
     'demultiplexed_seqs': _SKIP,
     'homopolymer_gap_penalty': _SKIP,
     'band_size': _SKIP,
-    "retain_all_samples": _BOOL
+    'retain_all_samples': _BOOL,
     'front': _SKIP,
     'adapter': _SKIP,
     'indels': _SKIP,
