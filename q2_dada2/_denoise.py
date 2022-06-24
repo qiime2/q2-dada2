@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016-2021, QIIME 2 development team.
+# Copyright (c) 2016-2022, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -53,6 +53,7 @@ _POOL_STR = (lambda x: x in {'pseudo', 'independent'},
              'pseudo or independent')
 _CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'},
              'pooled, consensus or none')
+_BOOLEAN = (lambda x: type(x) is bool, 'True or False')
 # Better to choose to skip, than to implicitly ignore things that KeyError
 _SKIP = (lambda x: True, '')
 _BOOL = (lambda x: isinstance(x, bool), "Boolean")
@@ -63,15 +64,18 @@ _valid_inputs = {
     'trim_left': _WHOLE_NUM,
     'trim_left_f': _WHOLE_NUM,
     'trim_left_r': _WHOLE_NUM,
+    'max_mismatch': _WHOLE_NUM,
     'max_ee': _NAT_NUM,
     'max_ee_f': _NAT_NUM,
     'max_ee_r': _NAT_NUM,
     'trunc_q': _WHOLE_NUM,
     'min_overlap': _WHOLE_NUM,
+    'min_len': _WHOLE_NUM,
     'max_len': _WHOLE_NUM,
     'pooling_method': _POOL_STR,
     'chimera_method': _CHIM_STR,
     'min_fold_parent_over_abundance': _NAT_NUM,
+    'allow_one_off': _BOOLEAN,
     'n_threads': _WHOLE_NUM,
     # 0 is technically allowed, but we don't want to support it because it only
     # takes all reads from the first sample (alphabetically by sample id)
@@ -82,6 +86,9 @@ _valid_inputs = {
     'homopolymer_gap_penalty': _SKIP,
     'band_size': _SKIP,
     "retain_all_samples": _BOOL
+    'front': _SKIP,
+    'adapter': _SKIP,
+    'indels': _SKIP,
 }
 
 
@@ -98,6 +105,10 @@ def _filepath_to_sample(fp):
     return fp.rsplit('_', 4)[0]
 
 
+# Since `denoise-single` and `denoise-pyro` are almost identical, break out
+# the bulk of the functionality to this helper util. Typechecking is assumed
+# to have occurred in the calling functions, this is primarily for making
+# sure that DADA2 is able to do what it needs to do.
 def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples):
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
@@ -125,6 +136,14 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples):
         df[MERGED] = df['merged'] / df['input'] * 100
         col_order.insert(4, 'merged')
         col_order.insert(5, MERGED)
+
+    # only calculate percentage of input primer-removed if ccs
+    if 'primer-removed' in df:
+        PASSED_PRIMERREMOVE = 'percentage of input primer-removed'
+        round_cols[PASSED_PRIMERREMOVE] = 2
+        df[PASSED_PRIMERREMOVE] = df['primer-removed'] / df['input'] * 100
+        col_order.insert(1, 'primer-removed')
+        col_order.insert(2, PASSED_PRIMERREMOVE)
 
     df = df[col_order]
     df.fillna(0, inplace=True)
@@ -166,13 +185,9 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples):
     return table, rep_sequences, metadata
 
 
-# Since `denoise-single` and `denoise-pyro` are almost identical, break out
-# the bulk of the functionality to this helper util. Typechecking is assumed
-# to have occurred in the calling functions, this is primarily for making
-# sure that DADA2 is able to do what it needs to do.
 def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
-                    min_fold_parent_over_abundance,
+                    min_fold_parent_over_abundance, allow_one_off,
                     n_threads, n_reads_learn, hashed_feature_ids,
                     homopolymer_gap_penalty, band_size, retain_all_samples):
     _check_inputs(**locals())
@@ -182,19 +197,31 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
     if max_len != 0 and max_len < trunc_len:
         raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
                          % (trunc_len, max_len))
-    # Coerce for `run_dada_single.R`
+    # Coerce for single end read analysis
     max_len = 'Inf' if max_len == 0 else max_len
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
-        cmd = ['run_dada_single.R',
-               str(demultiplexed_seqs), biom_fp, track_fp, temp_dir_name,
-               str(trunc_len), str(trim_left), str(max_ee), str(trunc_q),
-               str(max_len), str(pooling_method), str(chimera_method),
-               str(min_fold_parent_over_abundance), str(n_threads),
-               str(n_reads_learn), str(homopolymer_gap_penalty),
-               str(band_size)]
+
+        cmd = ['run_dada.R',
+               '--input_directory', str(demultiplexed_seqs),
+               '--output_path', biom_fp,
+               '--output_track', track_fp,
+               '--filtered_directory', temp_dir_name,
+               '--truncation_length', str(trunc_len),
+               '--trim_left', str(trim_left),
+               '--max_expected_errors', str(max_ee),
+               '--truncation_quality_score', str(trunc_q),
+               '--max_length', str(max_len),
+               '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--allow_one_off', str(allow_one_off),
+               '--num_threads', str(n_threads),
+               '--learn_min_reads', str(n_reads_learn),
+               '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
+               '--band_size', str(band_size)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -217,6 +244,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    trunc_q: int = 2, pooling_method: str = 'independent',
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
+                   allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True,
                    retain_all_samples: bool = True
@@ -231,6 +259,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         pooling_method=pooling_method,
         chimera_method=chimera_method,
         min_fold_parent_over_abundance=min_fold_parent_over_abundance,
+        allow_one_off=allow_one_off,
         n_threads=n_threads,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
@@ -247,6 +276,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    pooling_method: str = 'independent',
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
+                   allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True,
                    retain_all_samples: bool = True
@@ -274,15 +304,27 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             elif 'R2_001.fastq' in rp.name:
                 qiime2.util.duplicate(fp, os.path.join(tmp_reverse, rp.name))
 
-        cmd = ['run_dada_paired.R',
-               tmp_forward, tmp_reverse, biom_fp, track_fp, filt_forward,
-               filt_reverse,
-               str(trunc_len_f), str(trunc_len_r),
-               str(trim_left_f), str(trim_left_r),
-               str(max_ee_f), str(max_ee_r), str(trunc_q),
-               str(min_overlap), str(pooling_method),
-               str(chimera_method), str(min_fold_parent_over_abundance),
-               str(n_threads), str(n_reads_learn)]
+        cmd = ['run_dada.R',
+               '--input_directory', tmp_forward,
+               '--input_directory_reverse', tmp_reverse,
+               '--output_path', biom_fp,
+               '--output_track', track_fp,
+               '--filtered_directory', filt_forward,
+               '--filtered_directory_reverse', filt_reverse,
+               '--truncation_length', str(trunc_len_f),
+               '--truncation_length_reverse', str(trunc_len_r),
+               '--trim_left', str(trim_left_f),
+               '--trim_left_reverse', str(trim_left_r),
+               '--max_expected_errors', str(max_ee_f),
+               '--max_expected_errors_reverse', str(max_ee_r),
+               '--truncation_quality_score', str(trunc_q),
+               '--min_overlap', str(min_overlap),
+               '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--allow_one_off', str(allow_one_off),
+               '--num_threads', str(n_threads),
+               '--learn_min_reads', str(n_reads_learn)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -310,6 +352,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  pooling_method: str = 'independent',
                  chimera_method: str = 'consensus',
                  min_fold_parent_over_abundance: float = 1.0,
+                 allow_one_off: bool = False,
                  n_threads: int = 1, n_reads_learn: int = 250000,
                  hashed_feature_ids: bool = True,
                  retain_all_samples: bool = True
@@ -324,9 +367,80 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         pooling_method=pooling_method,
         chimera_method=chimera_method,
         min_fold_parent_over_abundance=min_fold_parent_over_abundance,
+        allow_one_off=allow_one_off,
         n_threads=n_threads,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
-        homopolymer_gap_penalty='-1',
+        homopolymer_gap_penalty='1',
         band_size='32',
         retain_all_samples=retain_all_samples)
+
+
+def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
+                front: str, adapter: str,  max_mismatch: int = 2,
+                indels: bool = False, trunc_len: int = 0,
+                trim_left: int = 0, max_ee: float = 2.0,
+                trunc_q: int = 2, min_len: int = 20, max_len: int = 0,
+                pooling_method: str = 'independent',
+                chimera_method: str = 'consensus',
+                min_fold_parent_over_abundance: float = 3.5,
+                allow_one_off: bool = False,
+                n_threads: int = 1, n_reads_learn: int = 1000000,
+                hashed_feature_ids: bool = True
+                ) -> (biom.Table, DNAIterator, qiime2.Metadata):
+    _check_inputs(**locals())
+    if trunc_len != 0 and trim_left >= trunc_len:
+        raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
+                         % (trim_left, trunc_len))
+    if max_len != 0 and max_len < trunc_len:
+        raise ValueError("trunc_len (%r) must be no bigger than max_len (%r)"
+                         % (trunc_len, max_len))
+    # Coerce for ccs read analysis
+    max_len = 'Inf' if max_len == 0 else max_len
+
+    with tempfile.TemporaryDirectory() as temp_dir_name:
+        biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
+        track_fp = os.path.join(temp_dir_name, 'track.tsv')
+        nop_fp = os.path.join(temp_dir_name, 'nop')
+        filt_fp = os.path.join(temp_dir_name, 'filt')
+        for fp in nop_fp, filt_fp:
+            os.mkdir(fp)
+
+        cmd = ['run_dada.R',
+               '--input_directory', str(demultiplexed_seqs),
+               '--output_path', biom_fp,
+               '--output_track', track_fp,
+               '--removed_primer_directory', nop_fp,
+               '--filtered_directory', filt_fp,
+               '--forward_primer', str(front),
+               '--reverse_primer', str(adapter),
+               '--max_mismatch', str(max_mismatch),
+               '--indels', str(indels),
+               '--truncation_length', str(trunc_len),
+               '--trim_left', str(trim_left),
+               '--max_expected_errors', str(max_ee),
+               '--truncation_quality_score', str(trunc_q),
+               '--min_length', str(min_len),
+               '--max_length', str(max_len),
+               '--pooling_method', str(pooling_method),
+               '--chimera_method', str(chimera_method),
+               '--min_parental_fold', str(min_fold_parent_over_abundance),
+               '--allow_one_off', str(allow_one_off),
+               '--num_threads', str(n_threads),
+               '--learn_min_reads', str(n_reads_learn),
+               '--homopolymer_gap_penalty', 'NULL',
+               '--band_size', '32']
+        try:
+            run_commands([cmd])
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 2:
+                raise ValueError(
+                    "No reads passed the filter. trunc_len (%r) may be longer"
+                    " than read lengths, or other arguments (such as max_ee"
+                    " or trunc_q) may be preventing reads from passing the"
+                    " filter." % trunc_len)
+            else:
+                raise Exception("An error was encountered while running DADA2"
+                                " in R (return code %d), please inspect stdout"
+                                " and stderr to learn more." % e.returncode)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)

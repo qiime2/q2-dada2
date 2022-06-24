@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016-2021, QIIME 2 development team.
+# Copyright (c) 2016-2022, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -21,14 +21,14 @@ setup(
     author="Greg Caporaso and Benjamin Callahan",
     author_email="gregcaporaso@gmail.com",
     description="Apply DADA2 to generate denoised sequence variants. ",
-    scripts=['q2_dada2/assets/run_dada_single.R',
-             'q2_dada2/assets/run_dada_paired.R'],
+    scripts=['q2_dada2/assets/run_dada.R'],
     package_data={
         'q2_dada2': ['citations.bib'],
         'q2_dada2.tests': ['data/*',
                            'data/expected/*',
                            'data/underscore_samples/*',
                            'data/sample_seqs_single/*',
+                           'data/sample_seqs_ccs/*',
                            'data/sample_seqs_paired/*']
     },
     entry_points={
