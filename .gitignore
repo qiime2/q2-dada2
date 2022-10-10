@@ -69,3 +69,4 @@ target/
 *.qzv
 
 .DS_Store
+.Rhistory
