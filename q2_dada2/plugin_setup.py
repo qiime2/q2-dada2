@@ -17,6 +17,7 @@ from q2_types.feature_table import FeatureTable, Frequency
 import q2_dada2
 from q2_dada2 import DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt
 
+_POOL_OPT = {'pseudo', 'independent'}
 _CHIM_OPT = {'pooled', 'consensus', 'none'}
 
 plugin = qiime2.plugin.Plugin(

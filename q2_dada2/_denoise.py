@@ -231,7 +231,8 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
 
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
-                   trunc_q: int = 2, chimera_method: str = 'consensus',
+                   trunc_q: int = 2, pooling_method: str = 'independent',
+                   chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
@@ -244,6 +245,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         max_ee=max_ee,
         trunc_q=trunc_q,
         max_len=0,
+        pooling_method=pooling_method,
         chimera_method=chimera_method,
         min_fold_parent_over_abundance=min_fold_parent_over_abundance,
         allow_one_off=allow_one_off,
@@ -346,12 +348,13 @@ def _remove_barcode(filename):
     cut = cut[1:]
     cut.insert(0, id_)
 
-    return('_'.join(cut))
+    return ('_'.join(cut))
 
 
 def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
                  trunc_q: int = 2, max_len: int = 0,
+                 pooling_method: str = 'independent',
                  chimera_method: str = 'consensus',
                  min_fold_parent_over_abundance: float = 1.0,
                  allow_one_off: bool = False,
@@ -365,6 +368,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         max_ee=max_ee,
         trunc_q=trunc_q,
         max_len=max_len,
+        pooling_method=pooling_method,
         chimera_method=chimera_method,
         min_fold_parent_over_abundance=min_fold_parent_over_abundance,
         allow_one_off=allow_one_off,
