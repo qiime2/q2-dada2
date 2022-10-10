@@ -41,6 +41,8 @@ plugin.methods.register_function(
                 'trim_left': qiime2.plugin.Int,
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
+                'pooling_method': qiime2.plugin.Str %
+                qiime2.plugin.Choices(_POOL_OPT),
                 'chimera_method': qiime2.plugin.Str %
                 qiime2.plugin.Choices(_CHIM_OPT),
                 'min_fold_parent_over_abundance': qiime2.plugin.Float,
@@ -72,6 +74,17 @@ plugin.methods.register_function(
         'trunc_q': ('Reads are truncated at the first instance of a quality '
                     'score less than or equal to this value. If the resulting '
                     'read is then shorter than `trunc_len`, it is discarded.'),
+        'pooling_method': (
+            'The method used to pool samples for denoising. '
+            '"independent": Samples are denoised independently. '
+            '"pseudo": The pseudo-pooling method is used to '
+            'approximate pooling of samples. In short, samples '
+            'are denoised independently once, ASVs detected '
+            'in at least 2 samples are recorded, and samples '
+            'are denoised independently a second time, but '
+            'this time with prior knowledge of the recorded '
+            'ASVs and thus higher sensitivity to those ASVs.'
+        ),
         'chimera_method': ('The method used to remove chimeras. '
                            '"none": No chimera removal is performed. '
                            '"pooled": All reads are pooled prior to chimera '
@@ -253,6 +266,8 @@ plugin.methods.register_function(
                 'max_ee': qiime2.plugin.Float,
                 'trunc_q': qiime2.plugin.Int,
                 'max_len': qiime2.plugin.Int,
+                'pooling_method': qiime2.plugin.Str %
+                qiime2.plugin.Choices(_POOL_OPT),
                 'chimera_method': qiime2.plugin.Str %
                 qiime2.plugin.Choices(_CHIM_OPT),
                 'min_fold_parent_over_abundance': qiime2.plugin.Float,
@@ -288,6 +303,15 @@ plugin.methods.register_function(
         'max_len': 'Remove reads prior to trimming or truncation which are '
                    'longer than this value. If 0 is provided no reads will '
                    'be removed based on length.',
+        'pooling_method': 'The method used to pool samples for denoising. '
+                          '"independent": Samples are denoised independently. '
+                          '"pseudo": The pseudo-pooling method is used to '
+                          'approximate pooling of samples. In short, samples '
+                          'are denoised independently once, ASVs detected '
+                          'in at least 2 samples are recorded, and samples '
+                          'are denoised independently a second time, but '
+                          'this time with prior knowledge of the recorded '
+                          'ASVs and thus higher sensitivity to those ASVs.',
         'chimera_method': 'The method used to remove chimeras. '
                           '"none": No chimera removal is performed. '
                           '"pooled": All reads are pooled prior to chimera '

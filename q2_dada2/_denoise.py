@@ -39,7 +39,7 @@ def run_commands(cmds, verbose=True):
 def _check_featureless_table(fp):
     with open(fp) as fh:
         # There is a comment line and a header before the feature data
-        for line_count, _ in zip(range(3), fh):
+        for line_count, _ in zip(range(1, 3), fh):
             pass
     if line_count < 2:
         raise ValueError("No features remain after denoising. Try adjusting "
@@ -48,6 +48,8 @@ def _check_featureless_table(fp):
 
 _WHOLE_NUM = (lambda x: x >= 0, 'non-negative')
 _NAT_NUM = (lambda x: x > 0, 'greater than zero')
+_POOL_STR = (lambda x: x in {'pseudo', 'independent'},
+             'pseudo or independent')
 _CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'},
              'pooled, consensus or none')
 _BOOLEAN = (lambda x: type(x) is bool, 'True or False')
@@ -68,6 +70,7 @@ _valid_inputs = {
     'min_overlap': _WHOLE_NUM,
     'min_len': _WHOLE_NUM,
     'max_len': _WHOLE_NUM,
+    'pooling_method': _POOL_STR,
     'chimera_method': _CHIM_STR,
     'min_fold_parent_over_abundance': _NAT_NUM,
     'allow_one_off': _BOOLEAN,
