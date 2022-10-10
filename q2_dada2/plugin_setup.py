@@ -304,7 +304,7 @@ plugin.methods.register_function(
                    'longer than this value. If 0 is provided no reads will '
                    'be removed based on length.',
         'pooling_method': 'The method used to pool samples for denoising. '
-                          '"independent": Samples are denoised indpendently. '
+                          '"independent": Samples are denoised independently. '
                           '"pseudo": The pseudo-pooling method is used to '
                           'approximate pooling of samples. In short, samples '
                           'are denoised independently once, ASVs detected '

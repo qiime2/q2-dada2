@@ -73,6 +73,14 @@ class TestDenoiseSingle(TestPluginBase):
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
 
+    def test_mixed_barcodes_and_ids(self):
+        demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
+            self.get_data_path('mixed_barcodes_and_ids'), 'r')
+
+        denoise_paired(demux_seqs, 150, 150)
+
+        self.assertTrue(True)
+
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):
             denoise_single(self.demux_seqs, 10000)
