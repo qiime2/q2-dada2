@@ -26,7 +26,7 @@ setup(
         'q2_dada2': ['citations.bib'],
         'q2_dada2.tests': ['data/*',
                            'data/expected/*',
-                           'data/mixed_barcodes_and_ids',
+                           'data/mixed_barcodes_and_ids/*',
                            'data/underscore_samples/*',
                            'data/sample_seqs_single/*',
                            'data/sample_seqs_ccs/*',
