@@ -24,7 +24,7 @@ def _sort_seqs(seqs):
     return sorted(list(seqs), key=lambda x: x.metadata['id'])
 
 
-class TestBase(TestPluginBase):
+class TestExamples(TestPluginBase):
     package = 'q2_dada2.tests'
 
     def test_examples(self):
