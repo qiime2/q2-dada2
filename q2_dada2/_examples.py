@@ -6,29 +6,36 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-import os
-import pkg_resources
-
 import qiime2
 
 
-def _get_data_from_tests(path):
-    return pkg_resources.resource_filename('q2_dada2.tests',
-                                           os.path.join('data', path))
+demux_single_url = 'https://docs.qiime2.org/2022.8/data/tutorials' \
+'/moving-pictures/demux.qza'
 
+def artifact_from_url(url):
+    def factory():
+        import tempfile
+        import requests
 
-def demux_single_factory():
-    return qiime2.Artifact.load(
-        _get_data_from_tests('demux-01.qza'))
+        data = requests.get(url)
+
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(data.content)
+            f.flush()
+            result = qiime2.Artifact.load(f.name)
+
+        return result
+    return factory
 
 
 def denoise_single(use):
-    demux = use.init_artifact('demux', demux_single_factory)
+    demux_single = use.init_artifact('demux_single',
+        artifact_from_url(demux_single_url))
 
     rep_seqs, table_dada2, denoise_stats = use.action(
         use.UsageAction('dada2', 'denoise_single'),
         use.UsageInputs(
-            demultiplexed_seqs=demux,
+            demultiplexed_seqs=demux_single,
             trim_left=0,
             trunc_len=120
         ),
