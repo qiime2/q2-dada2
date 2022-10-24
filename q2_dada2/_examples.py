@@ -6,32 +6,14 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-import qiime2
-
 
 demux_single_url = 'https://docs.qiime2.org/2022.8/data/tutorials' \
                    '/moving-pictures/demux.qza'
 
 
-def artifact_from_url(url):
-    def factory():
-        import tempfile
-        import requests
-
-        data = requests.get(url)
-
-        with tempfile.NamedTemporaryFile() as f:
-            f.write(data.content)
-            f.flush()
-            result = qiime2.Artifact.load(f.name)
-
-        return result
-    return factory
-
-
 def denoise_single(use):
-    demux_single = use.init_artifact('demux_single',
-                                     artifact_from_url(demux_single_url))
+    demux_single = use.init_artifact_from_url('demux_single',
+                                              (demux_single_url))
 
     rep_seqs, table_dada2, denoise_stats = use.action(
         use.UsageAction('dada2', 'denoise_single'),
