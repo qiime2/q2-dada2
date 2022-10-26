@@ -6,12 +6,14 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
+import qiime2
 
-demux_single_url = 'https://docs.qiime2.org/2022.8/data/tutorials' \
-                   '/moving-pictures/demux.qza'
 
-demux_paired_url = 'https://docs.qiime2.org/2022.8/data/tutorials' \
-                   '/atacama-soils/demux-full.qza'
+demux_single_url = \
+    f'https://docs.qiime2.org/{qiime2.__release__}/data/tutorials/moving-pictures/demux.qza'  # noqa: E501
+
+demux_paired_url = \
+    f'https://docs.qiime2.org/{qiime2.__release__}/data/tutorials/atacama-soils/demux-full.qza'  # noqa: E501
 
 
 def denoise_single(use):
