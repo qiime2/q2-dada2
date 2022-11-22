@@ -19,7 +19,7 @@ requirements:
   run:
     - python {{ python }}
     - biom-format {{ biom_format }}
-    - bioconductor-dada2 1.22.0
+    - bioconductor-dada2 1.26.0
     - r-optparse >=1.7.1
     # openjdk is not a real dependency, but, r-base has a post-link and post-
     # activation hook that calls R CMD javareconf, which pokes around for any
