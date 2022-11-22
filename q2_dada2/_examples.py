@@ -10,11 +10,11 @@ import qiime2
 
 
 demux_single_url = \
-    (f'https://docs.qiime2.org/{qiime2.__release__}/data/tutorials/'
+    (f'https://data.qiime2.org/{qiime2.__release__}/tutorials/'
      'moving-pictures/demux.qza')
 
 demux_paired_url = \
-    (f'https://docs.qiime2.org/{qiime2.__release__}/data/tutorials/'
+    (f'https://data.qiime2.org/{qiime2.__release__}/tutorials/'
      'atacama-soils/demux-full.qza')
 
 
