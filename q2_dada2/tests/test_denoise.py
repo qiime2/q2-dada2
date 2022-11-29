@@ -24,6 +24,13 @@ def _sort_seqs(seqs):
     return sorted(list(seqs), key=lambda x: x.metadata['id'])
 
 
+class TestExamples(TestPluginBase):
+    package = 'q2_dada2.tests'
+
+    def test_examples(self):
+        self.execute_examples()
+
+
 class TestDenoiseSingle(TestPluginBase):
     package = 'q2_dada2.tests'
 

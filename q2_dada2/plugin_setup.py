@@ -16,6 +16,7 @@ from q2_types.feature_table import FeatureTable, Frequency
 
 import q2_dada2
 from q2_dada2 import DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt
+import q2_dada2._examples as ex
 
 _POOL_OPT = {'pseudo', 'independent'}
 _CHIM_OPT = {'pooled', 'consensus', 'none'}
@@ -128,7 +129,11 @@ plugin.methods.register_function(
     },
     name='Denoise and dereplicate single-end sequences',
     description=('This method denoises single-end sequences, dereplicates '
-                 'them, and filters chimeras.')
+                 'them, and filters chimeras.'),
+    examples={
+        'denoise_single': ex.denoise_single,
+        'denoise_paired': ex.denoise_paired
+    }
 )
 
 
