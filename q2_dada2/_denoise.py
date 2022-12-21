@@ -241,8 +241,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True, band_size = 16,
-                   kdist_cutoff = 0.42
+                   hashed_feature_ids: bool = True, band_size: int = 16,
+                   kdist_cutoff: float = 0.42
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -273,8 +273,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True, band_size = 16,
-                   kdist_cutoff = 0.42
+                   hashed_feature_ids: bool = True, band_size: int = 16,
+                   kdist_cutoff: float = 0.42
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
@@ -369,8 +369,8 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  min_fold_parent_over_abundance: float = 1.0,
                  allow_one_off: bool = False,
                  n_threads: int = 1, n_reads_learn: int = 250000,
-                 hashed_feature_ids: bool = True, band_size = 32,
-                 kdist_cutoff = 0.42
+                 hashed_feature_ids: bool = True, band_size: int = 32,
+                 kdist_cutoff: float = 0.42
                  ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -401,8 +401,8 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 min_fold_parent_over_abundance: float = 3.5,
                 allow_one_off: bool = False,
                 n_threads: int = 1, n_reads_learn: int = 1000000,
-                hashed_feature_ids: bool = True, band_size = 32,
-                kdist_cutoff = 0.42
+                hashed_feature_ids: bool = True, band_size: int = 32,
+                kdist_cutoff: float = 0.42
                 ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
