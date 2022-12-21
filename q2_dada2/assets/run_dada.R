@@ -127,6 +127,14 @@
 #                 number turns off banding (i.e. full Needleman-Wunsch).
 #    Ex: 32
 #
+### SEQUENCE COMPARISON HEURISTICS ARGUMENTS ###
+#
+# 23) band_size - The default value of 0.42 was chosen to screen pairs of sequences that differ by >10\%, and was
+#                 calibrated on Illumina sequenced 16S amplicon data. The assumption is that sequences that differ by such a large
+#                 amount cannot be linked by amplicon errors (i.e. if you sequence one, you won't get a read of other) and so
+#                 careful (and costly) alignment is unnecessary.
+#    Ex: 0.42
+#
 
 # error handling -----------------
 options(error = function() {
@@ -201,8 +209,10 @@ option_list = list(
               help="The minimum number of reads to learn the error model from"),
   make_option(c("--homopolymer_gap_penalty"), action="store", default='NULL', type='character',
               help="The cost of gaps in homopolymer regions (>=3 repeated bases).Default is NULL, which causes homopolymer gaps to be treated as normal gaps."),
-  make_option(c("--band_size"), action="store", default='NULL', type='character',
-              help="When set, banded Needleman-Wunsch alignments are performed.")
+  make_option(c("--band_size"), action="store", default='16', type='character',
+              help="When set, banded Needleman-Wunsch alignments are performed."),
+  make_option(c("--kdist_cutoff"), action="store", default='0.42', type='character',
+              help="The default value of 0.42 was chosen to screen pairs of sequences that differ by >10%, and was calibrated on Illumina sequenced 16S amplicon data. The assumption is that sequences that differ by such a large amount cannot be linked by amplicon errors (i.e. if you sequence one, you won't get a read of other) and so careful (and costly) alignment is unnecessary.")
 )
 opt = parse_args(OptionParser(option_list=option_list))
 
@@ -246,6 +256,7 @@ if (opt$homopolymer_gap_penalty=='NULL'){
   }
 }
 BAND_SIZE <- if(opt$band_size=='NULL') NULL else as.integer(opt$band_size)
+KDIST_CUTOFF <- if(opt$kdist_cutoff=='NULL') NULL else as.numeric(opt$kdist_cutoff)
 
 ### VALIDATE ARGUMENTS ###
 # Input directory is expected to contain .fastq.gz file(s)
@@ -353,16 +364,16 @@ cat("3) Learning Error Rates\n")
 if(primer.removed.dir!='NULL'){#for CCS read analysis
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn,
                                       errorEstimationFunction=dada2:::PacBioErrfun,
-                                      multithread=multithread, BAND_SIZE=BAND_SIZE))
+                                      multithread=multithread, BAND_SIZE=BAND_SIZE, KDIST_CUTOFF=KDIST_CUTOFF))
 
 }else if(inp.dirR!='NULL'){#for paired read analysis
 
-  err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread))
-  errR <- suppressWarnings(learnErrors(filtsR, nreads=nreads.learn, multithread=multithread))
+  err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread, BAND_SIZE=BAND_SIZE, KDIST_CUTOFF=KDIST_CUTOFF))
+  errR <- suppressWarnings(learnErrors(filtsR, nreads=nreads.learn, multithread=multithread, BAND_SIZE=BAND_SIZE, KDIST_CUTOFF=KDIST_CUTOFF))
 
 }else{#for sinlge/pyro read analysis
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread,
-                                      HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE))
+                                      HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE, KDIST_CUTOFF=KDIST_CUTOFF))
 }
 
 ### PROCESS ALL SAMPLES ###
@@ -375,7 +386,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   for(j in seq(length(filts))) {
     drp <- derepFastq(filts[[j]])
     dds[[j]] <- dada(drp, err=err, multithread=multithread,HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
-                     BAND_SIZE=BAND_SIZE, verbose=FALSE)
+                     BAND_SIZE=BAND_SIZE, verbose=FALSE, KDIST_CUTOFF=KDIST_CUTOFF)
     cat(".")
   }
   cat("\n")
@@ -393,7 +404,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
       drp <- derepFastq(filts[[j]])
       dds[[j]] <- dada(drp, err=err, multithread=multithread,
                        priors=pseudo_priors, HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
-                       BAND_SIZE=BAND_SIZE, verbose=FALSE)
+                       BAND_SIZE=BAND_SIZE, verbose=FALSE, KDIST_CUTOFF=KDIST_CUTOFF)
       cat(".")
     }
     cat("\n")
@@ -406,13 +417,13 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   ddsF <- vector("list", length(filts))
   ddsR <- vector("list", length(filts))
   mergers <- vector("list", length(filts))
-  cat("3) Denoise samples ")
+  cat("4) Denoise samples ")
 
   for(j in seq(length(filts))) {
     drpF <- derepFastq(filts[[j]])
-    ddsF[[j]] <- dada(drpF, err=err, multithread=multithread, verbose=FALSE)
+    ddsF[[j]] <- dada(drpF, err=err, multithread=multithread, verbose=FALSE, BAND_SIZE=BAND_SIZE, KDIST_CUTOFF=KDIST_CUTOFF)
     drpR <- derepFastq(filtsR[[j]])
-    ddsR[[j]] <- dada(drpR, err=errR, multithread=multithread, verbose=FALSE)
+    ddsR[[j]] <- dada(drpR, err=errR, multithread=multithread, verbose=FALSE, BAND_SIZE=BAND_SIZE, KDIST_CUTOFF=KDIST_CUTOFF)
     cat(".")
   }
   cat("\n")
@@ -432,10 +443,10 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
     for(j in seq(length(filts))) {
       drpF <- derepFastq(filts[[j]])
       ddsF[[j]] <- dada(drpF, err=err, priors=pseudo_priorsF,
-                        multithread=multithread, verbose=FALSE)
+                        multithread=multithread, verbose=FALSE, BAND_SIZE=BAND_SIZE, KDIST_CUTOFF=KDIST_CUTOFF)
       drpR <- derepFastq(filtsR[[j]])
       ddsR[[j]] <- dada(drpR, err=errR, priors=pseudo_priorsR,
-                        multithread=multithread, verbose=FALSE)
+                        multithread=multithread, verbose=FALSE, BAND_SIZE=BAND_SIZE, KDIST_CUTOFF=KDIST_CUTOFF)
       cat(".")
     }
     cat("\n")

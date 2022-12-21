@@ -86,6 +86,7 @@ _valid_inputs = {
     'front': _SKIP,
     'adapter': _SKIP,
     'indels': _SKIP,
+    'kdist_cutoff': _SKIP,
 }
 
 
@@ -183,7 +184,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
                     min_fold_parent_over_abundance, allow_one_off,
                     n_threads, n_reads_learn, hashed_feature_ids,
-                    homopolymer_gap_penalty, band_size):
+                    homopolymer_gap_penalty, band_size, kdist_cutoff):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
@@ -215,7 +216,8 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                '--num_threads', str(n_threads),
                '--learn_min_reads', str(n_reads_learn),
                '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
-               '--band_size', str(band_size)]
+               '--band_size', str(band_size),
+               '--kdist_cutoff', str(kdist_cutoff)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -239,7 +241,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True
+                   hashed_feature_ids: bool = True, band_size = 16,
+                   kdist_cutoff = 0.42
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -256,7 +259,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='NULL',
-        band_size='16')
+        band_size=band_size,
+        kdist_cutoff=kdist_cutoff)
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -269,7 +273,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True
+                   hashed_feature_ids: bool = True, band_size = 16,
+                   kdist_cutoff = 0.42
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
@@ -321,7 +326,9 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                '--min_parental_fold', str(min_fold_parent_over_abundance),
                '--allow_one_off', str(allow_one_off),
                '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn)]
+               '--learn_min_reads', str(n_reads_learn),
+               '--band_size', str(band_size),
+               '--kdist_cutoff', str(kdist_cutoff)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -362,7 +369,8 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  min_fold_parent_over_abundance: float = 1.0,
                  allow_one_off: bool = False,
                  n_threads: int = 1, n_reads_learn: int = 250000,
-                 hashed_feature_ids: bool = True
+                 hashed_feature_ids: bool = True, band_size = 32,
+                 kdist_cutoff = 0.42
                  ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -379,7 +387,8 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='1',
-        band_size='32')
+        band_size=band_size,
+        kdist_cutoff=kdist_cutoff)
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -392,7 +401,8 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 min_fold_parent_over_abundance: float = 3.5,
                 allow_one_off: bool = False,
                 n_threads: int = 1, n_reads_learn: int = 1000000,
-                hashed_feature_ids: bool = True
+                hashed_feature_ids: bool = True, band_size = 32,
+                kdist_cutoff = 0.42
                 ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
@@ -435,7 +445,8 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                '--num_threads', str(n_threads),
                '--learn_min_reads', str(n_reads_learn),
                '--homopolymer_gap_penalty', 'NULL',
-               '--band_size', '32']
+               '--band_size', str(band_size),
+               '--kdist_cutoff', str(kdist_cutoff)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:

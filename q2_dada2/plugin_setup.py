@@ -50,7 +50,9 @@ plugin.methods.register_function(
                 'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
-                'hashed_feature_ids': qiime2.plugin.Bool},
+                'hashed_feature_ids': qiime2.plugin.Bool,
+                'band_size': qiime2.plugin.Int,
+                'kdist_cutoff': qiime2.plugin.Float},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats])],
@@ -119,7 +121,23 @@ plugin.methods.register_function(
                                'so this allows feature tables to be merged '
                                'across runs of this method. You should only '
                                'merge tables if the exact same parameters are '
-                               'used for each run.')
+                               'used for each run.'),
+        'band_size': ('When set, banded Needleman-Wunsch alignments are '
+                      'performed. Banding restricts the net cumulative number '
+                      'of insertion of one sequence relative to the other. The '
+                      'default value of BAND_SIZE is 16. If DADA is applied to '
+                      'sequencing technologies with high rates of indels, such '
+                      'as 454 sequencing, the BAND_SIZE parameter should be '
+                      'increased. Setting BAND_SIZE to a negative number turns '
+                      'off banding (i.e. full Needleman-Wunsch)'),
+        'kdist_cutoff': ('The default value of 0.42 was chosen to screen pairs '
+                         'of sequences that differ by >10\%, and was calibrated'
+                         ' on Illumina sequenced 16S amplicon data. The '
+                         'assumption is that sequences that differ by such a '
+                         'large amount cannot be linked by amplicon errors '
+                         '(i.e. if you sequence one, you won\'t get a read of '
+                         'other) and so careful (and costly) alignment is '
+                         'unnecessary.')
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -157,7 +175,9 @@ plugin.methods.register_function(
                 'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
-                'hashed_feature_ids': qiime2.plugin.Bool},
+                'hashed_feature_ids': qiime2.plugin.Bool,
+                'band_size': qiime2.plugin.Int,
+                'kdist_cutoff': qiime2.plugin.Float},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats])],
@@ -247,7 +267,23 @@ plugin.methods.register_function(
                                'so this allows feature tables to be merged '
                                'across runs of this method. You should only '
                                'merge tables if the exact same parameters are '
-                               'used for each run.')
+                               'used for each run.'),
+        'band_size': ('When set, banded Needleman-Wunsch alignments are '
+                      'performed. Banding restricts the net cumulative number '
+                      'of insertion of one sequence relative to the other. The '
+                      'default value of BAND_SIZE is 16. If DADA is applied to '
+                      'sequencing technologies with high rates of indels, such '
+                      'as 454 sequencing, the BAND_SIZE parameter should be '
+                      'increased. Setting BAND_SIZE to a negative number turns '
+                      'off banding (i.e. full Needleman-Wunsch)'),
+        'kdist_cutoff': ('The default value of 0.42 was chosen to screen pairs '
+                         'of sequences that differ by >10\%, and was calibrated'
+                         ' on Illumina sequenced 16S amplicon data. The '
+                         'assumption is that sequences that differ by such a '
+                         'large amount cannot be linked by amplicon errors '
+                         '(i.e. if you sequence one, you won\'t get a read of '
+                         'other) and so careful (and costly) alignment is '
+                         'unnecessary.')
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -279,7 +315,9 @@ plugin.methods.register_function(
                 'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
-                'hashed_feature_ids': qiime2.plugin.Bool},
+                'hashed_feature_ids': qiime2.plugin.Bool,
+                'band_size': qiime2.plugin.Int,
+                'kdist_cutoff': qiime2.plugin.Float},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats])],
@@ -350,7 +388,23 @@ plugin.methods.register_function(
                               'so this allows feature tables to be merged '
                               'across runs of this method. You should only '
                               'merge tables if the exact same parameters are '
-                              'used for each run.'
+                              'used for each run.',
+       'band_size': ('When set, banded Needleman-Wunsch alignments are '
+                     'performed. Banding restricts the net cumulative number '
+                     'of insertion of one sequence relative to the other. The '
+                     'default value of BAND_SIZE is 16. If DADA is applied to '
+                     'sequencing technologies with high rates of indels, such '
+                     'as 454 sequencing, the BAND_SIZE parameter should be '
+                     'increased. Setting BAND_SIZE to a negative number turns '
+                     'off banding (i.e. full Needleman-Wunsch)'),
+       'kdist_cutoff': ('The default value of 0.42 was chosen to screen pairs '
+                        'of sequences that differ by >10\%, and was calibrated'
+                        ' on Illumina sequenced 16S amplicon data. The '
+                        'assumption is that sequences that differ by such a '
+                        'large amount cannot be linked by amplicon errors '
+                        '(i.e. if you sequence one, you won\'t get a read of '
+                        'other) and so careful (and costly) alignment is '
+                        'unnecessary.')
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -385,7 +439,9 @@ plugin.methods.register_function(
                 'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
-                'hashed_feature_ids': qiime2.plugin.Bool},
+                'hashed_feature_ids': qiime2.plugin.Bool,
+                'band_size': qiime2.plugin.Int,
+                'kdist_cutoff': qiime2.plugin.Float},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats])],
@@ -482,7 +538,23 @@ plugin.methods.register_function(
                               'so this allows feature tables to be merged '
                               'across runs of this method. You should only '
                               'merge tables if the exact same parameters are '
-                              'used for each run.'
+                              'used for each run.',
+       'band_size': ('When set, banded Needleman-Wunsch alignments are '
+                     'performed. Banding restricts the net cumulative number '
+                     'of insertion of one sequence relative to the other. The '
+                     'default value of BAND_SIZE is 16. If DADA is applied to '
+                     'sequencing technologies with high rates of indels, such '
+                     'as 454 sequencing, the BAND_SIZE parameter should be '
+                     'increased. Setting BAND_SIZE to a negative number turns '
+                     'off banding (i.e. full Needleman-Wunsch)'),
+       'kdist_cutoff': ('The default value of 0.42 was chosen to screen pairs '
+                        'of sequences that differ by >10\%, and was calibrated'
+                        ' on Illumina sequenced 16S amplicon data. The '
+                        'assumption is that sequences that differ by such a '
+                        'large amount cannot be linked by amplicon errors '
+                        '(i.e. if you sequence one, you won\'t get a read of '
+                        'other) and so careful (and costly) alignment is '
+                        'unnecessary.')
     },
     output_descriptions={
         'table': 'The resulting feature table.',
