@@ -131,8 +131,7 @@ plugin.methods.register_function(
     description=('This method denoises single-end sequences, dereplicates '
                  'them, and filters chimeras.'),
     examples={
-        'denoise_single': ex.denoise_single,
-        'denoise_paired': ex.denoise_paired
+        'denoise_single': ex.denoise_single
     }
 )
 
@@ -259,7 +258,10 @@ plugin.methods.register_function(
     },
     name='Denoise and dereplicate paired-end sequences',
     description=('This method denoises paired-end sequences, dereplicates '
-                 'them, and filters chimeras.')
+                 'them, and filters chimeras.'),
+    examples={
+        'denoise_paired': ex.denoise_paired
+    }
 )
 
 
