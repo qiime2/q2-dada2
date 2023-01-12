@@ -43,8 +43,8 @@ def denoise_paired(use):
         use.UsageAction('dada2', 'denoise_paired'),
         use.UsageInputs(
             demultiplexed_seqs=demux_paired,
-            trunc_len_f=120,
-            trunc_len_r=120,
+            trunc_len_f=150,
+            trunc_len_r=140,
         ),
         use.UsageOutputNames(
             representative_sequences='representative_sequences',
