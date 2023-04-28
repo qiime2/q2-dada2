@@ -1,5 +1,5 @@
 {% set data = load_setup_py_data() %}
-{% set version = data.get('version') or 'placehold' %}
+{% set version = '2022.2.1.dev50' %}
 
 package:
   name: q2-dada2
