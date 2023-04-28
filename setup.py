@@ -13,7 +13,7 @@ import versioneer
 
 setup(
     name="q2-dada2",
-    version=versioneer.get_version(),
+    version="2022.2.1.dev50",
     cmdclass=versioneer.get_cmdclass(),
     url="https://qiime2.org",
     license="BSD-3-Clause",
