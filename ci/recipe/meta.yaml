@@ -34,6 +34,8 @@ requirements:
     - q2-types {{ qiime2_epoch }}.*
 
 test:
+  commands:
+    - py.test --pyargs q2_dada2
   requires:
     - qiime2 >={{ qiime2 }}
     - q2-types >={{ q2_types }}
