@@ -43,6 +43,9 @@ test:
     - q2_dada2
     - qiime2.plugins.dada2
 
+  commands:
+    - py.test --pyargs q2_dada2
+
 about:
   home: https://qiime2.org
   license: BSD-3-Clause
