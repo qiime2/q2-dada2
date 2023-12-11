@@ -128,6 +128,16 @@
 #    Ex: 32
 #
 
+# error handling -----------------
+options(error = function() {
+  sink(stderr())
+  on.exit(sink(NULL))
+  traceback(3)
+  if (!interactive()) {
+    q(status = 1)
+  }
+})
+
 library("optparse")
 
 cat(R.version$version.string, "\n")
@@ -222,7 +232,7 @@ minOverlap <- if(opt$min_overlap=='NULL') NULL else as.integer(opt$min_overlap) 
 poolMethod <- opt$pooling_method
 chimeraMethod <- opt$chimera_method
 minParentFold <- if(opt$min_parental_fold=='NULL') NULL else as.numeric(opt$min_parental_fold)
-allowOneOff <-if(opt$allow_one_off=='NULL') NULL else as.logical(opt$allow_one_off) 
+allowOneOff <-if(opt$allow_one_off=='NULL') NULL else as.logical(opt$allow_one_off)
 nthreads <- if(opt$num_threads=='NULL') NULL else as.integer(opt$num_threads)
 nreads.learn <- if(opt$learn_min_reads=='NULL') NULL else as.integer(opt$learn_min_reads)
 # The following args are not directly exposed to end users in q2-dada2,
@@ -256,7 +266,7 @@ if(!dir.exists(inp.dir)) {
     if(length(unfilts) != length(unfiltsR)) {
       errQuit("Different numbers of forward and reverse .fastq.gz files.")
     }
-    
+
   }
 
 }
@@ -311,7 +321,7 @@ if(primer.removed.dir!='NULL'){ #for CCS read analysis
   out <- suppressWarnings(filterAndTrim(nop, filts, truncLen = truncLen, trimLeft = trimLeft,
                                         maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
                                         multithread = multithread, maxLen = maxLen, minLen = minLen, minQ = 3))
-}else{  
+}else{
   filts <- file.path(filtered.dir, basename(unfilts))
   if(inp.dirR!='NULL'){#for paired read analysis
     filtsR <- file.path(filtered.dirR, basename(unfiltsR))
@@ -346,10 +356,10 @@ if(primer.removed.dir!='NULL'){#for CCS read analysis
                                       multithread=multithread, BAND_SIZE=BAND_SIZE))
 
 }else if(inp.dirR!='NULL'){#for paired read analysis
-  
+
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread))
   errR <- suppressWarnings(learnErrors(filtsR, nreads=nreads.learn, multithread=multithread))
-  
+
 }else{#for sinlge/pyro read analysis
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread,
                                       HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE))
@@ -397,7 +407,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   ddsR <- vector("list", length(filts))
   mergers <- vector("list", length(filts))
   cat("3) Denoise samples ")
-  
+
   for(j in seq(length(filts))) {
     drpF <- derepFastq(filts[[j]])
     ddsF[[j]] <- dada(drpF, err=err, multithread=multithread, verbose=FALSE)
@@ -431,7 +441,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
     cat("\n")
     ### \code copied from previous loop through samples in this script
   }
-  
+
   ### Now loop through and do merging
   for(j in seq(length(filts))) {
     drpF <- derepFastq(filts[[j]])
@@ -443,7 +453,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   cat("\n")
   # Make sequence table
   seqtab <- makeSequenceTable(mergers)
-  
+
 }
 
 

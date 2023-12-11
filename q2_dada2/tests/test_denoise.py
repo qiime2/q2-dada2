@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016-2022, QIIME 2 development team.
+# Copyright (c) 2016-2023, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -26,6 +26,13 @@ def _sort_seqs(seqs):
 
 def _sort_table(table):
     return table.sort(axis="sample").sort(axis="observation")
+
+class TestExamples(TestPluginBase):
+    package = 'q2_dada2.tests'
+
+    def test_examples(self):
+        self.execute_examples()
+
 
 
 class TestDenoiseSingle(TestPluginBase):
@@ -74,6 +81,14 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
+
+    def test_mixed_barcodes_and_ids(self):
+        demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
+            self.get_data_path('mixed_barcodes_and_ids'), 'r')
+
+        denoise_paired(demux_seqs, 150, 150)
+
+        self.assertTrue(True)
 
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):

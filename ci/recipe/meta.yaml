@@ -19,7 +19,8 @@ requirements:
   run:
     - python {{ python }}
     - biom-format {{ biom_format }}
-    - bioconductor-dada2 1.22.0
+    - bioconductor-dada2
+    - r-base {{ r_base }}
     - r-optparse >=1.7.1
     # openjdk is not a real dependency, but, r-base has a post-link and post-
     # activation hook that calls R CMD javareconf, which pokes around for any
@@ -41,6 +42,9 @@ test:
   imports:
     - q2_dada2
     - qiime2.plugins.dada2
+
+  commands:
+    - py.test --pyargs q2_dada2
 
 about:
   home: https://qiime2.org

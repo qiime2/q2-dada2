@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# Copyright (c) 2016-2022, QIIME 2 development team.
+# Copyright (c) 2016-2023, QIIME 2 development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -16,6 +16,7 @@ from q2_types.feature_table import FeatureTable, Frequency
 
 import q2_dada2
 from q2_dada2 import DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt
+import q2_dada2._examples as ex
 
 _POOL_OPT = {'pseudo', 'independent'}
 _CHIM_OPT = {'pooled', 'consensus', 'none'}
@@ -133,7 +134,10 @@ plugin.methods.register_function(
     },
     name='Denoise and dereplicate single-end sequences',
     description=('This method denoises single-end sequences, dereplicates '
-                 'them, and filters chimeras.')
+                 'them, and filters chimeras.'),
+    examples={
+        'denoise_single': ex.denoise_single
+    }
 )
 
 
@@ -264,7 +268,10 @@ plugin.methods.register_function(
     },
     name='Denoise and dereplicate paired-end sequences',
     description=('This method denoises paired-end sequences, dereplicates '
-                 'them, and filters chimeras.')
+                 'them, and filters chimeras.'),
+    examples={
+        'denoise_paired': ex.denoise_paired
+    }
 )
 
 
@@ -315,7 +322,7 @@ plugin.methods.register_function(
                    'longer than this value. If 0 is provided no reads will '
                    'be removed based on length.',
         'pooling_method': 'The method used to pool samples for denoising. '
-                          '"independent": Samples are denoised indpendently. '
+                          '"independent": Samples are denoised independently. '
                           '"pseudo": The pseudo-pooling method is used to '
                           'approximate pooling of samples. In short, samples '
                           'are denoised independently once, ASVs detected '
