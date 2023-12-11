@@ -367,6 +367,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
                                retain_all_samples, paired=True)
 
+
 def _remove_barcode(filename):
     cut = filename.rsplit('_', 3)
     id_ = cut[0].rsplit('_', 1)[0]
@@ -475,4 +476,5 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
+                               retain_all_samples)
