@@ -502,9 +502,9 @@ plugin.methods.register_function(
                               'merge tables if the exact same parameters are '
                               'used for each run.',
         'retain_all_samples': 'If True all samples input to dada2 will be '
-                                'retained in the output of dada2, if false '
-                                'samples with zero total frequency are removed '
-                                'from the table.'
+                              'retained in the output of dada2, if false '
+                              'samples with zero total frequency are removed '
+                              'from the table.'
     },
     output_descriptions={
         'table': 'The resulting feature table.',

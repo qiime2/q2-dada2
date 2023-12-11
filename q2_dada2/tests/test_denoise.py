@@ -27,12 +27,12 @@ def _sort_seqs(seqs):
 def _sort_table(table):
     return table.sort(axis="sample").sort(axis="observation")
 
+
 class TestExamples(TestPluginBase):
     package = 'q2_dada2.tests'
 
     def test_examples(self):
         self.execute_examples()
-
 
 
 class TestDenoiseSingle(TestPluginBase):

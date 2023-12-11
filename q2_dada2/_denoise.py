@@ -114,7 +114,8 @@ def _filepath_to_sample_paired(fp):
 # to have occurred in the calling functions, this is primarily for making
 # sure that DADA2 is able to do what it needs to do.
 
-def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, paired=False, retain_all_samples):
+def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples,
+                    paired=False):
 
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
