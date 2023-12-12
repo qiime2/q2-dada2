@@ -391,7 +391,10 @@ class TestDenoiseCCS(TestPluginBase):
                                   front="AGRGTTYGATYMTGGCTCAG",
                                   adapter="RGYTACCTTGTTACGACTT",)
 
-        self.assertEqual(table, exp_table)
+        self.assertEqual(
+                         table,
+                         exp_table.sort_order(table.ids('observation'),
+                                              axis='observation'))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
