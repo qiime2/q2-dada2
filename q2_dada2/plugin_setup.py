@@ -50,7 +50,8 @@ plugin.methods.register_function(
                 'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
-                'hashed_feature_ids': qiime2.plugin.Bool},
+                'hashed_feature_ids': qiime2.plugin.Bool,
+                'retain_all_samples': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats])],
@@ -119,7 +120,11 @@ plugin.methods.register_function(
                                'so this allows feature tables to be merged '
                                'across runs of this method. You should only '
                                'merge tables if the exact same parameters are '
-                               'used for each run.')
+                               'used for each run.'),
+        'retain_all_samples': 'If True all samples input to dada2 will be '
+                              'retained in the output of dada2, if false '
+                              'samples with zero total frequency are removed '
+                              'from the table.'
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -156,7 +161,8 @@ plugin.methods.register_function(
                 'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
-                'hashed_feature_ids': qiime2.plugin.Bool},
+                'hashed_feature_ids': qiime2.plugin.Bool,
+                'retain_all_samples': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats])],
@@ -246,7 +252,11 @@ plugin.methods.register_function(
                                'so this allows feature tables to be merged '
                                'across runs of this method. You should only '
                                'merge tables if the exact same parameters are '
-                               'used for each run.')
+                               'used for each run.'),
+        'retain_all_samples': 'If True all samples input to dada2 will be '
+                              'retained in the output of dada2, if false '
+                              'samples with zero total frequency are removed '
+                              'from the table.'
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -281,7 +291,8 @@ plugin.methods.register_function(
                 'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
-                'hashed_feature_ids': qiime2.plugin.Bool},
+                'hashed_feature_ids': qiime2.plugin.Bool,
+                'retain_all_samples': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats])],
@@ -352,7 +363,11 @@ plugin.methods.register_function(
                               'so this allows feature tables to be merged '
                               'across runs of this method. You should only '
                               'merge tables if the exact same parameters are '
-                              'used for each run.'
+                              'used for each run.',
+        'retain_all_samples': 'If True all samples input to dada2 will be '
+                              'retained in the output of dada2, if false '
+                              'samples with zero total frequency are removed '
+                              'from the table.'
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -387,7 +402,8 @@ plugin.methods.register_function(
                 'allow_one_off': qiime2.plugin.Bool,
                 'n_threads': qiime2.plugin.Int,
                 'n_reads_learn': qiime2.plugin.Int,
-                'hashed_feature_ids': qiime2.plugin.Bool},
+                'hashed_feature_ids': qiime2.plugin.Bool,
+                'retain_all_samples': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats])],
@@ -484,7 +500,11 @@ plugin.methods.register_function(
                               'so this allows feature tables to be merged '
                               'across runs of this method. You should only '
                               'merge tables if the exact same parameters are '
-                              'used for each run.'
+                              'used for each run.',
+        'retain_all_samples': 'If True all samples input to dada2 will be '
+                              'retained in the output of dada2, if false '
+                              'samples with zero total frequency are removed '
+                              'from the table.'
     },
     output_descriptions={
         'table': 'The resulting feature table.',

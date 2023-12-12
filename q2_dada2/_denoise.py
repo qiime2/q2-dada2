@@ -15,6 +15,7 @@ import biom
 import skbio
 import qiime2.util
 import pandas as pd
+import numpy as np
 
 from q2_types.feature_data import DNAIterator
 from q2_types.per_sample_sequences import (
@@ -55,6 +56,7 @@ _CHIM_STR = (lambda x: x in {'pooled', 'consensus', 'none'},
 _BOOLEAN = (lambda x: type(x) is bool, 'True or False')
 # Better to choose to skip, than to implicitly ignore things that KeyError
 _SKIP = (lambda x: True, '')
+_BOOL = (lambda x: isinstance(x, bool), "Boolean")
 _valid_inputs = {
     'trunc_len': _WHOLE_NUM,
     'trunc_len_f': _WHOLE_NUM,
@@ -83,6 +85,7 @@ _valid_inputs = {
     'demultiplexed_seqs': _SKIP,
     'homopolymer_gap_penalty': _SKIP,
     'band_size': _SKIP,
+    'retain_all_samples': _BOOL,
     'front': _SKIP,
     'adapter': _SKIP,
     'indels': _SKIP,
@@ -110,7 +113,10 @@ def _filepath_to_sample_paired(fp):
 # the bulk of the functionality to this helper util. Typechecking is assumed
 # to have occurred in the calling functions, this is primarily for making
 # sure that DADA2 is able to do what it needs to do.
-def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, paired=False):
+
+def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples,
+                    paired=False):
+
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
         table = biom.Table.from_tsv(fh, None, None, None)
@@ -163,6 +169,20 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, paired=False):
     sid_map = {id_: filepath_to_sample(id_)
                for id_ in table.ids(axis='sample')}
     table.update_ids(sid_map, axis='sample', inplace=True)
+    # Reintroduce empty samples dropped by dada2.
+    table_cols = table.ids(axis='observation')
+    table_rows = list(set(df.index) - set(table.ids()))
+    table_to_add = biom.Table(np.zeros((len(table_cols), len(table_rows))),
+                              table_cols, table_rows,
+                              type="OTU table")
+    table = table.concat(table_to_add)
+    # This is necissary (instead of just not reintroducing above)
+    # dada2 will discard samples which are empty after filtering
+    # but will keep samples that are empty after merging
+    # so there are potentially samples removed here that were not
+    # reintroduced above!
+    if not retain_all_samples:
+        table = table.remove_empty(axis="sample", inplace=False)
     # The feature IDs in DADA2 are the sequences themselves.
     if hashed_feature_ids:
         # Make feature IDs the md5 sums of the sequences.
@@ -183,7 +203,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
                     min_fold_parent_over_abundance, allow_one_off,
                     n_threads, n_reads_learn, hashed_feature_ids,
-                    homopolymer_gap_penalty, band_size):
+                    homopolymer_gap_penalty, band_size, retain_all_samples):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
@@ -229,7 +249,8 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
+                               retain_all_samples)
 
 
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -239,7 +260,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True
+                   hashed_feature_ids: bool = True,
+                   retain_all_samples: bool = True
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -256,7 +278,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='NULL',
-        band_size='16')
+        band_size='16',
+        retain_all_samples=retain_all_samples)
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -269,7 +292,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
-                   hashed_feature_ids: bool = True
+                   hashed_feature_ids: bool = True,
+                   retain_all_samples: bool = True
                    ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
@@ -341,7 +365,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                                 " and stderr to learn more." % e.returncode)
 
         return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
-                               paired=True)
+                               retain_all_samples, paired=True)
 
 
 def _remove_barcode(filename):
@@ -362,7 +386,8 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  min_fold_parent_over_abundance: float = 1.0,
                  allow_one_off: bool = False,
                  n_threads: int = 1, n_reads_learn: int = 250000,
-                 hashed_feature_ids: bool = True
+                 hashed_feature_ids: bool = True,
+                 retain_all_samples: bool = True
                  ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     return _denoise_single(
         demultiplexed_seqs=demultiplexed_seqs,
@@ -379,7 +404,8 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='1',
-        band_size='32')
+        band_size='32',
+        retain_all_samples=retain_all_samples)
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -392,7 +418,8 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 min_fold_parent_over_abundance: float = 3.5,
                 allow_one_off: bool = False,
                 n_threads: int = 1, n_reads_learn: int = 1000000,
-                hashed_feature_ids: bool = True
+                hashed_feature_ids: bool = True,
+                retain_all_samples: bool = True
                 ) -> (biom.Table, DNAIterator, qiime2.Metadata):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
@@ -449,4 +476,5 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids)
+        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
+                               retain_all_samples)
