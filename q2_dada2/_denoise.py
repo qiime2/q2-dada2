@@ -178,7 +178,7 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples,
         table_to_add = biom.Table(np.zeros((len(table_cols), len(table_rows))),
                                   table_cols, table_rows, type="OTU table")
         table = table.concat(table_to_add)
-    # This is necissary (instead of just not reintroducing above)
+    # This is necessary (instead of just not reintroducing above)
     # dada2 will discard samples which are empty after filtering
     # but will keep samples that are empty after merging
     # so there are potentially samples removed here that were not
