@@ -375,28 +375,72 @@ class TestDenoiseCCS(TestPluginBase):
         self.demux_seqs = SingleLanePerSampleSingleEndFastqDirFmt(
             self.get_data_path('sample_seqs_ccs'), 'r')
 
-    def test_defaults(self):
+    def test_default(self):
         with open(self.get_data_path('expected/ccs-default.tsv')) as fh:
             exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+
         exp_rep_seqs = list(
-            skbio.io.read(self.get_data_path('expected/ccs-default.fasta'),
-                          'fasta', constructor=skbio.DNA))
+            skbio.io.read(
+                self.get_data_path('expected/ccs-default.fasta'),
+                'fasta',
+                constructor=skbio.DNA
+            )
+        )
+
         for seq in exp_rep_seqs:
             del seq.metadata['description']
+
         exp_md = qiime2.Metadata.load(
-            self.get_data_path('expected/ccs-default-stats.tsv'))
+            self.get_data_path('expected/ccs-default-stats.tsv')
+        )
 
         table, rep_seqs, md = denoise_ccs(
-                                  self.demux_seqs,
-                                  front="AGRGTTYGATYMTGGCTCAG",
-                                  adapter="RGYTACCTTGTTACGACTT",)
+            self.demux_seqs, front="AGRGTTYGATYMTGGCTCAG"
+        )
 
         self.assertEqual(
-                         table,
-                         exp_table.sort_order(table.ids('observation'),
-                                              axis='observation'))
-        self.assertEqual(_sort_seqs(rep_seqs),
-                         _sort_seqs(exp_rep_seqs))
+            table,
+            exp_table.sort_order(
+                table.ids('observation'),
+                axis='observation'
+            )
+        )
+        self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
+
+    def test_with_reverse_primer(self):
+        with open(self.get_data_path('expected/ccs-reverse-primer.tsv')) as fh:
+            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+
+        exp_rep_seqs = list(
+            skbio.io.read(
+                self.get_data_path('expected/ccs-reverse-primer.fasta'),
+                'fasta',
+                constructor=skbio.DNA
+            )
+        )
+
+        for seq in exp_rep_seqs:
+            del seq.metadata['description']
+
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/ccs-reverse-primer-stats.tsv')
+        )
+
+        table, rep_seqs, md = denoise_ccs(
+            self.demux_seqs,
+            front="AGRGTTYGATYMTGGCTCAG",
+            adapter="RGYTACCTTGTTACGACTT"
+        )
+
+        self.assertEqual(
+            table,
+            exp_table.sort_order(
+                table.ids('observation'),
+                axis='observation'
+            )
+        )
+        self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         self.assertEqual(md, exp_md)
 
 

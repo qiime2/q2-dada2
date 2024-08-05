@@ -8,6 +8,7 @@
 
 import os
 import tempfile
+from typing import Optional
 import hashlib
 import subprocess
 
@@ -409,9 +410,9 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-                front: str, adapter: str,  max_mismatch: int = 2,
-                indels: bool = False, trunc_len: int = 0,
-                trim_left: int = 0, max_ee: float = 2.0,
+                front: str, adapter: Optional[str] = None,
+                max_mismatch: int = 2, indels: bool = False,
+                trunc_len: int = 0, trim_left: int = 0, max_ee: float = 2.0,
                 trunc_q: int = 2, min_len: int = 20, max_len: int = 0,
                 pooling_method: str = 'independent',
                 chimera_method: str = 'consensus',
@@ -446,7 +447,6 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                '--removed_primer_directory', nop_fp,
                '--filtered_directory', filt_fp,
                '--forward_primer', str(front),
-               '--reverse_primer', str(adapter),
                '--max_mismatch', str(max_mismatch),
                '--indels', str(indels),
                '--truncation_length', str(trunc_len),
@@ -463,6 +463,10 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                '--learn_min_reads', str(n_reads_learn),
                '--homopolymer_gap_penalty', 'NULL',
                '--band_size', '32']
+
+        if adapter is not None:
+            cmd += ['--reverse_primer', str(adapter)]
+
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
