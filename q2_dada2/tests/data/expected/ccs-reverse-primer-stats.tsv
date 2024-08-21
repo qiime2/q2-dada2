@@ -1,0 +1,11 @@
+sample-id	input	primer-removed	percentage of input primer-removed	filtered	percentage of input passed filter	denoised	non-chimeric	percentage of input non-chimeric
+#q2:types	numeric	numeric	numeric	numeric	numeric	numeric	numeric	numeric
+R11_1_P2C2	200	158	79	137	68.5	89	89	44.5
+R3_1_P2C2	200	152	76	119	59.5	90	90	45
+R3_2_P2C2	200	160	80	124	62	89	89	44.5
+R3_3_P2C2	200	164	82	127	63.5	99	99	49.5
+R9_1_P2C2	200	152	76	118	59	96	96	48
+R9_1B_P2C2	200	164	82	138	69	90	90	45
+R9_2_P2C2	200	152	76	124	62	68	68	34
+R9_3_P2C2	200	151	75.5	124	62	49	49	24.5
+R9_4_P2C2	200	160	80	132	66	51	51	25.5

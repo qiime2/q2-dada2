@@ -303,7 +303,14 @@ cat("DADA2:", as.character(packageVersion("dada2")), "/",
 if(primer.removed.dir!='NULL'){ #for CCS read analysis
   cat("1) Removing Primers\n")
   nop <- file.path(primer.removed.dir, basename(unfilts))
-  prim <- suppressWarnings(removePrimers(unfilts, nop, primer, dada2:::rc(primerR),
+
+  # reverse complement reverse primer only if provided
+  if (primerR != 'NULL') {
+    primerR <- dada2::rc(primerR)
+  } else {
+    primerR <- NULL
+  }
+  prim <- suppressWarnings(removePrimers(unfilts, nop, primer, primerR,
                                          max.mismatch = maxMismatch, allow.indels = indels,
                                          orient = TRUE, verbose = TRUE))
   cat(ifelse(file.exists(nop), ".", "x"), sep="")
