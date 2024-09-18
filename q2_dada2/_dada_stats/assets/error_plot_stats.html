@@ -1,0 +1,46 @@
+{% extends "tab-child.html" %}
+
+{% block content %}
+
+<style>
+        #imager {
+            display: flex;
+            justify-content: center; 
+            gap: 20px; 
+        }
+        #imager img {
+            max-width: 700px; 
+            height: 700px;     
+            padding: 10px;
+            border: 1px solid black; 
+        }
+</style>
+
+
+{% for index in range(graph_paths|length) %}
+
+<body>
+    <h1 ALIGN=CENTER>
+        {% if graph_paths|length == 1 %}
+    
+                DADA2 Error Plot<br>
+    
+        {% else %}
+            {% if index == 0 %}
+                    Forward Read DADA2 Error Plot<br>
+            {% else %}
+                    Reverse Read DADA2 Error Plot<br>
+            {% endif %}
+            
+        {% endif %}
+    </h1>
+
+    <div id=imager>
+        <div>
+        <img src='{{graph_paths[index]}}' >
+        </div>
+    </div>
+</body>
+{% endfor %}
+
+{% endblock %}

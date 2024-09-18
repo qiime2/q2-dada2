@@ -33,7 +33,7 @@ def denoise_single(use):
 
     rep_seqs.assert_output_type('FeatureData[Sequence]')
     table_dada2.assert_output_type('FeatureTable[Frequency]')
-    denoise_stats.assert_output_type('SampleData[DADA2Stats]')
+    denoise_stats.assert_output_type('Collection[SampleData[DADA2Stats]]')
 
 
 def denoise_paired(use):
@@ -55,4 +55,4 @@ def denoise_paired(use):
 
     rep_seqs.assert_output_type('FeatureData[Sequence]')
     table_dada2.assert_output_type('FeatureTable[Frequency]')
-    denoise_stats.assert_output_type('SampleData[DADA2Stats]')
+    denoise_stats.assert_output_type('Collection[SampleData[DADA2Stats]]')

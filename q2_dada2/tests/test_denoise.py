@@ -57,7 +57,8 @@ class TestDenoiseSingle(TestPluginBase):
         table, rep_seqs, md = denoise_single(self.demux_seqs, 100)
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_override(self):
         with open(self.get_data_path('expected/single-override.tsv')) as fh:
@@ -80,7 +81,8 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_mixed_barcodes_and_ids(self):
         demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
@@ -138,7 +140,8 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_no_chimera_method(self):
         with open(self.get_data_path('expected/single-default.tsv')) as fh:
@@ -158,7 +161,8 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
 
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_pseudo_pooling(self):
         with open(self.get_data_path('expected/single-pseudo.tsv')) as fh:
@@ -178,7 +182,8 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
 
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
 
 class TestDenoisePaired(TestPluginBase):
@@ -205,7 +210,8 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_remove_empty(self):
         with open(self.get_data_path('expected/paired-remove-empty-default.tsv'
@@ -225,7 +231,8 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_override(self):
         with open(self.get_data_path('expected/paired-override.tsv')) as fh:
@@ -249,7 +256,8 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):
@@ -306,7 +314,8 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
 
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
@@ -339,7 +348,8 @@ class TestDenoisePyro(TestPluginBase):
             exp_table.sort_order(table.ids('observation'), axis='observation'))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_trunc_len_bigger_than_max_len(self):
         with self.assertRaisesRegex(ValueError, 'max_len'):
@@ -406,7 +416,8 @@ class TestDenoiseCCS(TestPluginBase):
             )
         )
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
     def test_with_reverse_primer(self):
         with open(self.get_data_path('expected/ccs-reverse-primer.tsv')) as fh:
@@ -441,7 +452,8 @@ class TestDenoiseCCS(TestPluginBase):
             )
         )
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = dict(md)["Denoised_Read_Stats"]
+        self.assertEqual(read_stats_md, exp_md)
 
 
 if __name__ == '__main__':

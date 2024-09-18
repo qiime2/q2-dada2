@@ -115,7 +115,8 @@ def _filepath_to_sample_paired(fp):
 # to have occurred in the calling functions, this is primarily for making
 # sure that DADA2 is able to do what it needs to do.
 
-def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples,
+def _denoise_helper(biom_fp, track_fp, err_track_fp,
+                    hashed_feature_ids, retain_all_samples,
                     paired=False):
 
     _check_featureless_table(biom_fp)
@@ -165,6 +166,12 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples,
     df = df.round(round_cols)
     metadata = qiime2.Metadata(df)
 
+    # reads in error plot df
+    df_err = pd.read_csv(err_track_fp, sep='\t', index_col=0)
+    df_err.index.name = 'id'
+    df_err.index = df_err.index.astype(str)
+    metadata_err = qiime2.Metadata(df_err)
+
     # Currently the sample IDs in DADA2 are the file names. We make
     # them the sample id part of the filename here.
     sid_map = {id_: filepath_to_sample(id_)
@@ -199,7 +206,10 @@ def _denoise_helper(biom_fp, track_fp, hashed_feature_ids, retain_all_samples,
         rep_sequences = DNAIterator(
             (skbio.DNA(id_, metadata={'id': id_})
              for id_ in table.ids(axis='observation')))
-    return table, rep_sequences, metadata
+
+    # initalize and populate DADA2 diagnoistic Stats dictionary
+    return table, rep_sequences, {"Denoised_Read_Stats": metadata,
+                                  "Error_Plot_Stats": metadata_err}
 
 
 def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
@@ -220,11 +230,13 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
     with tempfile.TemporaryDirectory() as temp_dir_name:
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
+        err_track_fp = os.path.join(temp_dir_name, 'err_track.tsv')
 
         cmd = ['run_dada.R',
                '--input_directory', str(demultiplexed_seqs),
                '--output_path', biom_fp,
                '--output_track', track_fp,
+               '--output_err_track', err_track_fp,
                '--filtered_directory', temp_dir_name,
                '--truncation_length', str(trunc_len),
                '--trim_left', str(trim_left),
@@ -252,8 +264,8 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
-                               retain_all_samples)
+        return _denoise_helper(biom_fp, track_fp, err_track_fp,
+                               hashed_feature_ids, retain_all_samples)
 
 
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -310,6 +322,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         tmp_reverse = os.path.join(temp_dir, 'reverse')
         biom_fp = os.path.join(temp_dir, 'output.tsv.biom')
         track_fp = os.path.join(temp_dir, 'track.tsv')
+        err_track_fp = os.path.join(temp_dir, 'err_track.tsv')
         filt_forward = os.path.join(temp_dir, 'filt_f')
         filt_reverse = os.path.join(temp_dir, 'filt_r')
         manifest_df = demultiplexed_seqs.manifest.view(pd.DataFrame)
@@ -333,6 +346,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                '--input_directory_reverse', tmp_reverse,
                '--output_path', biom_fp,
                '--output_track', track_fp,
+               '--output_err_track', err_track_fp,
                '--filtered_directory', filt_forward,
                '--filtered_directory_reverse', filt_reverse,
                '--truncation_length', str(trunc_len_f),
@@ -367,8 +381,9 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
 
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
-                               retain_all_samples, paired=True)
+        return _denoise_helper(biom_fp, track_fp, err_track_fp,
+                               hashed_feature_ids, retain_all_samples,
+                               paired=True)
 
 
 def _remove_barcode(filename):
@@ -437,6 +452,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
     with tempfile.TemporaryDirectory() as temp_dir_name:
         biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
+        err_track_fp = os.path.join(temp_dir_name, 'err_track.tsv')
         nop_fp = os.path.join(temp_dir_name, 'nop')
         filt_fp = os.path.join(temp_dir_name, 'filt')
         for fp in nop_fp, filt_fp:
@@ -446,6 +462,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                '--input_directory', str(demultiplexed_seqs),
                '--output_path', biom_fp,
                '--output_track', track_fp,
+               '--output_err_track', err_track_fp,
                '--removed_primer_directory', nop_fp,
                '--filtered_directory', filt_fp,
                '--forward_primer', str(front),
@@ -482,5 +499,5 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 raise Exception("An error was encountered while running DADA2"
                                 " in R (return code %d), please inspect stdout"
                                 " and stderr to learn more." % e.returncode)
-        return _denoise_helper(biom_fp, track_fp, hashed_feature_ids,
-                               retain_all_samples)
+        return _denoise_helper(biom_fp, track_fp, err_track_fp,
+                               hashed_feature_ids, retain_all_samples)
