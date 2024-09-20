@@ -208,8 +208,10 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
              for id_ in table.ids(axis='observation')))
 
     # initalize and populate DADA2 diagnoistic Stats dictionary
-    return table, rep_sequences, {"Denoised_Read_Stats": metadata,
-                                  "Error_Plot_Stats": metadata_err}
+    stats_dict = {"Denoised_Read_Stats": metadata,
+                  "Error_Plot_Stats": metadata_err}
+
+    return table, rep_sequences, stats_dict
 
 
 def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,

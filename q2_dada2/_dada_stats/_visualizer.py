@@ -59,8 +59,8 @@ def _plot_errors(transdf, image_paths_arr, output_dir,
 
 
 def stats_viz(output_dir: str, dada2_stats: qiime2.Metadata,
-                    nominalq: bool = False, error_in: bool = False,
-                    error_out: bool = True):
+              nominalq: bool = False, error_in: bool = False,
+              error_out: bool = True):
 
     # intitalize indexes for html rendering
     index = os.path.join(TEMPLATES, 'index.html')

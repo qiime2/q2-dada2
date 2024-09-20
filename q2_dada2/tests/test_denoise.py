@@ -7,7 +7,7 @@
 # ----------------------------------------------------------------------------
 
 import unittest
-
+import pandas as pd
 import skbio
 import biom
 import qiime2
@@ -53,12 +53,16 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/single-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-error-stats.tsv'))
 
         table, rep_seqs, md = denoise_single(self.demux_seqs, 100)
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
     def test_override(self):
         with open(self.get_data_path('expected/single-override.tsv')) as fh:
@@ -70,6 +74,8 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/single-override-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-override-error-stats.tsv'))
 
         # NOTE: the test data isn't interesting enough to be impacted by
         # min_fold_parent_over_abundance.
@@ -82,7 +88,9 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
     def test_mixed_barcodes_and_ids(self):
         demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
@@ -130,6 +138,8 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/underscore-samples-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-error-stats.tsv'))
 
         # Historical NOTE: default used to be `pooled`, so the data still
         # expects that. Since this is only testing underscores, it shouldn't
@@ -141,7 +151,9 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
     def test_no_chimera_method(self):
         with open(self.get_data_path('expected/single-default.tsv')) as fh:
@@ -153,6 +165,8 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/single-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-error-stats.tsv'))
 
         table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
                                              chimera_method='none')
@@ -162,7 +176,9 @@ class TestDenoiseSingle(TestPluginBase):
                          _sort_seqs(exp_rep_seqs))
 
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
     def test_pseudo_pooling(self):
         with open(self.get_data_path('expected/single-pseudo.tsv')) as fh:
@@ -174,6 +190,8 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/single-pseudo-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-error-stats.tsv'))
 
         table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
                                              pooling_method='pseudo')
@@ -183,7 +201,9 @@ class TestDenoiseSingle(TestPluginBase):
                          _sort_seqs(exp_rep_seqs))
 
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
 
 class TestDenoisePaired(TestPluginBase):
@@ -204,6 +224,8 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-error-stats.tsv'))
         # NOTE: changing the chimera_method parameter doesn't impact the
         # results for this dataset
         table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150)
@@ -211,7 +233,9 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
     def test_remove_empty(self):
         with open(self.get_data_path('expected/paired-remove-empty-default.tsv'
@@ -224,6 +248,8 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-error-stats.tsv'))
         # NOTE: changing the chimera_method parameter doesn't impact the
         # results for this dataset
         table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150,
@@ -232,7 +258,9 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
     def test_override(self):
         with open(self.get_data_path('expected/paired-override.tsv')) as fh:
@@ -244,6 +272,8 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-override-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-override-error-stats.tsv'))
 
         # NOTE: the test data isn't interesting enough to be impacted by
         # chimera_method or min_fold_parent_over_abundance.
@@ -257,7 +287,9 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):
@@ -307,6 +339,8 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-error-stats.tsv'))
 
         table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150,
                                              chimera_method='none')
@@ -315,7 +349,9 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
 
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
@@ -340,6 +376,8 @@ class TestDenoisePyro(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/pyro-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/pyro-default-error-stats.tsv'))
 
         table, rep_seqs, md = denoise_pyro(self.demux_seqs, 100)
 
@@ -349,7 +387,9 @@ class TestDenoisePyro(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(error_model_md, exp_error_md)
 
     def test_trunc_len_bigger_than_max_len(self):
         with self.assertRaisesRegex(ValueError, 'max_len'):
@@ -403,6 +443,8 @@ class TestDenoiseCCS(TestPluginBase):
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/ccs-default-stats.tsv')
         )
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/ccs-default-error-stats.tsv'))
 
         table, rep_seqs, md = denoise_ccs(
             self.demux_seqs, front="AGRGTTYGATYMTGGCTCAG"
@@ -417,7 +459,13 @@ class TestDenoiseCCS(TestPluginBase):
         )
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
+        df_err_md = \
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True)
+        df_err_exp_md = \
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(df_err_md, df_err_exp_md)
 
     def test_with_reverse_primer(self):
         with open(self.get_data_path('expected/ccs-reverse-primer.tsv')) as fh:
@@ -437,6 +485,8 @@ class TestDenoiseCCS(TestPluginBase):
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/ccs-reverse-primer-stats.tsv')
         )
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/ccs-reverse-primer-error-stats.tsv'))
 
         table, rep_seqs, md = denoise_ccs(
             self.demux_seqs,
@@ -453,7 +503,13 @@ class TestDenoiseCCS(TestPluginBase):
         )
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         read_stats_md = dict(md)["Denoised_Read_Stats"]
+        error_model_md = dict(md)["Error_Plot_Stats"]
+        df_err_md = \
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True)
+        df_err_exp_md = \
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
         self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(df_err_md, df_err_exp_md)
 
 
 if __name__ == '__main__':
