@@ -23,6 +23,7 @@ requirements:
     - r-base {{ r_base }}
     - r-optparse >=1.7.1
     - matplotlib >=3.8.4
+    - seaborn >=0.13.2
     # openjdk is not a real dependency, but, r-base has a post-link and post-
     # activation hook that calls R CMD javareconf, which pokes around for any
     # installations of java. On modern versions of macOS, a binary called
