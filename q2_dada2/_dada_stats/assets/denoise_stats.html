@@ -6,10 +6,14 @@
         <tr>
             <th>Sample ID</th>
             <th data-tsorter="numeric">Input Reads</th>
+            {% if paired_or_not == "ccs" %}
+            <th data-tsorter="numeric">Primer Removed</th>
+            <th data-tsorter="numeric">Percentage of Primer Removed</th>
+            {% endif %}
             <th data-tsorter="numeric">Filtered Reads</th>
             <th data-tsorter="numeric">Percentage of Input Passed Filter</th>
             <th data-tsorter="numeric">Denoised</th>
-            {% if paired_or_not == True %}
+            {% if paired_or_not == "paired" %}
             <th data-tsorter="numeric">Merged</th>
             <th data-tsorter="numeric">Percentage of Input Merged</th>
             {% endif %}
@@ -23,10 +27,14 @@
             <td>{{ keyer }}</td>
             {% if keyer in denoised_data%}
             <td>{{ denoised_data[keyer].input | int }}</td>
+            {% if paired_or_not == "ccs"  %}
+            <td>{{ denoised_data[keyer].primer_removed| int }}</td>
+            <td>{{ denoised_data[keyer].per_prim_removed | round(2, 'common') }}</td>
+            {% endif %}
             <td>{{ denoised_data[keyer].filtered | int }}</td>
             <td>{{ denoised_data[keyer].per_of_filt | round(2, 'common') }}</td>
             <td>{{ denoised_data[keyer].denoised | int }}</td>
-            {% if paired_or_not == True %}
+            {% if paired_or_not == "paired"  %}
                 <td>{{ denoised_data[keyer].merged| int }}</td>
                 <td>{{ denoised_data[keyer].per_input_merged | round(2, 'common') }}</td>
             {% endif %}

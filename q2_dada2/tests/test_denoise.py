@@ -7,6 +7,7 @@
 # ----------------------------------------------------------------------------
 
 import unittest
+import tempfile
 import pandas as pd
 import skbio
 import biom
@@ -18,6 +19,8 @@ from q2_types.per_sample_sequences import (
 
 from q2_dada2 import denoise_single, denoise_paired, denoise_pyro, denoise_ccs
 from q2_dada2._denoise import _check_featureless_table
+from q2_dada2._dada_stats._visualizer import (stats_viz)
+import os
 
 
 def _sort_seqs(seqs):
@@ -510,6 +513,57 @@ class TestDenoiseCCS(TestPluginBase):
             exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
         self.assertEqual(read_stats_md, exp_md)
         self.assertEqual(df_err_md, df_err_exp_md)
+
+
+class TestVizualization(TestPluginBase):
+    package = 'q2_dada2.tests'
+
+    def setUp(self):
+        super().setUp()
+        self.stats_table = {'Denoised_Read_Stats': qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-stats.tsv')),
+            'Error_Plot_Stats': qiime2.Metadata.load(
+                self.get_data_path('expected/single-default-error-stats.tsv'))}
+
+        self.paired_stats_table = {'Denoised_Read_Stats': qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-stats.tsv')),
+            'Error_Plot_Stats':  qiime2.Metadata.load(
+                self.get_data_path('expected/paired-default-error-stats.tsv'))}
+
+        self.output_dir_obj = tempfile.TemporaryDirectory(
+            prefix='q2-dada2-stats-test-temp-')
+        self.output_dir = self.output_dir_obj.name
+
+    def tearDown(self):
+        self.output_dir_obj.cleanup()
+
+    def assertStat_Viz_Basics(self, viz_dir, single_or_paired):
+        index_fp = os.path.join(viz_dir, 'index.html')
+        self.assertTrue(os.path.exists(index_fp))
+        with open(index_fp, 'r') as fh:
+            index_contents = fh.read()
+        self.assertIn('./denoise_stats.html', index_contents)
+        self.assertIn('./error_plot_stats.html', index_contents)
+        if single_or_paired is True:
+            self.assertTrue(
+                os.path.exists(os.path.join(viz_dir, 'error_graph.png')))
+        else:
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(viz_dir, 'Reverse_error_graph.png')))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(viz_dir, 'Forward_error_graph.png')))
+
+    def test_defaults(self):
+        stats_viz(output_dir=self.output_dir,
+                  dada2_stats=self.stats_table)
+        self.assertStat_Viz_Basics(self.output_dir, True)
+
+    def test_paired_defaults(self):
+        stats_viz(output_dir=self.output_dir,
+                  dada2_stats=self.paired_stats_table)
+        self.assertStat_Viz_Basics(self.output_dir, False)
 
 
 if __name__ == '__main__':

@@ -74,7 +74,7 @@ def stats_viz(output_dir: str, dada2_stats: qiime2.Metadata,
     # initalize data structures for passing to html
     denoised_reads_data = {}
     image_paths_arr = []
-    paired_or_not = False
+    paired_or_not = ''
 
     # iterate over keys that link to dada2 stats files
     for keyer in dada_stats_dict.keys():
@@ -93,11 +93,18 @@ def stats_viz(output_dir: str, dada2_stats: qiime2.Metadata,
                         'non_chim': row_arr['non-chimeric'],
                         'per_of_non_chim': row_arr[
                             'percentage of input non-chimeric']}
-                if len(row_arr) > 7:
-                    paired_or_not = True
+                print(temp_df.columns)
+                if 'merged' in temp_df.columns:
+                    paired_or_not = 'paired'
                     denoised_reads_data[indexer]['merged'] = row_arr['merged']
                     denoised_reads_data[indexer]['per_input_merged'] = \
                         row_arr['percentage of input merged']
+                elif 'primer-removed' in temp_df.columns:
+                    paired_or_not = 'ccs'
+                    denoised_reads_data[indexer]['primer_removed'] = \
+                        row_arr['primer-removed']
+                    denoised_reads_data[indexer]['per_prim_removed'] = \
+                        row_arr['percentage of input primer-removed']
 
         # section for dada2 error plotting
         elif keyer == 'Error_Plot_Stats':
