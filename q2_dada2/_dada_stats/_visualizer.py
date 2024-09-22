@@ -53,7 +53,6 @@ def _plot_errors(transdf, image_paths_arr, output_dir,
                 './' + image_prefix + 'error_graph.png'
             )
         plt.savefig(img_fp)
-        print(image_paths_arr)
     plt.clf()
     return image_paths_arr  # pass back path to image
 
@@ -93,7 +92,6 @@ def stats_viz(output_dir: str, dada2_stats: qiime2.Metadata,
                         'non_chim': row_arr['non-chimeric'],
                         'per_of_non_chim': row_arr[
                             'percentage of input non-chimeric']}
-                print(temp_df.columns)
                 if 'merged' in temp_df.columns:
                     paired_or_not = 'paired'
                     denoised_reads_data[indexer]['merged'] = row_arr['merged']

@@ -65,7 +65,8 @@ class TestDenoiseSingle(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_override(self):
         with open(self.get_data_path('expected/single-override.tsv')) as fh:
@@ -93,7 +94,8 @@ class TestDenoiseSingle(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_mixed_barcodes_and_ids(self):
         demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
@@ -156,7 +158,8 @@ class TestDenoiseSingle(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_no_chimera_method(self):
         with open(self.get_data_path('expected/single-default.tsv')) as fh:
@@ -181,7 +184,8 @@ class TestDenoiseSingle(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_pseudo_pooling(self):
         with open(self.get_data_path('expected/single-pseudo.tsv')) as fh:
@@ -206,7 +210,8 @@ class TestDenoiseSingle(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
 
 class TestDenoisePaired(TestPluginBase):
@@ -238,7 +243,8 @@ class TestDenoisePaired(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_remove_empty(self):
         with open(self.get_data_path('expected/paired-remove-empty-default.tsv'
@@ -263,7 +269,8 @@ class TestDenoisePaired(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_override(self):
         with open(self.get_data_path('expected/paired-override.tsv')) as fh:
@@ -292,7 +299,8 @@ class TestDenoisePaired(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):
@@ -354,7 +362,8 @@ class TestDenoisePaired(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
 
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
@@ -392,7 +401,8 @@ class TestDenoisePyro(TestPluginBase):
         read_stats_md = dict(md)["Denoised_Read_Stats"]
         error_model_md = dict(md)["Error_Plot_Stats"]
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(error_model_md, exp_error_md)
+        self.assertEqual(error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+                         exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_trunc_len_bigger_than_max_len(self):
         with self.assertRaisesRegex(ValueError, 'max_len'):

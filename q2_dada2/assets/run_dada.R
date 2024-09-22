@@ -366,7 +366,6 @@ internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T
     err_out <- FALSE
   }
   if(!is.null(dq$err_in)) {
-    # If selfConsist, then err_in is a list. Use the first err_in, the initial error rates provided.
     ei <- dq$err_in; if(is.list(ei)) ei <- ei[[1]]
     transdf$Input <- mapply(function(x,y) ei[x,y], transdf$Transition, as.character(transdf$Qual))
   } else {
