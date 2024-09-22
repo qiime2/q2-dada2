@@ -153,6 +153,8 @@ option_list = list(
               help="File path to output tsv file. If already exists, will be overwritten"),
   make_option(c("--output_track"), action="store", default='NULL', type='character',
               help="File path to tracking tsv file. If already exists, will be overwritten"),
+  make_option(c("--output_err_track"), action="store", default='NULL', type='character',
+              help="File path to error model tracking tsv file. If already exists, will be overwritten"),
   make_option(c("--removed_primer_directory"), action="store", default='NULL', type='character',
               help="File path to directory in which to write the primer.removed .fastq.gz files"),
   make_option(c("--filtered_directory"), action="store", default='NULL', type='character',
@@ -212,6 +214,7 @@ inp.dir <- opt$input_directory
 inp.dirR <- opt$input_directory_reverse #added from paired arguments
 out.path <- opt$output_path
 out.track <- opt$output_track
+out.err.track <- opt$output_err_track
 primer.removed.dir <- opt$removed_primer_directory #added from CCS arguments
 filtered.dir <- opt$filtered_directory
 filtered.dirR<- opt$filtered_directory_reverse #added from paired arguments
@@ -273,7 +276,7 @@ if(!dir.exists(inp.dir)) {
 
 # Output files are to be filenames (not directories) and are to be
 # removed and replaced if already present.
-for(fn in c(out.path, out.track)) {
+for(fn in c(out.path, out.track, out.err.track)) {
   if(dir.exists(fn)) {
     errQuit("Output filename ", fn, " is a directory.")
   } else if(file.exists(fn)) {
@@ -298,6 +301,81 @@ suppressWarnings(library(dada2))
 cat("DADA2:", as.character(packageVersion("dada2")), "/",
     "Rcpp:", as.character(packageVersion("Rcpp")), "/",
     "RcppParallel:", as.character(packageVersion("RcppParallel")), "\n")
+
+### Helper Functions ###
+#function to approximate melt function from reshape2 which is not a dependency 
+melter<-function(df){
+  df<-as.data.frame(df)
+  melted_df<-data.frame(Var1 = character(), Var2 = numeric(), value = numeric(), stringsAsFactors = TRUE)
+  for(coler in colnames(df)){
+    temp_df <- data.frame(
+      Var1 = rownames(df),
+      Var2 = coler,
+      value = df[[coler]]
+    )
+    melted_df <- rbind(melted_df, temp_df)
+
+    #explicit casting of variable types to conencide with melt output
+    melted_df$Var1 <- as.character(melted_df$Var1)
+    melted_df$value <- as.numeric(melted_df$value)
+    melted_df$Var2 <- as.numeric(melted_df$Var2)
+  }
+  return(melted_df)
+}
+
+
+# function taken from dada2 function plotErrors
+internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T"), obs=TRUE, err_out=TRUE, err_in=FALSE, nominalQ=FALSE) {
+  ACGT <- c("A", "C", "G", "T")
+  if(!(all(nti %in% ACGT) && all(ntj %in% ACGT)) || any(duplicated(nti)) || any(duplicated(ntj))) {
+    stop("nti and ntj must be nucleotide(s): A/C/G/T.")
+  }
+  
+  dq <- getErrors(dq, detailed=TRUE, enforce=FALSE)
+  
+  if(!is.null(dq$trans)) {
+    if(ncol(dq$trans) <= 1) {
+      stop("plotErrors only supported when using quality scores in the error model (i.e. USE_QUALS=TRUE).")
+    }
+    transdf = melter(dq$trans)
+    colnames(transdf) <- c("Transition", "Qual", "count")
+  } else if(!is.null(dq$err_out)) {
+    if(ncol(dq$err_out) <= 1) {
+      stop("plotErrors only supported when using quality scores in the error model (i.e. USE_QUALS=TRUE).")
+    }
+    transdf = melter(dq$err_out)
+    colnames(transdf) <- c("Transition", "Qual", "est")
+  } else {
+    stop("Non-null observed and/or estimated error rates (dq$trans or dq$err_out) must be provided.")
+  }
+  transdf$from <- substr(transdf$Transition, 1, 1)
+  transdf$to <- substr(transdf$Transition, 3, 3)
+  
+  if(!is.null(dq$trans)) {
+    tot.count <- tapply(transdf$count, list(transdf$from, transdf$Qual), sum)
+    transdf$tot <- mapply(function(x,y) tot.count[x,y], transdf$from, as.character(transdf$Qual))
+    transdf$Observed <- transdf$count/transdf$tot
+  } else {
+    transdf$Observed <- NA
+    obs <- FALSE
+  }
+  if(!is.null(dq$err_out)) {
+    transdf$Estimated <- mapply(function(x,y) dq$err_out[x,y], transdf$Transition, as.character(transdf$Qual))
+  } else {
+    transdf$Estimated <- NA
+    err_out <- FALSE
+  }
+  if(!is.null(dq$err_in)) {
+    ei <- dq$err_in; if(is.list(ei)) ei <- ei[[1]]
+    transdf$Input <- mapply(function(x,y) ei[x,y], transdf$Transition, as.character(transdf$Qual))
+  } else {
+    transdf$Input <- NA
+    err_in <- FALSE
+  }
+  transdf$Nominal <- (1/3)*10^-(transdf$Qual/10)
+  transdf$Nominal[transdf$Transition %in% c("A2A", "C2C", "G2G", "T2T")] <- 1 - 10^-(transdf$Qual[transdf$Transition %in% c("A2A", "C2C", "G2G", "T2T")]/10)
+  return(transdf)
+}
 
 ### Remove Primers ###
 if(primer.removed.dir!='NULL'){ #for CCS read analysis
@@ -361,15 +439,23 @@ if(primer.removed.dir!='NULL'){#for CCS read analysis
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn,
                                       errorEstimationFunction=dada2:::PacBioErrfun,
                                       multithread=multithread, BAND_SIZE=BAND_SIZE))
+  com_err_df <- internal_plotErrors(err)
 
 }else if(inp.dirR!='NULL'){#for paired read analysis
 
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread))
   errR <- suppressWarnings(learnErrors(filtsR, nreads=nreads.learn, multithread=multithread))
 
+  err_plot_df_F <- internal_plotErrors(err)
+  colnames(err_plot_df_F) <- paste0("F_", colnames(err_plot_df_F))
+  err_plot_df_R <- internal_plotErrors(errR)
+  colnames(err_plot_df_R) <- paste0("R_", colnames(err_plot_df_R))
+  com_err_df<-cbind(err_plot_df_F,err_plot_df_R)
+
 }else{#for sinlge/pyro read analysis
   err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread,
                                       HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE))
+  com_err_df <- internal_plotErrors(err)
 }
 
 ### PROCESS ALL SAMPLES ###
@@ -499,6 +585,10 @@ if(inp.dirR =='NULL'){
   write.table(track, out.track, sep="\t", row.names=TRUE, col.names=NA,
               quote=FALSE)
 }
+
+### Report Error Model Graphs ####
+write.table(com_err_df, out.err.track, sep="\t", row.names=TRUE, col.names=TRUE,
+              quote=FALSE)
 
 ### WRITE OUTPUT AND QUIT ###
 # Formatting as tsv plain-text sequence table table

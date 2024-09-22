@@ -30,7 +30,8 @@ setup(
                            'data/underscore_samples/*',
                            'data/sample_seqs_single/*',
                            'data/sample_seqs_ccs/*',
-                           'data/sample_seqs_paired/*']
+                           'data/sample_seqs_paired/*'],
+        'q2_dada2._dada_stats': ['assets/*.html', 'assets/js/*'],
     },
     entry_points={
         "qiime2.plugins":
