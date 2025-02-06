@@ -30,7 +30,8 @@ plugin = qiime2.plugin.Plugin(
     description=('This QIIME 2 plugin wraps DADA2 and supports '
                  'sequence quality control for single-end and paired-end '
                  'reads using the DADA2 R library.'),
-    short_description='Plugin for sequence quality control with DADA2.'
+    short_description='Plugin for sequence quality control with DADA2.',
+    citations=[citations['callahan2016dada2']]
 )
 
 
