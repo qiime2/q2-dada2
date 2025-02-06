@@ -18,7 +18,7 @@ import qiime2.util
 import pandas as pd
 import numpy as np
 
-from qiime2.sdk.util import run_commands
+from qiime2.plugin.util import run_commands
 
 from q2_types.feature_data import DNAIterator
 from q2_types.per_sample_sequences import (
