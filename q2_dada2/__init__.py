@@ -9,7 +9,7 @@
 from ._denoise import denoise_single, denoise_paired, denoise_pyro, denoise_ccs
 from ._stats import (
     DADA2Stats, DADA2StatsDirFmt, DADA2StatsFormat, DADA2BaseTransitionStats,
-    DADA2BaseTransitionStatsFormat, DADA2BaseTransitionStatsDirFmt
+    DADA2BaseTransitionStatsFormat, DADA2BaseTransitionStatsDirFmt, UnmergedPairs
 )
 
 
@@ -22,5 +22,5 @@ __all__ = [
     'denoise_single', 'denoise_paired', 'denoise_pyro', 'denoise_ccs',
     'DADA2Stats', 'DADA2StatsFormat', 'DADA2StatsDirFmt',
     'DADA2BaseTransitionStats', 'DADA2BaseTransitionStatsFormat',
-    'DADA2BaseTransitionStatsDirFmt',
+    'DADA2BaseTransitionStatsDirFmt', 'UnmergedPairs'
 ]

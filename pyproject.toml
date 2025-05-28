@@ -42,7 +42,8 @@ file = "q2_dada2/_version.py"
 [tool.setuptools]
 include-package-data = true
 script-files = [
-    "q2_dada2/assets/run_dada.R"
+    "q2_dada2/assets/run_dada.R",
+    "q2_dada2/assets/run_dada_testing.R"
 ]
 
 [tool.setuptools.packages.find]

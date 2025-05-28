@@ -11,13 +11,13 @@ import qiime2.plugin
 from q2_types.per_sample_sequences import (
     SequencesWithQuality, PairedEndSequencesWithQuality)
 from q2_types.sample_data import SampleData
-from q2_types.feature_data import FeatureData, Sequence
+from q2_types.feature_data import FeatureData, Sequence, AlignedDNAFASTAFormat, AlignedDNASequencesDirectoryFormat
 from q2_types.feature_table import FeatureTable, Frequency
 
 import q2_dada2
 from q2_dada2 import (
     DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt, DADA2BaseTransitionStats,
-    DADA2BaseTransitionStatsFormat, DADA2BaseTransitionStatsDirFmt
+    DADA2BaseTransitionStatsFormat, DADA2BaseTransitionStatsDirFmt, UnmergedPairs
 )
 import q2_dada2._examples as ex
 from ._dada_stats import plot_base_transitions
@@ -180,7 +180,8 @@ plugin.methods.register_function(
                 'n_threads': qiime2.plugin.Threads,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool,
-                'retain_all_samples': qiime2.plugin.Bool},
+                'retain_all_samples': qiime2.plugin.Bool,
+                'concat': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats]),
@@ -265,6 +266,7 @@ plugin.methods.register_function(
             'identified if the `allow_one_off` argument is True'
             'If True, a sequence will be identified as bimera if it is one '
             'mismatch or indel away from an exact bimera.'),
+        'concat': ('Concats instead of merging, with 10 N added in between.'),
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
@@ -550,7 +552,6 @@ plugin.methods.register_function(
                 'https://github.com/benjjneb/LRASManuscript',
     citations=[citations['callahan2019dada2ccs']]
 )
-
 plugin.visualizers.register_function(
     function=plot_base_transitions,
     inputs={
@@ -574,7 +575,12 @@ plugin.visualizers.register_function(
 )
 
 plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)
-plugin.register_semantic_types(DADA2Stats)
+plugin.register_semantic_types(DADA2Stats, UnmergedPairs)
+
+plugin.register_artifact_class(UnmergedPairs, AlignedDNASequencesDirectoryFormat,
+                              description='Stores unmerged paired end sequences in a single FASTA file with gap'
+                                          'character dividing the sequences')
+
 plugin.register_semantic_type_to_format(
     SampleData[DADA2Stats], DADA2StatsDirFmt
 )

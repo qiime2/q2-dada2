@@ -67,6 +67,7 @@ _valid_inputs = {
     'min_fold_parent_over_abundance': _NAT_NUM,
     'allow_one_off': _BOOLEAN,
     'n_threads': _WHOLE_NUM,
+    'concat': _BOOLEAN,
     # 0 is technically allowed, but we don't want to support it because it only
     # takes all reads from the first sample (alphabetically by sample id)
     'n_reads_learn': _NAT_NUM,
@@ -300,7 +301,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True,
-                   retain_all_samples: bool = True
+                   retain_all_samples: bool = True,
+                   concat: bool = False
                    ) -> (biom.Table, DNAIterator,
                          qiime2.Metadata, qiime2.Metadata):
     _check_inputs(**locals())
@@ -334,7 +336,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             qiime2.util.duplicate(rev_fp, os.path.join(tmp_reverse,
                                                        rev_no_barcode))
 
-        cmd = ['run_dada.R',
+        cmd = ['run_dada_testing.R',
                '--input_directory', tmp_forward,
                '--input_directory_reverse', tmp_reverse,
                '--output_path', biom_fp,
@@ -356,6 +358,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                '--chimera_method', str(chimera_method),
                '--min_parental_fold', str(min_fold_parent_over_abundance),
                '--allow_one_off', str(allow_one_off),
+               '--concat', str(concat),
                '--num_threads', str(n_threads),
                '--learn_min_reads', str(n_reads_learn)]
         try:
