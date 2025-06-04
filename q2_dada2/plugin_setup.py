@@ -11,8 +11,10 @@ import qiime2.plugin
 from q2_types.per_sample_sequences import (
     SequencesWithQuality, PairedEndSequencesWithQuality)
 from q2_types.sample_data import SampleData
-from q2_types.feature_data import FeatureData, Sequence, AlignedDNAFASTAFormat, AlignedDNASequencesDirectoryFormat
+from q2_types.feature_data import FeatureData, Sequence, AlignedDNAFASTAFormat, AlignedDNASequencesDirectoryFormat, DNASequencesDirectoryFormat
 from q2_types.feature_table import FeatureTable, Frequency
+from qiime2.core.type import Choices
+from qiime2.plugin import TypeMap, Bool
 
 import q2_dada2
 from q2_dada2 import (
@@ -156,6 +158,11 @@ plugin.methods.register_function(
     }
 )
 
+# add type map for unmerged pair output option
+concat_param, paired_output_type = TypeMap({
+    (qiime2.plugin.Bool % Choices(True)): UnmergedPairs,
+    (qiime2.plugin.Bool % Choices(False)): FeatureData[Sequence]
+})
 
 plugin.methods.register_function(
     function=q2_dada2.denoise_paired,
@@ -181,9 +188,9 @@ plugin.methods.register_function(
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool,
                 'retain_all_samples': qiime2.plugin.Bool,
-                'concat': qiime2.plugin.Bool},
+                'concat': concat_param},
     outputs=[('table', FeatureTable[Frequency]),
-             ('representative_sequences', FeatureData[Sequence]),
+             ('representative_sequences', paired_output_type),
              ('denoising_stats', SampleData[DADA2Stats]),
              ('base_transition_stats', DADA2BaseTransitionStats)],
     input_descriptions={
@@ -577,7 +584,7 @@ plugin.visualizers.register_function(
 plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)
 plugin.register_semantic_types(DADA2Stats, UnmergedPairs)
 
-plugin.register_artifact_class(UnmergedPairs, AlignedDNASequencesDirectoryFormat,
+plugin.register_artifact_class(UnmergedPairs, DNASequencesDirectoryFormat,
                               description='Stores unmerged paired end sequences in a single FASTA file with gap'
                                           'character dividing the sequences')
 
