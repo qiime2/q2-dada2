@@ -153,6 +153,8 @@ plugin.methods.register_function(
                 'trunc_q': qiime2.plugin.Int,
                 'min_overlap': qiime2.plugin.Int %
                 qiime2.plugin.Range(4, None),
+                'max_merge_mismatch': qiime2.plugin.Int,
+                'trim_overhang': qiime2.plugin.Bool,
                 'pooling_method': qiime2.plugin.Str %
                 qiime2.plugin.Choices(_POOL_OPT),
                 'chimera_method': qiime2.plugin.Str %
@@ -210,6 +212,15 @@ plugin.methods.register_function(
                     'discarded.'),
         'min_overlap': ('The minimum length of the overlap required for '
                         'merging the forward and reverse reads.'),
+        'max_merge_mismatch': ('The maximum number of mismatches allowed in '
+                               'the overlap region when merging reads. If 0, '
+                               'only exact overlaps are allowed.'),
+        'trim_overhang': ('If TRUE, "overhangs" in the alignment after '
+                          'merging are trimmed off. "Overhangs" are when the '
+                          'reverse read extends past the start of the forward '
+                          'read, and vice-versa, as can happen when reads are '
+                          'longer than the amplicon and read into the '
+                          'other-direction primer region.'),
         'pooling_method': ('The method used to pool samples for denoising. '
                            '"independent": Samples are denoised indpendently. '
                            '"pseudo": The pseudo-pooling method is used to '

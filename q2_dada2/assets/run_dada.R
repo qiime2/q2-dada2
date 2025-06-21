@@ -187,6 +187,10 @@ option_list = list(
               help="Remove reads with length greater than max_length. max_length is enforced on the raw reads."),
   make_option(c("--min_overlap"), action="store", default='NULL', type='character',
               help="Minimum overlap allowed between reads"),
+  make_option(c("--max_merge_mismatch"), action="store", default='NULL', type='character',
+              help="The maximum number of mismatches allowed in the overlap region when merging reads."),
+  make_option(c("--trim_overhang"), action="store", default='NULL', type='character',
+              help="If TRUE, the overhangs of fully overlapping reads are trimmed."),
   make_option(c("--pooling_method"), action="store", default='NULL', type='character',
               help="The method used to pool (or not) samples during denoising (independent/pseudo)"),
   make_option(c("--chimera_method"), action="store", default='NULL', type='character',
@@ -229,6 +233,8 @@ truncQ <- if(opt$truncation_quality_score=='NULL') NULL else as.integer(opt$trun
 minLen <- if(opt$min_length=='NULL') NULL else as.numeric(opt$min_length) #added from CCS arguments
 maxLen <- if(opt$max_length=='NULL') NULL else as.numeric(opt$max_length) # Allows Inf
 minOverlap <- if(opt$min_overlap=='NULL') NULL else as.integer(opt$min_overlap) #added from paired arguments
+maxMergeMismatch <- if(opt$max_merge_mismatch=='NULL') NULL else as.integer(opt$max_merge_mismatch)
+trimOverhang <- if(opt$trim_overhang=='NULL') NULL else as.logical(opt$trim_overhang)
 poolMethod <- opt$pooling_method
 chimeraMethod <- opt$chimera_method
 minParentFold <- if(opt$min_parental_fold=='NULL') NULL else as.numeric(opt$min_parental_fold)
@@ -453,7 +459,12 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   for(j in seq(length(filts))) {
     drpF <- derepFastq(filts[[j]])
     drpR <- derepFastq(filtsR[[j]])
-    mergers[[j]] <- mergePairs(ddsF[[j]], drpF, ddsR[[j]], drpR, minOverlap=minOverlap)
+    mergers[[j]] <- mergePairs(
+      ddsF[[j]], drpF, ddsR[[j]], drpR,
+      minOverlap=minOverlap,
+      maxMismatch=maxMergeMismatch,
+      trimOverhang=trimOverhang
+      )
     denoisedF[[j]] <- getN(ddsF[[j]])
     cat(".")
   }
