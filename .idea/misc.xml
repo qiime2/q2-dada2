@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="q2dev-tiny-2025-05-12" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="q2dev-tiny-2025-05-12" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9" project-jdk-type="Python SDK" />
 </project>

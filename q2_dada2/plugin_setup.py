@@ -600,3 +600,4 @@ plugin.register_semantic_type_to_format(
     DADA2BaseTransitionStats, DADA2BaseTransitionStatsDirFmt
 )
 importlib.import_module('q2_dada2._transformer')
+
