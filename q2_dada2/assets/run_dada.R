@@ -201,6 +201,8 @@ option_list = list(
               help="The minimum abundance of potential parents of a sequence being tested as chimeric, expressed as a fold-change versus the abundance of the sequence being tested. Values should be greater than or equal to 1"),
   make_option(c("--allow_one_off"), action="store", default='NULL', type='character',
               help="Bimeras that are one-off (one mismatch/indel away from an exact bimera) are also identified if allow_one_off is TRUE."),
+  make_option(c("--concat"), action="store", default='NULL', type='character',
+              help="Only concatenate with 10 N bridge if concat is TRUE."),
   make_option(c("--num_threads"), action="store", default='NULL', type='character',
               help="The number of threads to use"),
   make_option(c("--learn_min_reads"), action="store", default='NULL', type='character',
@@ -242,6 +244,7 @@ poolMethod <- opt$pooling_method
 chimeraMethod <- opt$chimera_method
 minParentFold <- if(opt$min_parental_fold=='NULL') NULL else as.numeric(opt$min_parental_fold)
 allowOneOff <-if(opt$allow_one_off=='NULL') NULL else as.logical(opt$allow_one_off)
+concat <-if(opt$concat=='NULL') NULL else as.logical(opt$concat)
 nthreads <- if(opt$num_threads=='NULL') NULL else as.integer(opt$num_threads)
 nreads.learn <- if(opt$learn_min_reads=='NULL') NULL else as.integer(opt$learn_min_reads)
 # The following args are not directly exposed to end users in q2-dada2,
@@ -505,6 +508,9 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   ddsF <- vector("list", length(filts))
   ddsR <- vector("list", length(filts))
   mergers <- vector("list", length(filts))
+    if(concat == TRUE) {
+      concats <- vector("list", length(filts))
+    }
   cat("3) Denoise samples ")
 
   for(j in seq(length(filts))) {
@@ -545,12 +551,19 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   for(j in seq(length(filts))) {
     drpF <- derepFastq(filts[[j]])
     drpR <- derepFastq(filtsR[[j]])
-    mergers[[j]] <- mergePairs(
+    # concat if cant merge with 10 N
+    if (concat == TRUE) {
+      mergers[[j]] <- mergePairs(ddsF[[j]], drpF, ddsR[[j]], drpR, minOverlap=minOverlap, returnRejects = TRUE)
+      concats[[j]] <- mergePairs(ddsF[[j]], drpF, ddsR[[j]], drpR, justConcatenate = TRUE)
+      mergers[[j]][!mergers[[j]]$accept,] <- concats[[j]][!mergers[[j]]$accept,]
+    } else {
+          mergers[[j]] <- mergePairs(
       ddsF[[j]], drpF, ddsR[[j]], drpR,
       minOverlap=minOverlap,
       maxMismatch=maxMergeMismatch,
       trimOverhang=trimOverhang
       )
+    }
     denoisedF[[j]] <- getN(ddsF[[j]])
     cat(".")
   }
@@ -568,6 +581,8 @@ if(chimeraMethod %in% c("pooled", "consensus")) {
 } else { # No chimera removal, copy seqtab to seqtab.nochim
   seqtab.nochim <- seqtab
 }
+
+
 
 ### REPORT READ FRACTIONS THROUGH PIPELINE ###
 cat("6) Report read numbers through the pipeline\n")

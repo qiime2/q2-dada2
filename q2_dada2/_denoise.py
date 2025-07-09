@@ -336,7 +336,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             qiime2.util.duplicate(rev_fp, os.path.join(tmp_reverse,
                                                        rev_no_barcode))
 
-        cmd = ['run_dada_testing.R',
+        cmd = ['run_dada.R',
                '--input_directory', tmp_forward,
                '--input_directory_reverse', tmp_reverse,
                '--output_path', biom_fp,
