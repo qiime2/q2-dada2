@@ -15,8 +15,12 @@ from q2_types.feature_data import FeatureData, Sequence
 from q2_types.feature_table import FeatureTable, Frequency
 
 import q2_dada2
-from q2_dada2 import DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt
+from q2_dada2 import (
+    DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt, DADA2BaseTransitionStats,
+    DADA2BaseTransitionStatsFormat, DADA2BaseTransitionStatsDirFmt
+)
 import q2_dada2._examples as ex
+from ._dada_stats import plot_base_transitions
 
 _POOL_OPT = {'pseudo', 'independent'}
 _CHIM_OPT = {'consensus', 'none'}
@@ -34,6 +38,14 @@ plugin = qiime2.plugin.Plugin(
     citations=[citations['callahan2016dada2']]
 )
 
+DENOISING_STATS_DESCRIPTION = (
+    'A table listing per-sample read retention counts and percentages after '
+    'each stage of the pipeline.'
+)
+BASE_TRANSITION_STATS_DESCRIPTION = (
+    'A table listing the transition rates of each ordered pair of nucleotides '
+    'at each quality score.'
+)
 
 plugin.methods.register_function(
     function=q2_dada2.denoise_single,
@@ -55,7 +67,8 @@ plugin.methods.register_function(
                 'retain_all_samples': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
-             ('denoising_stats', SampleData[DADA2Stats])],
+             ('denoising_stats', SampleData[DADA2Stats]),
+             ('base_transition_stats', DADA2BaseTransitionStats)],
     input_descriptions={
         'demultiplexed_seqs': ('The single-end demultiplexed sequences to be '
                                'denoised.')
@@ -130,7 +143,10 @@ plugin.methods.register_function(
         'table': 'The resulting feature table.',
         'representative_sequences': ('The resulting feature sequences. Each '
                                      'feature in the feature table will be '
-                                     'represented by exactly one sequence.')
+                                     'represented by exactly one sequence.'),
+        'denoising_stats': DENOISING_STATS_DESCRIPTION,
+        'base_transition_stats': BASE_TRANSITION_STATS_DESCRIPTION,
+
     },
     name='Denoise and dereplicate single-end sequences',
     description=('This method denoises single-end sequences, dereplicates '
@@ -167,7 +183,8 @@ plugin.methods.register_function(
                 'retain_all_samples': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
-             ('denoising_stats', SampleData[DADA2Stats])],
+             ('denoising_stats', SampleData[DADA2Stats]),
+             ('base_transition_stats', DADA2BaseTransitionStats)],
     input_descriptions={
         'demultiplexed_seqs': ('The paired-end demultiplexed sequences to be '
                                'denoised.')
@@ -274,7 +291,9 @@ plugin.methods.register_function(
                                      'feature in the feature table will be '
                                      'represented by exactly one sequence, '
                                      'and these sequences will be the joined '
-                                     'paired-end sequences.')
+                                     'paired-end sequences.'),
+        'denoising_stats': DENOISING_STATS_DESCRIPTION,
+        'base_transition_stats': BASE_TRANSITION_STATS_DESCRIPTION,
     },
     name='Denoise and dereplicate paired-end sequences',
     description=('This method denoises paired-end sequences, dereplicates '
@@ -305,7 +324,8 @@ plugin.methods.register_function(
                 'retain_all_samples': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
-             ('denoising_stats', SampleData[DADA2Stats])],
+             ('denoising_stats', SampleData[DADA2Stats]),
+             ('base_transition_stats', DADA2BaseTransitionStats)],
     input_descriptions={
         'demultiplexed_seqs': 'The single-end demultiplexed pyrosequencing '
                               'sequences (e.g. 454, IonTorrent) to be '
@@ -382,14 +402,14 @@ plugin.methods.register_function(
         'table': 'The resulting feature table.',
         'representative_sequences': 'The resulting feature sequences. Each '
                                     'feature in the feature table will be '
-                                    'represented by exactly one sequence.'
+                                    'represented by exactly one sequence.',
+        'denoising_stats': DENOISING_STATS_DESCRIPTION,
+        'base_transition_stats': BASE_TRANSITION_STATS_DESCRIPTION,
     },
     name='Denoise and dereplicate single-end pyrosequences',
     description='This method denoises single-end pyrosequencing sequences, '
                 'dereplicates them, and filters chimeras.'
 )
-
-
 plugin.methods.register_function(
     function=q2_dada2.denoise_ccs,
     inputs={'demultiplexed_seqs': SampleData[SequencesWithQuality]},
@@ -415,7 +435,8 @@ plugin.methods.register_function(
                 'retain_all_samples': qiime2.plugin.Bool},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
-             ('denoising_stats', SampleData[DADA2Stats])],
+             ('denoising_stats', SampleData[DADA2Stats]),
+             ('base_transition_stats', DADA2BaseTransitionStats)],
     input_descriptions={
         'demultiplexed_seqs': 'The single-end demultiplexed PacBio CCS '
                               'sequences to be denoised.'
@@ -518,7 +539,9 @@ plugin.methods.register_function(
         'table': 'The resulting feature table.',
         'representative_sequences': 'The resulting feature sequences. Each '
                                     'feature in the feature table will be '
-                                    'represented by exactly one sequence.'
+                                    'represented by exactly one sequence.',
+        'denoising_stats': DENOISING_STATS_DESCRIPTION,
+        'base_transition_stats': BASE_TRANSITION_STATS_DESCRIPTION,
     },
     name='Denoise and dereplicate single-end Pacbio CCS',
     description='This method denoises single-end Pacbio CCS sequences, '
@@ -528,9 +551,39 @@ plugin.methods.register_function(
     citations=[citations['callahan2019dada2ccs']]
 )
 
+plugin.visualizers.register_function(
+    function=plot_base_transitions,
+    inputs={
+        'base_transition_stats': DADA2BaseTransitionStats
+    },
+    parameters={
+        'nominalq': qiime2.plugin.Bool,
+        'error_in': qiime2.plugin.Bool,
+        'error_out': qiime2.plugin.Bool
+    },
+    name='DADA2 diagnostic statistics',
+    description='Generates dada2 output stat vizualizations',
+    input_descriptions={
+        'base_transition_stats': 'Dada2 Base transition statistics.',
+    },
+    parameter_descriptions={
+        'nominalq': 'Sets the nominalq line of the vizualization',
+        'error_in': 'Sets the input error line of the vizualization',
+        'error_out': 'Sets the output error line of the vizualization'
+    }
+)
 
 plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)
 plugin.register_semantic_types(DADA2Stats)
 plugin.register_semantic_type_to_format(
-    SampleData[DADA2Stats], DADA2StatsDirFmt)
+    SampleData[DADA2Stats], DADA2StatsDirFmt
+)
+
+plugin.register_formats(
+    DADA2BaseTransitionStatsFormat, DADA2BaseTransitionStatsDirFmt
+)
+plugin.register_semantic_types(DADA2BaseTransitionStats)
+plugin.register_semantic_type_to_format(
+    DADA2BaseTransitionStats, DADA2BaseTransitionStatsDirFmt
+)
 importlib.import_module('q2_dada2._transformer')

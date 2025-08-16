@@ -15,6 +15,9 @@ requirements:
   - python {{ python }}
   - biom-format {{ biom_format }}
   - bioconductor-dada2
+  - matplotlib >=3.8.4
+  - seaborn >=0.12.2
+  - q2templates >={{ q2templates }}
   - r-base {{ r_base }}
   - r-optparse >=1.7.1
   - openjdk

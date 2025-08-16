@@ -6,10 +6,13 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
+import os
 import unittest
-
+import tempfile
+import pandas as pd
 import skbio
 import biom
+
 import qiime2
 from qiime2.plugin.testing import TestPluginBase
 from q2_types.per_sample_sequences import (
@@ -18,6 +21,7 @@ from q2_types.per_sample_sequences import (
 
 from q2_dada2 import denoise_single, denoise_paired, denoise_pyro, denoise_ccs
 from q2_dada2._denoise import _check_featureless_table
+from q2_dada2._dada_stats._visualizer import plot_base_transitions
 
 
 def _sort_seqs(seqs):
@@ -53,11 +57,17 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/single-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-error-stats.tsv'))
 
-        table, rep_seqs, md = denoise_single(self.demux_seqs, 100)
+        table, rep_seqs, read_stats_md, error_model_md = denoise_single(
+            self.demux_seqs, 100)
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_override(self):
         with open(self.get_data_path('expected/single-override.tsv')) as fh:
@@ -69,10 +79,12 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/single-override-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-override-error-stats.tsv'))
 
         # NOTE: the test data isn't interesting enough to be impacted by
         # min_fold_parent_over_abundance.
-        table, rep_seqs, md = denoise_single(
+        table, rep_seqs, read_stats_md, error_model_md = denoise_single(
             self.demux_seqs, 100, trim_left=10, max_ee=10.5, trunc_q=1,
             n_threads=1, n_reads_learn=2, hashed_feature_ids=False,
             chimera_method='consensus', min_fold_parent_over_abundance=1.1)
@@ -80,7 +92,10 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_mixed_barcodes_and_ids(self):
         demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
@@ -128,17 +143,22 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/underscore-samples-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-error-stats.tsv'))
 
         # Historical NOTE: default used to be `pooled`, so the data still
         # expects that. Since this is only testing underscores, it shouldn't
         # matter much and serves as a regression test to boot.
-        table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
-                                             chimera_method='pooled')
+        table, rep_seqs, read_stats_md, error_model_md = \
+            denoise_single(self.demux_seqs, 100, chimera_method='pooled')
 
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_no_chimera_method(self):
         with open(self.get_data_path('expected/single-default.tsv')) as fh:
@@ -150,15 +170,19 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/single-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-error-stats.tsv'))
 
-        table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
-                                             chimera_method='none')
+        table, rep_seqs, read_stats_md, error_model_md = \
+            denoise_single(self.demux_seqs, 100, chimera_method='none')
 
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_pseudo_pooling(self):
         with open(self.get_data_path('expected/single-pseudo.tsv')) as fh:
@@ -170,15 +194,19 @@ class TestDenoiseSingle(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/single-pseudo-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/single-default-error-stats.tsv'))
 
-        table, rep_seqs, md = denoise_single(self.demux_seqs, 100,
-                                             pooling_method='pseudo')
+        table, rep_seqs, read_stats_md, error_model_md = \
+            denoise_single(self.demux_seqs, 100, pooling_method='pseudo')
 
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
 
 class TestDenoisePaired(TestPluginBase):
@@ -199,13 +227,19 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-error-stats.tsv'))
         # NOTE: changing the chimera_method parameter doesn't impact the
         # results for this dataset
-        table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150)
+        table, rep_seqs, read_stats_md, error_model_md = \
+            denoise_paired(self.demux_seqs, 150, 150)
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_remove_empty(self):
         with open(self.get_data_path('expected/paired-remove-empty-default.tsv'
@@ -218,14 +252,19 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-error-stats.tsv'))
         # NOTE: changing the chimera_method parameter doesn't impact the
         # results for this dataset
-        table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150,
-                                             retain_all_samples=False)
+        table, rep_seqs, read_stats_md, error_model_md = \
+            denoise_paired(self.demux_seqs, 150, 150, retain_all_samples=False)
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_override(self):
         with open(self.get_data_path('expected/paired-override.tsv')) as fh:
@@ -237,10 +276,12 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-override-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-override-error-stats.tsv'))
 
         # NOTE: the test data isn't interesting enough to be impacted by
         # chimera_method or min_fold_parent_over_abundance.
-        table, rep_seqs, md = denoise_paired(
+        table, rep_seqs, read_stats_md, error_model_md = denoise_paired(
             self.demux_seqs, 150, 150, trim_left_f=10, trim_left_r=10,
             max_ee_f=20.5, max_ee_r=20.5, trunc_q=0, n_threads=1,
             n_reads_learn=2,
@@ -249,7 +290,10 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):
@@ -299,14 +343,19 @@ class TestDenoisePaired(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-default-error-stats.tsv'))
 
-        table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150,
-                                             chimera_method='none')
+        table, rep_seqs, read_stats_md, error_model_md = denoise_paired(
+            self.demux_seqs, 150, 150, chimera_method='none')
 
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
 
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
@@ -331,15 +380,21 @@ class TestDenoisePyro(TestPluginBase):
             del seq.metadata['description']
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/pyro-default-stats.tsv'))
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/pyro-default-error-stats.tsv'))
 
-        table, rep_seqs, md = denoise_pyro(self.demux_seqs, 100)
+        table, rep_seqs, read_stats_md, error_model_md = denoise_pyro(
+            self.demux_seqs, 100)
 
         self.assertEqual(
             table,
             exp_table.sort_order(table.ids('observation'), axis='observation'))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
     def test_trunc_len_bigger_than_max_len(self):
         with self.assertRaisesRegex(ValueError, 'max_len'):
@@ -393,8 +448,10 @@ class TestDenoiseCCS(TestPluginBase):
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/ccs-default-stats.tsv')
         )
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/ccs-default-error-stats.tsv'))
 
-        table, rep_seqs, md = denoise_ccs(
+        table, rep_seqs, read_stats_md, error_model_md = denoise_ccs(
             self.demux_seqs, front="AGRGTTYGATYMTGGCTCAG"
         )
 
@@ -406,7 +463,12 @@ class TestDenoiseCCS(TestPluginBase):
             )
         )
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        df_err_md = \
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True)
+        df_err_exp_md = \
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(df_err_md, df_err_exp_md)
 
     def test_with_reverse_primer(self):
         with open(self.get_data_path('expected/ccs-reverse-primer.tsv')) as fh:
@@ -426,8 +488,10 @@ class TestDenoiseCCS(TestPluginBase):
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/ccs-reverse-primer-stats.tsv')
         )
+        exp_error_md = qiime2.Metadata.load(
+            self.get_data_path('expected/ccs-reverse-primer-error-stats.tsv'))
 
-        table, rep_seqs, md = denoise_ccs(
+        table, rep_seqs, md, error_md = denoise_ccs(
             self.demux_seqs,
             front="AGRGTTYGATYMTGGCTCAG",
             adapter="RGYTACCTTGTTACGACTT"
@@ -441,7 +505,60 @@ class TestDenoiseCCS(TestPluginBase):
             )
         )
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
-        self.assertEqual(md, exp_md)
+        read_stats_md = md
+        error_model_md = error_md
+        df_err_md = \
+            error_model_md.to_dataframe().replace('', pd.NA, inplace=True)
+        df_err_exp_md = \
+            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
+        self.assertEqual(read_stats_md, exp_md)
+        self.assertEqual(df_err_md, df_err_exp_md)
+
+
+class TestVizualization(TestPluginBase):
+    package = 'q2_dada2.tests'
+
+    def setUp(self):
+        super().setUp()
+        self.stats_table = qiime2.Metadata.load(
+                self.get_data_path('expected/single-default-error-stats.tsv'))
+
+        self.paired_stats_table = qiime2.Metadata.load(
+                self.get_data_path('expected/paired-default-error-stats.tsv'))
+
+        self.output_dir_obj = tempfile.TemporaryDirectory(
+            prefix='q2-dada2-stats-test-temp-')
+        self.output_dir = self.output_dir_obj.name
+
+    def tearDown(self):
+        self.output_dir_obj.cleanup()
+
+    def assertStat_Viz_Basics(self, viz_dir, single_or_paired):
+        index_fp = os.path.join(viz_dir, 'index.html')
+        self.assertTrue(os.path.exists(index_fp))
+        if single_or_paired is True:
+            self.assertTrue(
+                os.path.exists(os.path.join(viz_dir, 'error_graph.png')))
+        else:
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(viz_dir, 'Reverse_error_graph.png')))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(viz_dir, 'Forward_error_graph.png')))
+
+    def test_defaults(self):
+        plot_base_transitions(
+            output_dir=self.output_dir, base_transition_stats=self.stats_table
+        )
+        self.assertStat_Viz_Basics(self.output_dir, True)
+
+    def test_paired_defaults(self):
+        plot_base_transitions(
+            output_dir=self.output_dir,
+            base_transition_stats=self.paired_stats_table
+        )
+        self.assertStat_Viz_Basics(self.output_dir, False)
 
 
 if __name__ == '__main__':
