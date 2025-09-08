@@ -7,14 +7,14 @@
 # ----------------------------------------------------------------------------
 
 import os
-import pkg_resources
+import importlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import qiime2.util
 import q2templates
 import qiime2
 
-TEMPLATES = pkg_resources.resource_filename('q2_dada2._dada_stats', 'assets')
+TEMPLATES = importlib.resources.files('q2_dada2') / '_dada_stats' / 'assets'
 
 
 def _plot_errors(transdf, image_paths_arr, output_dir,
