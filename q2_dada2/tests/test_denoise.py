@@ -357,6 +357,22 @@ class TestDenoisePaired(TestPluginBase):
             error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
             exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
 
+    def test_concat(self):
+        with open(self.get_data_path('expected/paired-concat.tsv')) as fh:
+            exp_table = biom.Table.from_tsv(fh, None, None, lambda x: x)
+        exp_rep_seqs = list(
+            skbio.io.read(self.get_data_path('expected/paired-concat.fasta'),
+                          'fasta', constructor=skbio.DNA))
+        for seq in exp_rep_seqs:
+            del seq.metadata['description']
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/paired-concat-stats.tsv'))
+
+        table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150, concat=True)
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
+        self.assertEqual(_sort_seqs(rep_seqs),
+                         _sort_seqs(exp_rep_seqs))
+        self.assertEqual(md, exp_md)
 
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
 # just a variation of denoise-single. These tests should serve as regression

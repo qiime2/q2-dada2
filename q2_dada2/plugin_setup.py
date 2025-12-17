@@ -585,8 +585,8 @@ plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)
 plugin.register_semantic_types(DADA2Stats, UnmergedPairs)
 
 plugin.register_artifact_class(UnmergedPairs, DNASequencesDirectoryFormat,
-                              description='Stores unmerged paired end sequences in a single FASTA file with gap'
-                                          'character dividing the sequences')
+                              description='Stores rescued unmerged paired end sequences in a single FASTA file with gap'
+                                          'character dividing the sequences, along with successful merged sequences')
 
 plugin.register_semantic_type_to_format(
     SampleData[DADA2Stats], DADA2StatsDirFmt
