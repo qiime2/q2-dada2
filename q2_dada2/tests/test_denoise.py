@@ -368,7 +368,7 @@ class TestDenoisePaired(TestPluginBase):
         exp_md = qiime2.Metadata.load(
             self.get_data_path('expected/paired-concat-stats.tsv'))
 
-        table, rep_seqs, md = denoise_paired(self.demux_seqs, 150, 150, concat=True)
+        table, rep_seqs, md, error_md = denoise_paired(self.demux_seqs, 150, 150, concat=True)
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
