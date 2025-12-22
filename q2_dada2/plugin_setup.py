@@ -11,15 +11,18 @@ import qiime2.plugin
 from q2_types.per_sample_sequences import (
     SequencesWithQuality, PairedEndSequencesWithQuality)
 from q2_types.sample_data import SampleData
-from q2_types.feature_data import FeatureData, Sequence, AlignedDNAFASTAFormat, AlignedDNASequencesDirectoryFormat, DNASequencesDirectoryFormat
+from q2_types.feature_data import (
+    FeatureData, Sequence, DNASequencesDirectoryFormat
+)
 from q2_types.feature_table import FeatureTable, Frequency
 from qiime2.core.type import Choices
-from qiime2.plugin import TypeMap, Bool
+from qiime2.plugin import TypeMap
 
 import q2_dada2
 from q2_dada2 import (
-    DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt, DADA2BaseTransitionStats,
-    DADA2BaseTransitionStatsFormat, DADA2BaseTransitionStatsDirFmt, UnmergedPairs
+    DADA2Stats, DADA2StatsFormat, DADA2StatsDirFmt,
+    DADA2BaseTransitionStats, DADA2BaseTransitionStatsFormat,
+    DADA2BaseTransitionStatsDirFmt, UnmergedPairs
 )
 import q2_dada2._examples as ex
 from ._dada_stats import plot_base_transitions
@@ -584,9 +587,12 @@ plugin.visualizers.register_function(
 plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)
 plugin.register_semantic_types(DADA2Stats, UnmergedPairs)
 
-plugin.register_artifact_class(UnmergedPairs, DNASequencesDirectoryFormat,
-                              description='Stores rescued unmerged paired end sequences in a single FASTA file with gap'
-                                          'character dividing the sequences, along with successful merged sequences')
+plugin.register_artifact_class(
+    UnmergedPairs, DNASequencesDirectoryFormat,
+    description=('Stores rescued unmerged paired end sequences in a '
+                 'single FASTA file with gap character dividing the '
+                 'sequences, along with successful merged sequences')
+)
 
 plugin.register_semantic_type_to_format(
     SampleData[DADA2Stats], DADA2StatsDirFmt
@@ -600,4 +606,3 @@ plugin.register_semantic_type_to_format(
     DADA2BaseTransitionStats, DADA2BaseTransitionStatsDirFmt
 )
 importlib.import_module('q2_dada2._transformer')
-

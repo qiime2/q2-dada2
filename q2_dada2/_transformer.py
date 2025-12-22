@@ -7,11 +7,9 @@
 # ----------------------------------------------------------------------------
 
 import qiime2
-from q2_types.feature_data import DNAIterator, AlignedDNAFASTAFormat
 from q2_dada2 import DADA2StatsFormat, DADA2BaseTransitionStatsFormat
 from q2_dada2.plugin_setup import plugin
-from skbio.io import write
-from skbio import DNA
+
 
 @plugin.register_transformer
 def _1(ff: DADA2StatsFormat) -> qiime2.Metadata:

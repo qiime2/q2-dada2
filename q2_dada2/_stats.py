@@ -14,6 +14,7 @@ DADA2Stats = SemanticType('DADA2Stats', variant_of=SampleData.field['type'])
 
 UnmergedPairs = SemanticType('UnmergedPairs')
 
+
 class DADA2StatsFormat(model.TextFileFormat):
     def validate(*args):
         pass
