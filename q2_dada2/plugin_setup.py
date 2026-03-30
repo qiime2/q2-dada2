@@ -11,7 +11,7 @@ import qiime2.plugin
 from q2_types.per_sample_sequences import (
     SequencesWithQuality, PairedEndSequencesWithQuality)
 from q2_types.sample_data import SampleData
-from q2_types.feature_data import FeatureData, Sequence
+from q2_types.feature_data import FeatureData, Sequence, LinkedSequence
 from q2_types.feature_table import FeatureTable, Frequency
 
 import q2_dada2
@@ -24,6 +24,12 @@ from ._dada_stats import plot_base_transitions
 
 _POOL_OPT = {'pseudo', 'independent'}
 _CHIM_OPT = {'consensus', 'none'}
+P_retain_unmerged, T_paired_representative_sequences = qiime2.plugin.TypeMap({
+    qiime2.plugin.Bool % qiime2.plugin.Choices(True):
+        FeatureData[LinkedSequence],
+    qiime2.plugin.Bool % qiime2.plugin.Choices(False):
+        FeatureData[Sequence],
+})
 
 citations = qiime2.plugin.Citations.load('citations.bib', package='q2_dada2')
 plugin = qiime2.plugin.Plugin(
@@ -180,9 +186,10 @@ plugin.methods.register_function(
                 'n_threads': qiime2.plugin.Threads,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool,
-                'retain_all_samples': qiime2.plugin.Bool},
+                'retain_all_samples': qiime2.plugin.Bool,
+                'retain_unmerged': P_retain_unmerged},
     outputs=[('table', FeatureTable[Frequency]),
-             ('representative_sequences', FeatureData[Sequence]),
+             ('representative_sequences', T_paired_representative_sequences),
              ('denoising_stats', SampleData[DADA2Stats]),
              ('base_transition_stats', DADA2BaseTransitionStats)],
     input_descriptions={
@@ -283,15 +290,23 @@ plugin.methods.register_function(
         'retain_all_samples': 'If True all samples input to dada2 will be '
                               'retained in the output of dada2, if false '
                               'samples with zero total frequency are removed '
-                              'from the table.'
+                              'from the table.',
+        'retain_unmerged': (
+            'If True, denoised paired reads that fail merging are retained by '
+            'encoding each pair as `forward_read<space>reverse_read` and '
+            'including these features in the table and sequences. Note that '
+            'the reverse read is reverse-complemented and thus both read '
+            'directions can be expected to map to the same strand.'
+        )
     },
     output_descriptions={
         'table': 'The resulting feature table.',
-        'representative_sequences': ('The resulting feature sequences. Each '
-                                     'feature in the feature table will be '
-                                     'represented by exactly one sequence, '
-                                     'and these sequences will be the joined '
-                                     'paired-end sequences.'),
+        'representative_sequences': (
+            'The resulting feature sequences. Each feature in the feature '
+            'table will be represented by exactly one sequence, and these '
+            'sequences will be the joined paired-end sequences (and retained '
+            'unmerged pairs if `retain_unmerged` is enabled).'
+        ),
         'denoising_stats': DENOISING_STATS_DESCRIPTION,
         'base_transition_stats': BASE_TRANSITION_STATS_DESCRIPTION,
     },
