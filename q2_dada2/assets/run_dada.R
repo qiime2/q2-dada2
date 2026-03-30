@@ -205,6 +205,8 @@ option_list = list(
               help="The number of threads to use"),
   make_option(c("--learn_min_reads"), action="store", default='NULL', type='character',
               help="The minimum number of reads to learn the error model from"),
+  make_option(c("--retain_unmerged"), action="store", default='FALSE', type='character',
+              help="If TRUE, denoised paired reads that fail merging are retained as space-concatenated sequences."),
   make_option(c("--homopolymer_gap_penalty"), action="store", default='NULL', type='character',
               help="The cost of gaps in homopolymer regions (>=3 repeated bases).Default is NULL, which causes homopolymer gaps to be treated as normal gaps."),
   make_option(c("--band_size"), action="store", default='NULL', type='character',
@@ -244,6 +246,8 @@ minParentFold <- if(opt$min_parental_fold=='NULL') NULL else as.numeric(opt$min_
 allowOneOff <-if(opt$allow_one_off=='NULL') NULL else as.logical(opt$allow_one_off)
 nthreads <- if(opt$num_threads=='NULL') NULL else as.integer(opt$num_threads)
 nreads.learn <- if(opt$learn_min_reads=='NULL') NULL else as.integer(opt$learn_min_reads)
+retain.unmerged <- if(opt$retain_unmerged=='NULL') FALSE else as.logical(opt$retain_unmerged)
+linked.concat.delim <- "NNNNNNNNNN"
 # The following args are not directly exposed to end users in q2-dada2,
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
 if (opt$homopolymer_gap_penalty=='NULL'){
@@ -309,7 +313,7 @@ cat("DADA2:", as.character(packageVersion("dada2")), "/",
     "RcppParallel:", as.character(packageVersion("RcppParallel")), "\n")
 
 ### Helper Functions ###
-#function to approximate melt function from reshape2 which is not a dependency 
+#function to approximate melt function from reshape2 which is not a dependency
 melter<-function(df){
   df<-as.data.frame(df)
   melted_df<-data.frame(Var1 = character(), Var2 = numeric(), value = numeric(), stringsAsFactors = TRUE)
@@ -336,9 +340,9 @@ internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T
   if(!(all(nti %in% ACGT) && all(ntj %in% ACGT)) || any(duplicated(nti)) || any(duplicated(ntj))) {
     stop("nti and ntj must be nucleotide(s): A/C/G/T.")
   }
-  
+
   dq <- getErrors(dq, detailed=TRUE, enforce=FALSE)
-  
+
   if(!is.null(dq$trans)) {
     if(ncol(dq$trans) <= 1) {
       stop("plotErrors only supported when using quality scores in the error model (i.e. USE_QUALS=TRUE).")
@@ -356,7 +360,7 @@ internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T
   }
   transdf$from <- substr(transdf$Transition, 1, 1)
   transdf$to <- substr(transdf$Transition, 3, 3)
-  
+
   if(!is.null(dq$trans)) {
     tot.count <- tapply(transdf$count, list(transdf$from, transdf$Qual), sum)
     transdf$tot <- mapply(function(x,y) tot.count[x,y], transdf$from, as.character(transdf$Qual))
@@ -502,9 +506,11 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   seqtab <- makeSequenceTable(dds)
 }else{#for paired read analysis
   denoisedF <- rep(0, length(filts))
+  mergedF <- rep(0, length(filts))
   ddsF <- vector("list", length(filts))
   ddsR <- vector("list", length(filts))
   mergers <- vector("list", length(filts))
+  unmerged <- vector("list", length(filts))
   cat("3) Denoise samples ")
 
   for(j in seq(length(filts))) {
@@ -545,12 +551,49 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   for(j in seq(length(filts))) {
     drpF <- derepFastq(filts[[j]])
     drpR <- derepFastq(filtsR[[j]])
-    mergers[[j]] <- mergePairs(
+    # we are intentionally not using `justConcatenate = TRUE` here; that sets
+    # the "accept" column to TRUE for all pairs in mergePairs and would collapse
+    # true merged and rescued unmerged reads into the same "merged" count
+    mp <- mergePairs(
       ddsF[[j]], drpF, ddsR[[j]], drpR,
       minOverlap=minOverlap,
       maxMismatch=maxMergeMismatch,
-      trimOverhang=trimOverhang
+      trimOverhang=trimOverhang,
+      returnRejects=retain.unmerged
       )
+    if(retain.unmerged){
+      mergedF[j] <- sum(mp[mp$accept, "abundance"])
+      mergers[[j]] <- mp[mp$accept, c("sequence", "abundance")]
+      unmerged.j <- mp[!mp$accept, c("forward", "reverse", "abundance")]
+      if(nrow(unmerged.j) > 0){
+        # `mergePairs` returns cluster indices in the "forward" and "reverse"
+        # columns, so we resolve these to denoised forward and
+        # reverse-complemented reverse sequences before concatenation
+        unmerged.forward <- as.character(
+          ddsF[[j]]$clustering$sequence[unmerged.j$forward]
+        )
+        unmerged.reverse <- as.character(
+          rc(ddsR[[j]]$clustering$sequence[unmerged.j$reverse])
+        )
+
+        # manually reconstruct dada2's "N" * 10 separator so that sequences
+        # are recognized if chimera filtering is performed; this separator
+        # is later converted to a single space
+        unmerged[[j]] <- data.frame(
+          sequence=paste(
+            unmerged.forward, unmerged.reverse,
+            sep=linked.concat.delim
+          ),
+          abundance=unmerged.j$abundance,
+          stringsAsFactors=FALSE
+        )
+      }else{
+        unmerged[[j]] <- data.frame(sequence=character(), abundance=numeric())
+      }
+    }else{
+      mergers[[j]] <- mp
+      mergedF[j] <- sum(mp[,"abundance"])
+    }
     denoisedF[[j]] <- getN(ddsF[[j]])
     cat(".")
   }
@@ -560,13 +603,40 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
 
 }
 
+# combine the merged and unmerged/concatenated feature tables
+if(inp.dirR !='NULL' && retain.unmerged){
+  unmerged.any <- any(vapply(unmerged, nrow, integer(1)) > 0)
+  if(unmerged.any){
+    seqtab.unmerged <- makeSequenceTable(unmerged)
+    unmerged.ids <- colnames(seqtab.unmerged)
+    if(ncol(seqtab) > 0){
+      seqtab <- cbind(seqtab, seqtab.unmerged)
+    }else{
+      seqtab <- seqtab.unmerged
+    }
+  }else{
+    unmerged.ids <- character()
+  }
+}else{
+  unmerged.ids <- character()
+}
 
 ### Remove chimeras
 cat("5) Remove chimeras (method = ", chimeraMethod, ")\n", sep="")
-if(chimeraMethod %in% c("pooled", "consensus")) {
+if(chimeraMethod %in% c("pooled", "consensus") && ncol(seqtab) > 0) {
   seqtab.nochim <- removeBimeraDenovo(seqtab, method=chimeraMethod, minFoldParentOverAbundance=minParentFold, allowOneOff=allowOneOff, multithread=multithread)
 } else { # No chimera removal, copy seqtab to seqtab.nochim
   seqtab.nochim <- seqtab
+}
+
+# after chimera filtering, convert any retained concatenated IDs to the
+# single space-delimited representation
+if(length(unmerged.ids) > 0){
+  unmerged.keep <- intersect(colnames(seqtab.nochim), unmerged.ids)
+  if(length(unmerged.keep) > 0){
+    colnames(seqtab.nochim)[match(unmerged.keep, colnames(seqtab.nochim))] <-
+      gsub(linked.concat.delim, " ", unmerged.keep, fixed=TRUE)
+  }
 }
 
 ### REPORT READ FRACTIONS THROUGH PIPELINE ###
@@ -591,7 +661,7 @@ if(inp.dirR =='NULL'){
   colnames(track) <- c("input", "filtered", "denoised", "merged", "non-chimeric")
   passed.filtering <- track[,"filtered"] > 0
   track[passed.filtering,"denoised"] <- denoisedF
-  track[passed.filtering,"merged"] <- rowSums(seqtab)
+  track[passed.filtering,"merged"] <- mergedF
   track[passed.filtering,"non-chimeric"] <- rowSums(seqtab.nochim)
   write.table(track, out.track, sep="\t", row.names=TRUE, col.names=NA,
               quote=FALSE)
