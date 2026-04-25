@@ -123,9 +123,10 @@ plugin.methods.register_function(
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
         'n_reads_learn': ('The number of reads to use when training the '
-                          'error model. Smaller numbers will result in a '
-                          'shorter run time but a less reliable error '
-                          'model.'),
+                          'error model. This is passed to DADA2 as the '
+                          '`nreads` argument to `learnErrors`. Smaller '
+                          'numbers will result in a shorter run time but a '
+                          'less reliable error model.'),
         'hashed_feature_ids': ('If true, the feature ids in the resulting '
                                'table will be presented as hashes of the '
                                'sequences defining each feature. The hash '
@@ -269,9 +270,10 @@ plugin.methods.register_function(
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
         'n_reads_learn': ('The number of reads to use when training the '
-                          'error model. Smaller numbers will result in a '
-                          'shorter run time but a less reliable error '
-                          'model.'),
+                          'error model. This is passed to DADA2 as the '
+                          '`nreads` argument to `learnErrors`. Smaller '
+                          'numbers will result in a shorter run time but a '
+                          'less reliable error model.'),
         'hashed_feature_ids': ('If true, the feature ids in the resulting '
                                'table will be presented as hashes of the '
                                'sequences defining each feature. The hash '
@@ -382,9 +384,10 @@ plugin.methods.register_function(
                      'processing. If 0 is provided, all available cores will '
                      'be used.',
         'n_reads_learn': 'The number of reads to use when training the '
-                         'error model. Smaller numbers will result in a '
-                         'shorter run time but a less reliable error '
-                         'model.',
+                         'error model. This is passed to DADA2 as the '
+                         '`nreads` argument to `learnErrors`. Smaller '
+                         'numbers will result in a shorter run time but a '
+                         'less reliable error model.',
         'hashed_feature_ids': 'If true, the feature ids in the resulting '
                               'table will be presented as hashes of the '
                               'sequences defining each feature. The hash '
@@ -520,8 +523,10 @@ plugin.methods.register_function(
                      'processing. If 0 is provided, all available cores will '
                      'be used.',
         'n_reads_learn': 'The number of reads to use when training the '
-                         'error model. Smaller numbers will result in a '
-                         'shorter run time but a less reliable error model.',
+                         'error model. This is passed to DADA2 as the '
+                         '`nreads` argument to `learnErrors`. Smaller '
+                         'numbers will result in a shorter run time but a '
+                         'less reliable error model.',
         'hashed_feature_ids': 'If true, the feature ids in the resulting '
                               'table will be presented as hashes of the '
                               'sequences defining each feature. The hash '
