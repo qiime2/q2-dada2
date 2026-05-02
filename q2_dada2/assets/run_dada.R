@@ -111,7 +111,7 @@
 #                 Special values: 0 - detect available cores and use all.
 #    Ex: 1
 #
-# 20) learn_min_reads - The minimum number of reads to learn the error model from.
+# 20) learn_min_bases - The minimum number of bases to learn the error model from.
 #                 Special values: 0 - Use all input reads.
 #    Ex: 1000000
 #
@@ -203,8 +203,8 @@ option_list = list(
               help="Bimeras that are one-off (one mismatch/indel away from an exact bimera) are also identified if allow_one_off is TRUE."),
   make_option(c("--num_threads"), action="store", default='NULL', type='character',
               help="The number of threads to use"),
-  make_option(c("--learn_min_reads"), action="store", default='NULL', type='character',
-              help="The minimum number of reads to learn the error model from"),
+  make_option(c("--learn_min_bases"), action="store", default='NULL', type='character',
+              help="The minimum number of bases to learn the error model from"),
   make_option(c("--homopolymer_gap_penalty"), action="store", default='NULL', type='character',
               help="The cost of gaps in homopolymer regions (>=3 repeated bases).Default is NULL, which causes homopolymer gaps to be treated as normal gaps."),
   make_option(c("--band_size"), action="store", default='NULL', type='character',
@@ -243,7 +243,7 @@ chimeraMethod <- opt$chimera_method
 minParentFold <- if(opt$min_parental_fold=='NULL') NULL else as.numeric(opt$min_parental_fold)
 allowOneOff <-if(opt$allow_one_off=='NULL') NULL else as.logical(opt$allow_one_off)
 nthreads <- if(opt$num_threads=='NULL') NULL else as.integer(opt$num_threads)
-nreads.learn <- if(opt$learn_min_reads=='NULL') NULL else as.integer(opt$learn_min_reads)
+nbases.learn <- if(opt$learn_min_bases=='NULL') NULL else as.integer(opt$learn_min_bases)
 # The following args are not directly exposed to end users in q2-dada2,
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
 if (opt$homopolymer_gap_penalty=='NULL'){
@@ -439,18 +439,18 @@ if(length(filts) == 0) { # All reads were filtered out
 }
 
 ### LEARN ERROR RATES ###
-# Dereplicate enough samples to get nreads.learn total reads
+# Dereplicate enough samples to get nbases.learn total reads
 cat("3) Learning Error Rates\n")
 if(primer.removed.dir!='NULL'){#for CCS read analysis
-  err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn,
+  err <- suppressWarnings(learnErrors(filts, nbases=nbases.learn,
                                       errorEstimationFunction=dada2:::PacBioErrfun,
                                       multithread=multithread, BAND_SIZE=BAND_SIZE))
   com_err_df <- internal_plotErrors(err)
 
 }else if(inp.dirR!='NULL'){#for paired read analysis
 
-  err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread))
-  errR <- suppressWarnings(learnErrors(filtsR, nreads=nreads.learn, multithread=multithread))
+  err <- suppressWarnings(learnErrors(filts, nbases=nbases.learn, multithread=multithread))
+  errR <- suppressWarnings(learnErrors(filtsR, nbases=nbases.learn, multithread=multithread))
 
   err_plot_df_F <- internal_plotErrors(err)
   colnames(err_plot_df_F) <- paste0("F_", colnames(err_plot_df_F))
@@ -459,7 +459,7 @@ if(primer.removed.dir!='NULL'){#for CCS read analysis
   com_err_df<-cbind(err_plot_df_F,err_plot_df_R)
 
 }else{#for sinlge/pyro read analysis
-  err <- suppressWarnings(learnErrors(filts, nreads=nreads.learn, multithread=multithread,
+  err <- suppressWarnings(learnErrors(filts, nbases=nbases.learn, multithread=multithread,
                                       HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY, BAND_SIZE=BAND_SIZE))
   com_err_df <- internal_plotErrors(err)
 }
