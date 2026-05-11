@@ -116,8 +116,8 @@ class TestDenoiseSingle(TestPluginBase):
         with self.assertRaisesRegex(ValueError, 'trunc_len'):
             denoise_single(self.demux_seqs, -1)
 
-        with self.assertRaisesRegex(ValueError, 'n_reads_learn'):
-            denoise_single(self.demux_seqs, 100, n_reads_learn=0)
+        with self.assertRaisesRegex(ValueError, 'n_bases_learn'):
+            denoise_single(self.demux_seqs, 100, n_bases_learn=0)
 
         with self.assertRaisesRegex(ValueError, 'consensus'):
             denoise_single(self.demux_seqs, 100, chimera_method='foo')
@@ -315,8 +315,8 @@ class TestDenoisePaired(TestPluginBase):
         with self.assertRaisesRegex(ValueError, 'trunc_len_r'):
             denoise_paired(self.demux_seqs, 150, -1)
 
-        with self.assertRaisesRegex(ValueError, 'n_reads_learn'):
-            denoise_paired(self.demux_seqs, 150, 150, n_reads_learn=0)
+        with self.assertRaisesRegex(ValueError, 'n_bases_learn'):
+            denoise_paired(self.demux_seqs, 150, 150, n_bases_learn=0)
 
         with self.assertRaisesRegex(ValueError, 'consensus'):
             denoise_single(self.demux_seqs, 150, 150, chimera_method='foo')
