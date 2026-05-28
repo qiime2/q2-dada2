@@ -13,6 +13,7 @@ import seaborn as sns
 import qiime2.util
 import q2templates
 import qiime2
+import warnings
 
 TEMPLATES = importlib.resources.files('q2_dada2') / '_dada_stats' / 'assets'
 
@@ -53,7 +54,17 @@ def _plot_errors(transdf, image_paths_arr, output_dir,
                 './' + image_prefix + 'error_graph.png'
             )
         plt.savefig(img_fp)
-    plt.clf()
+
+    # needed until (https://github.com/matplotlib/matplotlib/issues/9970) is
+    # resolved
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            'ignore',
+            message='Attempt to set non-positive ylim on a log-scaled.*',
+            category=UserWarning
+        )
+        plt.clf()
+
     return image_paths_arr  # pass back path to image
 
 
