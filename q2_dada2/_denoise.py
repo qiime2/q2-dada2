@@ -69,7 +69,7 @@ _valid_inputs = {
     'n_threads': _WHOLE_NUM,
     # 0 is technically allowed, but we don't want to support it because it only
     # takes all reads from the first sample (alphabetically by sample id)
-    'n_reads_learn': _NAT_NUM,
+    'n_bases_learn': _NAT_NUM,
     # Skipped because they are valid for whole domain of type
     'hashed_feature_ids': _SKIP,
     'demultiplexed_seqs': _SKIP,
@@ -203,7 +203,7 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
 def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
                     min_fold_parent_over_abundance, allow_one_off,
-                    n_threads, n_reads_learn, hashed_feature_ids,
+                    n_threads, n_bases_learn, hashed_feature_ids,
                     homopolymer_gap_penalty, band_size, retain_all_samples):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
@@ -236,7 +236,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                '--min_parental_fold', str(min_fold_parent_over_abundance),
                '--allow_one_off', str(allow_one_off),
                '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn),
+               '--learn_min_bases', str(n_bases_learn),
                '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
                '--band_size', str(band_size)]
         try:
@@ -262,7 +262,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
-                   n_threads: int = 1, n_reads_learn: int = 1000000,
+                   n_threads: int = 1, n_bases_learn: int = 100_000_000,
                    hashed_feature_ids: bool = True,
                    retain_all_samples: bool = True
                    ) -> (biom.Table, DNAIterator,
@@ -279,7 +279,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         min_fold_parent_over_abundance=min_fold_parent_over_abundance,
         allow_one_off=allow_one_off,
         n_threads=n_threads,
-        n_reads_learn=n_reads_learn,
+        n_bases_learn=n_bases_learn,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='NULL',
         band_size='16',
@@ -298,7 +298,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    chimera_method: str = 'consensus',
                    min_fold_parent_over_abundance: float = 1.0,
                    allow_one_off: bool = False,
-                   n_threads: int = 1, n_reads_learn: int = 1000000,
+                   n_threads: int = 1, n_bases_learn: int = 100_000_000,
                    hashed_feature_ids: bool = True,
                    retain_all_samples: bool = True
                    ) -> (biom.Table, DNAIterator,
@@ -357,7 +357,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                '--min_parental_fold', str(min_fold_parent_over_abundance),
                '--allow_one_off', str(allow_one_off),
                '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn)]
+               '--learn_min_bases', str(n_bases_learn)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -398,7 +398,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  chimera_method: str = 'consensus',
                  min_fold_parent_over_abundance: float = 1.0,
                  allow_one_off: bool = False,
-                 n_threads: int = 1, n_reads_learn: int = 250000,
+                 n_threads: int = 1, n_bases_learn: int = 100_000_000,
                  hashed_feature_ids: bool = True,
                  retain_all_samples: bool = True
                  ) -> (biom.Table, DNAIterator,
@@ -415,7 +415,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         min_fold_parent_over_abundance=min_fold_parent_over_abundance,
         allow_one_off=allow_one_off,
         n_threads=n_threads,
-        n_reads_learn=n_reads_learn,
+        n_bases_learn=n_bases_learn,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='1',
         band_size='32',
@@ -431,7 +431,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 chimera_method: str = 'consensus',
                 min_fold_parent_over_abundance: float = 3.5,
                 allow_one_off: bool = False,
-                n_threads: int = 1, n_reads_learn: int = 1000000,
+                n_threads: int = 1, n_bases_learn: int = 100_000_000,
                 hashed_feature_ids: bool = True,
                 retain_all_samples: bool = True
                 ) -> (biom.Table, DNAIterator,
@@ -476,7 +476,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                '--min_parental_fold', str(min_fold_parent_over_abundance),
                '--allow_one_off', str(allow_one_off),
                '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn),
+               '--learn_min_bases', str(n_bases_learn),
                '--homopolymer_gap_penalty', 'NULL',
                '--band_size', '32']
 
