@@ -470,6 +470,7 @@ if(primer.removed.dir!='NULL'){#for CCS read analysis
 
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates
+unmerged.ids <- character()
 
 if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   dds <- vector("list", length(filts))
@@ -510,7 +511,6 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   ddsF <- vector("list", length(filts))
   ddsR <- vector("list", length(filts))
   mergers <- vector("list", length(filts))
-  unmerged <- vector("list", length(filts))
   cat("3) Denoise samples ")
 
   for(j in seq(length(filts))) {
@@ -579,16 +579,19 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
         # manually reconstruct dada2's "N" * 10 separator so that sequences
         # are recognized if chimera filtering is performed; this separator
         # is later converted to a single space
-        unmerged[[j]] <- data.frame(
-          sequence=paste(
-            unmerged.forward, unmerged.reverse,
-            sep=linked.concat.delim
-          ),
-          abundance=unmerged.j$abundance,
-          stringsAsFactors=FALSE
+        unmerged.seqs <- paste(
+          unmerged.forward, unmerged.reverse,
+          sep=linked.concat.delim
         )
-      }else{
-        unmerged[[j]] <- data.frame(sequence=character(), abundance=numeric())
+        unmerged.ids <- c(unmerged.ids, unmerged.seqs)
+        mergers[[j]] <- rbind(
+          mergers[[j]],
+          data.frame(
+            sequence=unmerged.seqs,
+            abundance=unmerged.j$abundance,
+            stringsAsFactors=FALSE
+          )
+        )
       }
     }else{
       mergers[[j]] <- mp
@@ -601,24 +604,6 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   # Make sequence table
   seqtab <- makeSequenceTable(mergers)
 
-}
-
-# combine the merged and unmerged/concatenated feature tables
-if(inp.dirR !='NULL' && retain.unmerged){
-  unmerged.any <- any(vapply(unmerged, nrow, integer(1)) > 0)
-  if(unmerged.any){
-    seqtab.unmerged <- makeSequenceTable(unmerged)
-    unmerged.ids <- colnames(seqtab.unmerged)
-    if(ncol(seqtab) > 0){
-      seqtab <- cbind(seqtab, seqtab.unmerged)
-    }else{
-      seqtab <- seqtab.unmerged
-    }
-  }else{
-    unmerged.ids <- character()
-  }
-}else{
-  unmerged.ids <- character()
 }
 
 ### Remove chimeras
