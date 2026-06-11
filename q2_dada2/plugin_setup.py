@@ -128,9 +128,10 @@ plugin.methods.register_function(
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
-        'n_reads_learn': ('The number of reads to use when training the '
-                          'error model. Smaller numbers will result in a '
-                          'shorter run time but a less reliable error '
+        'n_reads_learn': ('The minimum number of reads to use when training '
+                          'the error model. This is passed to DADA2 as '
+                          '`--learn_min_reads`. Smaller numbers will result '
+                          'in a shorter run time but a less reliable error '
                           'model.'),
         'hashed_feature_ids': ('If true, the feature ids in the resulting '
                                'table will be presented as hashes of the '
@@ -275,9 +276,10 @@ plugin.methods.register_function(
         'n_threads': ('The number of threads to use for multithreaded '
                       'processing. If 0 is provided, all available cores will '
                       'be used.'),
-        'n_reads_learn': ('The number of reads to use when training the '
-                          'error model. Smaller numbers will result in a '
-                          'shorter run time but a less reliable error '
+        'n_reads_learn': ('The minimum number of reads to use when training '
+                          'the error model. This is passed to DADA2 as '
+                          '`--learn_min_reads`. Smaller numbers will result '
+                          'in a shorter run time but a less reliable error '
                           'model.'),
         'hashed_feature_ids': ('If true, the feature ids in the resulting '
                                'table will be presented as hashes of the '
@@ -396,9 +398,10 @@ plugin.methods.register_function(
         'n_threads': 'The number of threads to use for multithreaded '
                      'processing. If 0 is provided, all available cores will '
                      'be used.',
-        'n_reads_learn': 'The number of reads to use when training the '
-                         'error model. Smaller numbers will result in a '
-                         'shorter run time but a less reliable error '
+        'n_reads_learn': 'The minimum number of reads to use when training '
+                         'the error model. This is passed to DADA2 as '
+                         '`--learn_min_reads`. Smaller numbers will result '
+                         'in a shorter run time but a less reliable error '
                          'model.',
         'hashed_feature_ids': 'If true, the feature ids in the resulting '
                               'table will be presented as hashes of the '
@@ -534,9 +537,11 @@ plugin.methods.register_function(
         'n_threads': 'The number of threads to use for multithreaded '
                      'processing. If 0 is provided, all available cores will '
                      'be used.',
-        'n_reads_learn': 'The number of reads to use when training the '
-                         'error model. Smaller numbers will result in a '
-                         'shorter run time but a less reliable error model.',
+        'n_reads_learn': 'The minimum number of reads to use when training '
+                         'the error model. This is passed to DADA2 as '
+                         '`--learn_min_reads`. Smaller numbers will result '
+                         'in a shorter run time but a less reliable error '
+                         'model.',
         'hashed_feature_ids': 'If true, the feature ids in the resulting '
                               'table will be presented as hashes of the '
                               'sequences defining each feature. The hash '
