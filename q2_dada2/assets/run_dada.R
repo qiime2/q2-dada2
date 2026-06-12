@@ -470,7 +470,8 @@ if(primer.removed.dir!='NULL'){#for CCS read analysis
 
 ### PROCESS ALL SAMPLES ###
 # Loop over rest in streaming fashion with learned error rates
-unmerged.ids <- character()
+unmerged.id.map <- data.frame(
+  temporary=character(), linked=character(), stringsAsFactors=FALSE)
 
 if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   dds <- vector("list", length(filts))
@@ -579,15 +580,26 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
         # manually reconstruct dada2's "N" * 10 separator so that sequences
         # are recognized if chimera filtering is performed; this separator
         # is later converted to a single space
-        unmerged.seqs <- paste(
+        unmerged.temp.seqs <- paste(
           unmerged.forward, unmerged.reverse,
           sep=linked.concat.delim
         )
-        unmerged.ids <- c(unmerged.ids, unmerged.seqs)
+        unmerged.linked.seqs <- paste(
+          unmerged.forward, unmerged.reverse,
+          sep=" "
+        )
+        unmerged.id.map <- rbind(
+          unmerged.id.map,
+          data.frame(
+            temporary=unmerged.temp.seqs,
+            linked=unmerged.linked.seqs,
+            stringsAsFactors=FALSE
+          )
+        )
         mergers[[j]] <- rbind(
           mergers[[j]],
           data.frame(
-            sequence=unmerged.seqs,
+            sequence=unmerged.temp.seqs,
             abundance=unmerged.j$abundance,
             stringsAsFactors=FALSE
           )
@@ -614,13 +626,22 @@ if(chimeraMethod %in% c("pooled", "consensus") && ncol(seqtab) > 0) {
   seqtab.nochim <- seqtab
 }
 
-# after chimera filtering, convert any retained concatenated IDs to the
-# single space-delimited representation
-if(length(unmerged.ids) > 0){
-  unmerged.keep <- intersect(colnames(seqtab.nochim), unmerged.ids)
+# after chimera filtering, convert retained concatenated IDs to the single
+# space-delimited representation using the exact joins we introduced above
+if(nrow(unmerged.id.map) > 0){
+  unmerged.id.map <- unique(unmerged.id.map)
+  ambiguous.ids <- unmerged.id.map$temporary[
+    duplicated(unmerged.id.map$temporary) |
+      duplicated(unmerged.id.map$temporary, fromLast=TRUE)
+  ]
+  if(length(ambiguous.ids) > 0){
+    errQuit("Unable to uniquely map retained unmerged sequences from the temporary DADA2-compatible representation to linked sequences.", status=1)
+  }
+
+  unmerged.keep <- intersect(colnames(seqtab.nochim), unmerged.id.map$temporary)
   if(length(unmerged.keep) > 0){
     colnames(seqtab.nochim)[match(unmerged.keep, colnames(seqtab.nochim))] <-
-      gsub(linked.concat.delim, " ", unmerged.keep, fixed=TRUE)
+      unmerged.id.map$linked[match(unmerged.keep, unmerged.id.map$temporary)]
   }
 }
 
