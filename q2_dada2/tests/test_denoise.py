@@ -423,7 +423,49 @@ class TestDenoisePairedRetainUnmerged(TestPluginBase):
         self.assertGreater(len(feature_ids), 0)
         self.assertTrue(all(' ' in feature_id for feature_id in feature_ids))
         self.assertTrue(all(' ' in str(seq) for seq in rep_seqs))
-        self.assertEqual(read_stats_md.to_dataframe()['merged'].sum(), 0)
+
+        stats = read_stats_md.to_dataframe()
+        self.assertEqual(list(stats.columns), [
+            'input',
+            'filtered',
+            'percentage of input passed filter',
+            'denoised',
+            'merged',
+            'percentage of input merged',
+            'concatenated',
+            'percentage of input concatenated',
+            'non-chimeric',
+            'percentage of input non-chimeric',
+            'non-chimeric concatenated',
+            'percentage of input non-chimeric concatenated',
+        ])
+        self.assertEqual(stats['merged'].sum(), 0)
+        self.assertGreater(stats['concatenated'].sum(), 0)
+        self.assertEqual(
+            stats['concatenated'].sum(),
+            stats['non-chimeric concatenated'].sum()
+        )
+        self.assertEqual(
+            stats['non-chimeric'].sum(),
+            stats['non-chimeric concatenated'].sum()
+        )
+
+        exp_concat_pct = (
+            stats['concatenated'] / stats['input'] * 100
+        ).fillna(0).round(2)
+        exp_nonchim_concat_pct = (
+            stats['non-chimeric concatenated'] / stats['input'] * 100
+        ).fillna(0).round(2)
+        pd.testing.assert_series_equal(
+            stats['percentage of input concatenated'],
+            exp_concat_pct,
+            check_names=False
+        )
+        pd.testing.assert_series_equal(
+            stats['percentage of input non-chimeric concatenated'],
+            exp_nonchim_concat_pct,
+            check_names=False
+        )
 
     def test_retain_unmerged_hashed_feature_ids_are_stable(self):
         '''
@@ -576,6 +618,25 @@ class TestDenoisePairedRetainUnmerged(TestPluginBase):
         self.assertGreater(
             chimera_none_stats.to_dataframe()['non-chimeric'].sum(),
             chimera_consensus_stats.to_dataframe()['non-chimeric'].sum()
+        )
+
+        chimera_none_stats = chimera_none_stats.to_dataframe()
+        chimera_consensus_stats = chimera_consensus_stats.to_dataframe()
+        self.assertEqual(
+            chimera_none_stats['concatenated'].sum(),
+            chimera_consensus_stats['concatenated'].sum()
+        )
+        self.assertEqual(
+            chimera_none_stats['concatenated'].sum(),
+            chimera_none_stats['non-chimeric concatenated'].sum()
+        )
+        self.assertGreater(
+            chimera_none_stats['non-chimeric concatenated'].sum(),
+            chimera_consensus_stats['non-chimeric concatenated'].sum()
+        )
+        self.assertEqual(
+            chimera_consensus_stats['non-chimeric'].sum(),
+            chimera_consensus_stats['non-chimeric concatenated'].sum()
         )
 
 

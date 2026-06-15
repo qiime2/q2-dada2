@@ -509,6 +509,8 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
 }else{#for paired read analysis
   denoisedF <- rep(0, length(filts))
   mergedF <- rep(0, length(filts))
+  concatenatedF <- rep(0, length(filts))
+  nonchimConcatenatedF <- rep(0, length(filts))
   ddsF <- vector("list", length(filts))
   ddsR <- vector("list", length(filts))
   mergers <- vector("list", length(filts))
@@ -566,6 +568,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
       mergedF[j] <- sum(mp[mp$accept, "abundance"])
       mergers[[j]] <- mp[mp$accept, c("sequence", "abundance")]
       unmerged.j <- mp[!mp$accept, c("forward", "reverse", "abundance")]
+      concatenatedF[j] <- sum(unmerged.j[,"abundance"])
       if(nrow(unmerged.j) > 0){
         # `mergePairs` returns cluster indices in the "forward" and "reverse"
         # columns, so we resolve these to denoised forward and
@@ -640,6 +643,9 @@ if(nrow(unmerged.id.map) > 0){
 
   unmerged.keep <- intersect(colnames(seqtab.nochim), unmerged.id.map$temporary)
   if(length(unmerged.keep) > 0){
+    nonchimConcatenatedF <- rowSums(
+      seqtab.nochim[, unmerged.keep, drop=FALSE]
+    )
     colnames(seqtab.nochim)[match(unmerged.keep, colnames(seqtab.nochim))] <-
       unmerged.id.map$linked[match(unmerged.keep, unmerged.id.map$temporary)]
   }
@@ -663,11 +669,24 @@ if(inp.dirR =='NULL'){
               quote=FALSE)
 }else{#for paired end reads
   # Handle edge cases: Samples lost in filtering; One sample
-  track <- cbind(out, matrix(0, nrow=nrow(out), ncol=3))
-  colnames(track) <- c("input", "filtered", "denoised", "merged", "non-chimeric")
+  if(retain.unmerged){
+    track <- cbind(out, matrix(0, nrow=nrow(out), ncol=5))
+    colnames(track) <- c("input", "filtered", "denoised", "merged",
+                         "concatenated", "non-chimeric",
+                         "non-chimeric concatenated")
+  }else{
+    track <- cbind(out, matrix(0, nrow=nrow(out), ncol=3))
+    colnames(track) <- c("input", "filtered", "denoised", "merged",
+                         "non-chimeric")
+  }
   passed.filtering <- track[,"filtered"] > 0
   track[passed.filtering,"denoised"] <- denoisedF
   track[passed.filtering,"merged"] <- mergedF
+  if(retain.unmerged){
+    track[passed.filtering,"concatenated"] <- concatenatedF
+    track[passed.filtering,"non-chimeric concatenated"] <-
+      nonchimConcatenatedF
+  }
   track[passed.filtering,"non-chimeric"] <- rowSums(seqtab.nochim)
   write.table(track, out.track, sep="\t", row.names=TRUE, col.names=NA,
               quote=FALSE)
