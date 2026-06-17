@@ -25,7 +25,7 @@ from ._dada_stats import plot_base_transitions
 _POOL_OPT = {'pseudo', 'independent'}
 _CHIM_OPT = {'consensus', 'none'}
 P_retain_unmerged, T_paired_representative_sequences = qiime2.plugin.TypeMap({
-    qiime2.plugin.Bool % qiime2.plugin.Choices(True):
+    qiime2.plugin.Choices(True):
         FeatureData[LinkedSequence],
     qiime2.plugin.Bool % qiime2.plugin.Choices(False):
         FeatureData[Sequence],
