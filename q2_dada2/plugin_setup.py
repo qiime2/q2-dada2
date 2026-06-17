@@ -188,7 +188,7 @@ plugin.methods.register_function(
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool,
                 'retain_all_samples': qiime2.plugin.Bool,
-                'retain_unmerged': P_retain_unmerged},
+                'retain_unmerged': qiime2.plugin.Bool % P_retain_unmerged},
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', T_paired_representative_sequences),
              ('denoising_stats', SampleData[DADA2Stats]),
