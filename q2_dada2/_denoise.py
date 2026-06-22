@@ -79,6 +79,14 @@ _valid_inputs = {
     'front': _SKIP,
     'adapter': _SKIP,
     'indels': _SKIP,
+    'plot_complexities': _BOOL,
+    'kmer_size': _WHOLE_NUM,
+    'window': _SKIP,
+    'step_size': _WHOLE_NUM,
+    'n': _WHOLE_NUM,
+    'bins': _WHOLE_NUM,
+    'aggregate': _BOOL,
+    'complex_threshold': _WHOLE_NUM
 }
 
 
@@ -204,7 +212,9 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
                     min_fold_parent_over_abundance, allow_one_off,
                     n_threads, n_reads_learn, hashed_feature_ids,
-                    homopolymer_gap_penalty, band_size, retain_all_samples):
+                    homopolymer_gap_penalty, band_size, retain_all_samples,
+                    plot_complexities, kmer_size, window, step_size, n, bins,
+                    aggregate, complex_threshold):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
@@ -220,25 +230,36 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
         err_track_fp = os.path.join(temp_dir_name, 'err_track.tsv')
 
-        cmd = ['run_dada.R',
-               '--input_directory', str(demultiplexed_seqs),
-               '--output_path', biom_fp,
-               '--output_track', track_fp,
-               '--output_err_track', err_track_fp,
-               '--filtered_directory', temp_dir_name,
-               '--truncation_length', str(trunc_len),
-               '--trim_left', str(trim_left),
-               '--max_expected_errors', str(max_ee),
-               '--truncation_quality_score', str(trunc_q),
-               '--max_length', str(max_len),
-               '--pooling_method', str(pooling_method),
-               '--chimera_method', str(chimera_method),
-               '--min_parental_fold', str(min_fold_parent_over_abundance),
-               '--allow_one_off', str(allow_one_off),
-               '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn),
-               '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
-               '--band_size', str(band_size)]
+        cmd = [
+            'run_dada.R',
+            '--input_directory', str(demultiplexed_seqs),
+            '--output_path', biom_fp,
+            '--output_track', track_fp,
+            '--output_err_track', err_track_fp,
+            '--filtered_directory', temp_dir_name,
+            '--truncation_length', str(trunc_len),
+            '--trim_left', str(trim_left),
+            '--max_expected_errors', str(max_ee),
+            '--truncation_quality_score', str(trunc_q),
+            '--max_length', str(max_len),
+            '--pooling_method', str(pooling_method),
+            '--chimera_method', str(chimera_method),
+            '--min_parental_fold', str(min_fold_parent_over_abundance),
+            '--allow_one_off', str(allow_one_off),
+            '--num_threads', str(n_threads),
+            '--learn_min_reads', str(n_reads_learn),
+            '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
+            '--band_size', str(band_size),
+            '--plot_complexities', str(plot_complexities),
+            '--kmer_size', str(kmer_size),
+            '--window', str(window),
+            '--step_size', str(step_size),
+            '--n', str(n),
+            '--bins', str(bins),
+            '--aggregate', str(aggregate),
+            '--complex_threshold', str(complex_threshold)
+        ]
+
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -264,7 +285,15 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True,
-                   retain_all_samples: bool = True
+                   retain_all_samples: bool = True,
+                   plot_complexities: bool = False,
+                   kmer_size: int = 2,
+                   window: int | None = None,
+                   step_size: int = 5,
+                   n: int = 100000,
+                   bins: int = 100,
+                   aggregate: bool = False,
+                   complex_threshold: int = 0
                    ) -> (biom.Table, DNAIterator,
                          qiime2.Metadata, qiime2.Metadata):
     return _denoise_single(
@@ -283,7 +312,16 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='NULL',
         band_size='16',
-        retain_all_samples=retain_all_samples)
+        retain_all_samples=retain_all_samples,
+        plot_complexities=plot_complexities,
+        kmer_size=kmer_size,
+        window=window,
+        step_size=step_size,
+        n=n,
+        bins=bins,
+        aggregate=aggregate,
+        complex_threshold=complex_threshold
+    )
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -300,7 +338,15 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True,
-                   retain_all_samples: bool = True
+                   retain_all_samples: bool = True,
+                   plot_complexities: bool = False,
+                   kmer_size: int = 2,
+                   window: int | None = None,
+                   step_size: int = 5,
+                   n: int = 100000,
+                   bins: int = 100,
+                   aggregate: bool = False,
+                   complex_threshold: int = 0
                    ) -> (biom.Table, DNAIterator,
                          qiime2.Metadata, qiime2.Metadata):
     _check_inputs(**locals())
@@ -334,30 +380,41 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             qiime2.util.duplicate(rev_fp, os.path.join(tmp_reverse,
                                                        rev_no_barcode))
 
-        cmd = ['run_dada.R',
-               '--input_directory', tmp_forward,
-               '--input_directory_reverse', tmp_reverse,
-               '--output_path', biom_fp,
-               '--output_track', track_fp,
-               '--output_err_track', err_track_fp,
-               '--filtered_directory', filt_forward,
-               '--filtered_directory_reverse', filt_reverse,
-               '--truncation_length', str(trunc_len_f),
-               '--truncation_length_reverse', str(trunc_len_r),
-               '--trim_left', str(trim_left_f),
-               '--trim_left_reverse', str(trim_left_r),
-               '--max_expected_errors', str(max_ee_f),
-               '--max_expected_errors_reverse', str(max_ee_r),
-               '--truncation_quality_score', str(trunc_q),
-               '--min_overlap', str(min_overlap),
-               '--max_merge_mismatch', str(max_merge_mismatch),
-               '--trim_overhang', str(trim_overhang),
-               '--pooling_method', str(pooling_method),
-               '--chimera_method', str(chimera_method),
-               '--min_parental_fold', str(min_fold_parent_over_abundance),
-               '--allow_one_off', str(allow_one_off),
-               '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn)]
+        cmd = [
+            'run_dada.R',
+            '--input_directory', tmp_forward,
+            '--input_directory_reverse', tmp_reverse,
+            '--output_path', biom_fp,
+            '--output_track', track_fp,
+            '--output_err_track', err_track_fp,
+            '--filtered_directory', filt_forward,
+            '--filtered_directory_reverse', filt_reverse,
+            '--truncation_length', str(trunc_len_f),
+            '--truncation_length_reverse', str(trunc_len_r),
+            '--trim_left', str(trim_left_f),
+            '--trim_left_reverse', str(trim_left_r),
+            '--max_expected_errors', str(max_ee_f),
+            '--max_expected_errors_reverse', str(max_ee_r),
+            '--truncation_quality_score', str(trunc_q),
+            '--min_overlap', str(min_overlap),
+            '--max_merge_mismatch', str(max_merge_mismatch),
+            '--trim_overhang', str(trim_overhang),
+            '--pooling_method', str(pooling_method),
+            '--chimera_method', str(chimera_method),
+            '--min_parental_fold', str(min_fold_parent_over_abundance),
+            '--allow_one_off', str(allow_one_off),
+            '--num_threads', str(n_threads),
+            '--learn_min_reads', str(n_reads_learn),
+            '--plot_complexities', str(plot_complexities),
+            '--kmer_size', str(kmer_size),
+            '--window', str(window),
+            '--step_size', str(step_size),
+            '--n', str(n),
+            '--bins', str(bins),
+            '--aggregate', str(aggregate),
+            '--complex_threshold', str(complex_threshold)
+        ]
+
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -400,7 +457,15 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  allow_one_off: bool = False,
                  n_threads: int = 1, n_reads_learn: int = 250000,
                  hashed_feature_ids: bool = True,
-                 retain_all_samples: bool = True
+                 retain_all_samples: bool = True,
+                 plot_complexities: bool = False,
+                 kmer_size: int = 2,
+                 window: int | None = None,
+                 step_size: int = 5,
+                 n: int = 100000,
+                 bins: int = 100,
+                 aggregate: bool = False,
+                 complex_threshold: int = 0
                  ) -> (biom.Table, DNAIterator,
                        qiime2.Metadata, qiime2.Metadata):
     return _denoise_single(
@@ -419,7 +484,16 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='1',
         band_size='32',
-        retain_all_samples=retain_all_samples)
+        retain_all_samples=retain_all_samples,
+        plot_complexities=plot_complexities,
+        kmer_size=kmer_size,
+        window=window,
+        step_size=step_size,
+        n=n,
+        bins=bins,
+        aggregate=aggregate,
+        complex_threshold=complex_threshold
+    )
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -433,7 +507,15 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 allow_one_off: bool = False,
                 n_threads: int = 1, n_reads_learn: int = 1000000,
                 hashed_feature_ids: bool = True,
-                retain_all_samples: bool = True
+                retain_all_samples: bool = True,
+                plot_complexities: bool = False,
+                kmer_size: int = 2,
+                window: int | None = None,
+                step_size: int = 5,
+                n: int = 100000,
+                bins: int = 100,
+                aggregate: bool = False,
+                complex_threshold: int = 0
                 ) -> (biom.Table, DNAIterator,
                       qiime2.Metadata, qiime2.Metadata):
     _check_inputs(**locals())
@@ -455,30 +537,40 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         for fp in nop_fp, filt_fp:
             os.mkdir(fp)
 
-        cmd = ['run_dada.R',
-               '--input_directory', str(demultiplexed_seqs),
-               '--output_path', biom_fp,
-               '--output_track', track_fp,
-               '--output_err_track', err_track_fp,
-               '--removed_primer_directory', nop_fp,
-               '--filtered_directory', filt_fp,
-               '--forward_primer', str(front),
-               '--max_mismatch', str(max_mismatch),
-               '--indels', str(indels),
-               '--truncation_length', str(trunc_len),
-               '--trim_left', str(trim_left),
-               '--max_expected_errors', str(max_ee),
-               '--truncation_quality_score', str(trunc_q),
-               '--min_length', str(min_len),
-               '--max_length', str(max_len),
-               '--pooling_method', str(pooling_method),
-               '--chimera_method', str(chimera_method),
-               '--min_parental_fold', str(min_fold_parent_over_abundance),
-               '--allow_one_off', str(allow_one_off),
-               '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn),
-               '--homopolymer_gap_penalty', 'NULL',
-               '--band_size', '32']
+        cmd = [
+            'run_dada.R',
+            '--input_directory', str(demultiplexed_seqs),
+            '--output_path', biom_fp,
+            '--output_track', track_fp,
+            '--output_err_track', err_track_fp,
+            '--removed_primer_directory', nop_fp,
+            '--filtered_directory', filt_fp,
+            '--forward_primer', str(front),
+            '--max_mismatch', str(max_mismatch),
+            '--indels', str(indels),
+            '--truncation_length', str(trunc_len),
+            '--trim_left', str(trim_left),
+            '--max_expected_errors', str(max_ee),
+            '--truncation_quality_score', str(trunc_q),
+            '--min_length', str(min_len),
+            '--max_length', str(max_len),
+            '--pooling_method', str(pooling_method),
+            '--chimera_method', str(chimera_method),
+            '--min_parental_fold', str(min_fold_parent_over_abundance),
+            '--allow_one_off', str(allow_one_off),
+            '--num_threads', str(n_threads),
+            '--learn_min_reads', str(n_reads_learn),
+            '--homopolymer_gap_penalty', 'NULL',
+            '--band_size', '32',
+            '--plot_complexities', str(plot_complexities),
+            '--kmer_size', str(kmer_size),
+            '--window', str(window),
+            '--step_size', str(step_size),
+            '--n', str(n),
+            '--bins', str(bins),
+            '--aggregate', str(aggregate),
+            '--complex_threshold', str(complex_threshold)
+        ]
 
         if adapter is not None:
             cmd += ['--reverse_primer', str(adapter)]

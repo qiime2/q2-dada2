@@ -208,7 +208,23 @@ option_list = list(
   make_option(c("--homopolymer_gap_penalty"), action="store", default='NULL', type='character',
               help="The cost of gaps in homopolymer regions (>=3 repeated bases).Default is NULL, which causes homopolymer gaps to be treated as normal gaps."),
   make_option(c("--band_size"), action="store", default='NULL', type='character',
-              help="When set, banded Needleman-Wunsch alignments are performed.")
+              help="When set, banded Needleman-Wunsch alignments are performed."),
+  make_option(c("--plot_complexities"), action="store", default="NULL", type="character",
+              help="Whether to plot complexities."),
+  make_option(c("--kmer_size"), action="store", default="NULL", type="character",
+              help="Kmer size used when plotting complexities."),
+  make_option(c("--window"), action="store", default="NULL", type="character",
+              help="Width in nucleotides of the moving window when plotting complexities."),
+  make_option(c("--step_size"), action="store", default="NULL", type="character",
+              help="Step size between each moving window tested when plotting complexities."),
+  make_option(c("--n"), action="store", default="NULL", type="character",
+              help="Number of records to sample from the fastq files when plotting complexities."),
+  make_option(c("--bins"), action="store", default="NULL", type="character",
+              help="Number of bins to use when plotting complexities."),
+  make_option(c("--aggregate"), action="store", default="NULL", type="character",
+              help="Whether to compute an aggregate quality profile for all fastq files provided when plotting complexities."),
+  make_option(c("--complex_threshold"), action="store", default="NULL", type="character",
+              help="Reads with an effective number of kmers less than this will be value will be removed.")
 )
 opt = parse_args(OptionParser(option_list=option_list))
 
@@ -255,6 +271,13 @@ if (opt$homopolymer_gap_penalty=='NULL'){
   }
 }
 BAND_SIZE <- if(opt$band_size=='NULL') NULL else as.integer(opt$band_size)
+complexities <- if(opt$plot_complexities=='NULL') NULL else as.logical(opt$plot_complexities)
+kmerSize <- if(opt$kmer_size=='NULL') NULL else as.integer(opt$kmer_size)
+window <- if(opt$window=='NULL') NULL else as.integer(opt$window)
+stepSize <- if(opt$step_size=='NULL') NULL else as.integer(opt$step_size)
+n <- if(opt$n=='NULL') NULL else as.integer(opt$n)
+bins <- if(opt$bins=='NULL') NULL else as.integer(opt$bins)
+aggregate <- if(opt$aggregate=='NULL') NULL else as.logical(opt$aggregate)
 
 ### VALIDATE ARGUMENTS ###
 # Input directory is expected to contain .fastq.gz file(s)
@@ -309,7 +332,7 @@ cat("DADA2:", as.character(packageVersion("dada2")), "/",
     "RcppParallel:", as.character(packageVersion("RcppParallel")), "\n")
 
 ### Helper Functions ###
-#function to approximate melt function from reshape2 which is not a dependency 
+#function to approximate melt function from reshape2 which is not a dependency
 melter<-function(df){
   df<-as.data.frame(df)
   melted_df<-data.frame(Var1 = character(), Var2 = numeric(), value = numeric(), stringsAsFactors = TRUE)
@@ -336,9 +359,9 @@ internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T
   if(!(all(nti %in% ACGT) && all(ntj %in% ACGT)) || any(duplicated(nti)) || any(duplicated(ntj))) {
     stop("nti and ntj must be nucleotide(s): A/C/G/T.")
   }
-  
+
   dq <- getErrors(dq, detailed=TRUE, enforce=FALSE)
-  
+
   if(!is.null(dq$trans)) {
     if(ncol(dq$trans) <= 1) {
       stop("plotErrors only supported when using quality scores in the error model (i.e. USE_QUALS=TRUE).")
@@ -356,7 +379,7 @@ internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T
   }
   transdf$from <- substr(transdf$Transition, 1, 1)
   transdf$to <- substr(transdf$Transition, 3, 3)
-  
+
   if(!is.null(dq$trans)) {
     tot.count <- tapply(transdf$count, list(transdf$from, transdf$Qual), sum)
     transdf$tot <- mapply(function(x,y) tot.count[x,y], transdf$from, as.character(transdf$Qual))
@@ -405,25 +428,53 @@ if(primer.removed.dir!='NULL'){ #for CCS read analysis
   }
 }
 
+if (complexities){
+  plotComplexities(unfilts, kmerSize, window, step_size, n, bins, aggregate)
+}
+
 ### TRIM AND FILTER ###
 cat("2) Filtering ")
 if(primer.removed.dir!='NULL'){ #for CCS read analysis
   filts <- file.path(filtered.dir, basename(nop))
-  out <- suppressWarnings(filterAndTrim(nop, filts, truncLen = truncLen, trimLeft = trimLeft,
-                                        maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
-                                        multithread = multithread, maxLen = maxLen, minLen = minLen, minQ = 3))
+  if (complexities){
+    out <- suppressWarnings(filterAndTrim(nop, filts, truncLen = truncLen, trimLeft = trimLeft,
+                                          maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
+                                          multithread = multithread, maxLen = maxLen, minLen = minLen, minQ = 3,
+                                          rm.lowcomplexities = complexThreshold))
+  }
+  else{
+    out <- suppressWarnings(filterAndTrim(nop, filts, truncLen = truncLen, trimLeft = trimLeft,
+                                          maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
+                                          multithread = multithread, maxLen = maxLen, minLen = minLen, minQ = 3))
+  }
 }else{
   filts <- file.path(filtered.dir, basename(unfilts))
   if(inp.dirR!='NULL'){#for paired read analysis
     filtsR <- file.path(filtered.dirR, basename(unfiltsR))
-    out <- suppressWarnings(filterAndTrim(unfilts, filts, unfiltsR, filtsR,
-                                          truncLen=c(truncLen, truncLenR), trimLeft=c(trimLeft, trimLeftR),
-                                          maxEE=c(maxEE, maxEER), truncQ=truncQ, rm.phix=TRUE,
-                                          multithread=multithread))
+    if(complexities){
+      out <- suppressWarnings(filterAndTrim(unfilts, filts, unfiltsR, filtsR,
+                                            truncLen=c(truncLen, truncLenR), trimLeft=c(trimLeft, trimLeftR),
+                                            maxEE=c(maxEE, maxEER), truncQ=truncQ, rm.phix=TRUE,
+                                            multithread=multithread, rm.lowcomplexities = complexThreshold))
+    }
+    else{
+      out <- suppressWarnings(filterAndTrim(unfilts, filts, unfiltsR, filtsR,
+                                            truncLen=c(truncLen, truncLenR), trimLeft=c(trimLeft, trimLeftR),
+                                            maxEE=c(maxEE, maxEER), truncQ=truncQ, rm.phix=TRUE,
+                                            multithread=multithread))
+    }
   }else{#for sinlge/pyro read analysis
-    out <- suppressWarnings(filterAndTrim(unfilts, filts, truncLen=truncLen, trimLeft=trimLeft,
-                                          maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE,
-                                          multithread=multithread, maxLen=maxLen))
+    if(complexities){
+      out <- suppressWarnings(filterAndTrim(unfilts, filts, truncLen=truncLen, trimLeft=trimLeft,
+                                            maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE,
+                                            multithread=multithread, maxLen=maxLen,
+                                            rm.lowcomplexities = complexThreshold))
+    }
+    else{
+      out <- suppressWarnings(filterAndTrim(unfilts, filts, truncLen=truncLen, trimLeft=trimLeft,
+                                            maxEE=maxEE, truncQ=truncQ, rm.phix=TRUE,
+                                            multithread=multithread, maxLen=maxLen))
+    }
   }
 }
 
