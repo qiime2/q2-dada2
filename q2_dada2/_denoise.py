@@ -423,7 +423,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-                front: str, adapter: Optional[str] = None,
+                front: Optional[str] = None, adapter: Optional[str] = None,
                 max_mismatch: int = 2, indels: bool = False,
                 trunc_len: int = 0, trim_left: int = 0, max_ee: float = 2.0,
                 trunc_q: int = 2, min_len: int = 20, max_len: int = 0,
@@ -462,7 +462,6 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                '--output_err_track', err_track_fp,
                '--removed_primer_directory', nop_fp,
                '--filtered_directory', filt_fp,
-               '--forward_primer', str(front),
                '--max_mismatch', str(max_mismatch),
                '--indels', str(indels),
                '--truncation_length', str(trunc_len),
@@ -482,6 +481,9 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
 
         if adapter is not None:
             cmd += ['--reverse_primer', str(adapter)]
+
+        if front is not None:
+            cmd += ['--forward_primer', str(front)]
 
         try:
             run_commands([cmd])

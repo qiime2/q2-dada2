@@ -514,6 +514,24 @@ class TestDenoiseCCS(TestPluginBase):
         self.assertEqual(read_stats_md, exp_md)
         self.assertEqual(df_err_md, df_err_exp_md)
 
+    def test_without_front(self):
+        from pandas.testing import assert_frame_equal
+        exp_md = qiime2.Metadata.load(
+            self.get_data_path('expected/no-primer-stats.tsv')
+        )
+        exp_md = exp_md.to_dataframe()
+
+        _, _, obs_md, _ = denoise_ccs(
+            self.demux_seqs
+        )
+        obs_md = obs_md.to_dataframe()
+
+        exp_columns = [
+            'input', 'filtered', 'denoised', 'non-chimeric'
+        ]
+
+        assert_frame_equal(exp_md[exp_columns], obs_md[exp_columns])
+
 
 class TestVizualization(TestPluginBase):
     package = 'q2_dada2.tests'

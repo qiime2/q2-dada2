@@ -309,7 +309,7 @@ cat("DADA2:", as.character(packageVersion("dada2")), "/",
     "RcppParallel:", as.character(packageVersion("RcppParallel")), "\n")
 
 ### Helper Functions ###
-#function to approximate melt function from reshape2 which is not a dependency 
+#function to approximate melt function from reshape2 which is not a dependency
 melter<-function(df){
   df<-as.data.frame(df)
   melted_df<-data.frame(Var1 = character(), Var2 = numeric(), value = numeric(), stringsAsFactors = TRUE)
@@ -336,9 +336,9 @@ internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T
   if(!(all(nti %in% ACGT) && all(ntj %in% ACGT)) || any(duplicated(nti)) || any(duplicated(ntj))) {
     stop("nti and ntj must be nucleotide(s): A/C/G/T.")
   }
-  
+
   dq <- getErrors(dq, detailed=TRUE, enforce=FALSE)
-  
+
   if(!is.null(dq$trans)) {
     if(ncol(dq$trans) <= 1) {
       stop("plotErrors only supported when using quality scores in the error model (i.e. USE_QUALS=TRUE).")
@@ -356,7 +356,7 @@ internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T
   }
   transdf$from <- substr(transdf$Transition, 1, 1)
   transdf$to <- substr(transdf$Transition, 3, 3)
-  
+
   if(!is.null(dq$trans)) {
     tot.count <- tapply(transdf$count, list(transdf$from, transdf$Qual), sum)
     transdf$tot <- mapply(function(x,y) tot.count[x,y], transdf$from, as.character(transdf$Qual))
@@ -384,30 +384,32 @@ internal_plotErrors <- function(dq, nti=c("A","C","G","T"), ntj=c("A","C","G","T
 }
 
 ### Remove Primers ###
-if(primer.removed.dir!='NULL'){ #for CCS read analysis
-  cat("1) Removing Primers\n")
-  nop <- file.path(primer.removed.dir, basename(unfilts))
+if(primer != 'NULL'){ # only execute if there are primers to be removed
+    if(primer.removed.dir!='NULL'){ #for CCS read analysis
+        cat("1) Removing Primers\n")
+        nop <- file.path(primer.removed.dir, basename(unfilts))
 
-  # reverse complement reverse primer only if provided
-  if (primerR != 'NULL') {
-    primerR <- dada2::rc(primerR)
-  } else {
-    primerR <- NULL
-  }
-  prim <- suppressWarnings(removePrimers(unfilts, nop, primer, primerR,
-                                         max.mismatch = maxMismatch, allow.indels = indels,
-                                         orient = TRUE, verbose = TRUE))
-  cat(ifelse(file.exists(nop), ".", "x"), sep="")
-  nop <- list.files(primer.removed.dir, pattern=".fastq.gz$", full.names=TRUE)
-  cat("\n")
-  if(length(nop) == 0) { # All reads were filtered out
-    errQuit("No reads passed the Removing Primers step  (Did you select the right primers?)", status=2)
-  }
+        # reverse complement reverse primer only if provided
+        if (primerR != 'NULL') {
+            primerR <- dada2::rc(primerR)
+        } else {
+            primerR <- NULL
+        }
+        prim <- suppressWarnings(removePrimers(unfilts, nop, primer, primerR,
+                                                max.mismatch = maxMismatch, allow.indels = indels,
+                                                orient = TRUE, verbose = TRUE))
+        cat(ifelse(file.exists(nop), ".", "x"), sep="")
+        nop <- list.files(primer.removed.dir, pattern=".fastq.gz$", full.names=TRUE)
+        cat("\n")
+        if(length(nop) == 0) { # All reads were filtered out
+            errQuit("No reads passed the Removing Primers step  (Did you select the right primers?)", status=2)
+        }
+    }
 }
 
 ### TRIM AND FILTER ###
 cat("2) Filtering ")
-if(primer.removed.dir!='NULL'){ #for CCS read analysis
+if(primer.removed.dir!='NULL' && primer!='NULL'){ #for CCS read analysis
   filts <- file.path(filtered.dir, basename(nop))
   out <- suppressWarnings(filterAndTrim(nop, filts, truncLen = truncLen, trimLeft = trimLeft,
                                         maxEE = maxEE, truncQ = truncQ, rm.phix = FALSE,
@@ -573,7 +575,7 @@ if(chimeraMethod %in% c("pooled", "consensus")) {
 cat("6) Report read numbers through the pipeline\n")
 if(inp.dirR =='NULL'){
   # Handle edge cases: Samples lost in filtering; One sample
-  if(primer.removed.dir!='NULL'){ #for CCS read analysis
+  if(primer.removed.dir!='NULL' && primer!='NULL'){ #for CCS read analysis
     track <- cbind(prim,out[ ,2], matrix(0, nrow=nrow(out), ncol=2))
     colnames(track) <- c("input", "primer-removed", "filtered", "denoised", "non-chimeric")
   }else{ #for sinlge/pyro read analysis
