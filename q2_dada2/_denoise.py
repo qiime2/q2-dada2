@@ -127,8 +127,6 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
     PASSED_FILTER = 'percentage of input passed filter'
     NON_CHIMERIC = 'percentage of input non-chimeric'
     CONCATENATED = 'percentage of input concatenated'
-    NON_CHIMERIC_CONCATENATED = (
-        'percentage of input non-chimeric concatenated')
 
     round_cols = {PASSED_FILTER: 2, NON_CHIMERIC: 2}
 
@@ -154,13 +152,6 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
         insert_at = col_order.index('non-chimeric')
         col_order.insert(insert_at, 'concatenated')
         col_order.insert(insert_at + 1, CONCATENATED)
-
-    if 'non-chimeric concatenated' in df:
-        round_cols[NON_CHIMERIC_CONCATENATED] = 2
-        df[NON_CHIMERIC_CONCATENATED] = (
-            df['non-chimeric concatenated'] / df['input'] * 100)
-        col_order.append('non-chimeric concatenated')
-        col_order.append(NON_CHIMERIC_CONCATENATED)
 
     # only calculate percentage of input primer-removed if ccs
     if 'primer-removed' in df:
