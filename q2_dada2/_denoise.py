@@ -18,7 +18,7 @@ import qiime2.util
 import pandas as pd
 import numpy as np
 
-from q2_types.feature_data import DNAIterator
+from q2_types.feature_data import DNAIterator, LinkedDNA
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt)
@@ -196,7 +196,7 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
 
     def _to_sequence(sequence, metadata):
         if retain_unmerged:
-            return skbio.Sequence(sequence, metadata=metadata)
+            return LinkedDNA(sequence, metadata=metadata)
         return skbio.DNA(sequence, metadata=metadata)
 
     # The feature IDs in DADA2 are the sequences themselves.

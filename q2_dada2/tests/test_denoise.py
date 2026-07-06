@@ -19,6 +19,7 @@ from qiime2.plugin.testing import TestPluginBase
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt)
+from q2_types.feature_data import LinkedDNA
 
 from q2_dada2 import denoise_single, denoise_paired, denoise_pyro, denoise_ccs
 from q2_dada2._denoise import _check_featureless_table
@@ -391,6 +392,7 @@ class TestDenoisePairedRetainUnmerged(TestPluginBase):
         self.assertTrue(any(' ' not in seq for seq in feature_ids))
         self.assertTrue(any(' ' in str(seq) for seq in rep_seqs))
         self.assertTrue(any(' ' not in str(seq) for seq in rep_seqs))
+        self.assertTrue(all(type(seq) is LinkedDNA for seq in rep_seqs))
 
     def test_retain_unmerged_rescues_no_merge_run(self):
         '''
