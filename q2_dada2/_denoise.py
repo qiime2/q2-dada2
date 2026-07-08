@@ -10,7 +10,6 @@ import os
 import tempfile
 from typing import Optional
 import hashlib
-import subprocess
 
 import biom
 import skbio
@@ -22,7 +21,7 @@ from q2_types.feature_data import DNAIterator
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt)
-from qiime2.plugin.util import run_commands
+from q2_dada2._run_dada import _run_dada2
 
 
 def _check_featureless_table(fp):
@@ -220,38 +219,27 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
         track_fp = os.path.join(temp_dir_name, 'track.tsv')
         err_track_fp = os.path.join(temp_dir_name, 'err_track.tsv')
 
-        cmd = ['run_dada.R',
-               '--input_directory', str(demultiplexed_seqs),
-               '--output_path', biom_fp,
-               '--output_track', track_fp,
-               '--output_err_track', err_track_fp,
-               '--filtered_directory', temp_dir_name,
-               '--truncation_length', str(trunc_len),
-               '--trim_left', str(trim_left),
-               '--max_expected_errors', str(max_ee),
-               '--truncation_quality_score', str(trunc_q),
-               '--max_length', str(max_len),
-               '--pooling_method', str(pooling_method),
-               '--chimera_method', str(chimera_method),
-               '--min_parental_fold', str(min_fold_parent_over_abundance),
-               '--allow_one_off', str(allow_one_off),
-               '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn),
-               '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
-               '--band_size', str(band_size)]
-        try:
-            run_commands([cmd])
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 2:
-                raise ValueError(
-                    "No reads passed the filter. trunc_len (%r) may be longer"
-                    " than read lengths, or other arguments (such as max_ee"
-                    " or trunc_q) may be preventing reads from passing the"
-                    " filter." % trunc_len)
-            else:
-                raise Exception("An error was encountered while running DADA2"
-                                " in R (return code %d), please inspect stdout"
-                                " and stderr to learn more." % e.returncode)
+        _run_dada2(
+            input_dir=str(demultiplexed_seqs),
+            output_path=str(biom_fp),
+            output_track=str(track_fp),
+            output_err_track=str(err_track_fp),
+            filtered_dir=str(temp_dir_name),
+            trunc_len=trunc_len,
+            trim_left=trim_left,
+            max_ee=max_ee,
+            trunc_quality=trunc_q,
+            max_len=max_len,
+            pooling_method=pooling_method,
+            chimera_method=chimera_method,
+            min_parental_fold=min_fold_parent_over_abundance,
+            allow_one_off=allow_one_off,
+            num_threads=n_threads,
+            learn_min_reads=n_reads_learn,
+            homopolymer_gap_penalty=homopolymer_gap_penalty,
+            band_size=band_size
+        )
+
         return _denoise_helper(biom_fp, track_fp, err_track_fp,
                                hashed_feature_ids, retain_all_samples)
 
@@ -281,9 +269,10 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_threads=n_threads,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
-        homopolymer_gap_penalty='NULL',
-        band_size='16',
-        retain_all_samples=retain_all_samples)
+        homopolymer_gap_penalty=None,
+        band_size=16,
+        retain_all_samples=retain_all_samples
+    )
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -334,47 +323,30 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             qiime2.util.duplicate(rev_fp, os.path.join(tmp_reverse,
                                                        rev_no_barcode))
 
-        cmd = ['run_dada.R',
-               '--input_directory', tmp_forward,
-               '--input_directory_reverse', tmp_reverse,
-               '--output_path', biom_fp,
-               '--output_track', track_fp,
-               '--output_err_track', err_track_fp,
-               '--filtered_directory', filt_forward,
-               '--filtered_directory_reverse', filt_reverse,
-               '--truncation_length', str(trunc_len_f),
-               '--truncation_length_reverse', str(trunc_len_r),
-               '--trim_left', str(trim_left_f),
-               '--trim_left_reverse', str(trim_left_r),
-               '--max_expected_errors', str(max_ee_f),
-               '--max_expected_errors_reverse', str(max_ee_r),
-               '--truncation_quality_score', str(trunc_q),
-               '--min_overlap', str(min_overlap),
-               '--max_merge_mismatch', str(max_merge_mismatch),
-               '--trim_overhang', str(trim_overhang),
-               '--pooling_method', str(pooling_method),
-               '--chimera_method', str(chimera_method),
-               '--min_parental_fold', str(min_fold_parent_over_abundance),
-               '--allow_one_off', str(allow_one_off),
-               '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn)]
-        try:
-            run_commands([cmd])
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 2:
-                raise ValueError(
-                    "No reads passed the filter. trunc_len_f (%r) or"
-                    " trunc_len_r (%r) may be individually longer than"
-                    " read lengths, or trunc_len_f + trunc_len_r may be"
-                    " shorter than the length of the amplicon + 12"
-                    " nucleotides (the length of the overlap). Alternatively,"
-                    " other arguments (such as max_ee or trunc_q) may be"
-                    " preventing reads from passing the filter."
-                    % (trunc_len_f, trunc_len_r))
-            else:
-                raise Exception("An error was encountered while running DADA2"
-                                " in R (return code %d), please inspect stdout"
-                                " and stderr to learn more." % e.returncode)
+        _run_dada2(
+            input_dir=str(tmp_forward),
+            input_dir_rev=str(tmp_reverse),
+            output_path=str(biom_fp),
+            output_track=str(track_fp),
+            output_err_track=str(err_track_fp),
+            filtered_dir=str(filt_forward),
+            filtered_dir_rev=str(filt_reverse),
+            trunc_len=trunc_len_f,
+            trunc_len_rev=trunc_len_r,
+            trim_left=trim_left_f,
+            trim_left_rev=trim_left_r,
+            max_ee=max_ee_f,
+            max_ee_rev=max_ee_r,
+            trunc_quality=trunc_q,
+            min_overlap=min_overlap,
+            max_merge_mismatch=max_merge_mismatch,
+            pooling_method=pooling_method,
+            chimera_method=chimera_method,
+            min_parental_fold=min_fold_parent_over_abundance,
+            allow_one_off=allow_one_off,
+            num_threads=n_threads,
+            learn_min_reads=n_reads_learn,
+        )
 
         return _denoise_helper(biom_fp, track_fp, err_track_fp,
                                hashed_feature_ids, retain_all_samples,
@@ -417,8 +389,8 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_threads=n_threads,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
-        homopolymer_gap_penalty='1',
-        band_size='32',
+        homopolymer_gap_penalty=1,
+        band_size=32,
         retain_all_samples=retain_all_samples)
 
 
@@ -455,46 +427,31 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         for fp in nop_fp, filt_fp:
             os.mkdir(fp)
 
-        cmd = ['run_dada.R',
-               '--input_directory', str(demultiplexed_seqs),
-               '--output_path', biom_fp,
-               '--output_track', track_fp,
-               '--output_err_track', err_track_fp,
-               '--removed_primer_directory', nop_fp,
-               '--filtered_directory', filt_fp,
-               '--forward_primer', str(front),
-               '--max_mismatch', str(max_mismatch),
-               '--indels', str(indels),
-               '--truncation_length', str(trunc_len),
-               '--trim_left', str(trim_left),
-               '--max_expected_errors', str(max_ee),
-               '--truncation_quality_score', str(trunc_q),
-               '--min_length', str(min_len),
-               '--max_length', str(max_len),
-               '--pooling_method', str(pooling_method),
-               '--chimera_method', str(chimera_method),
-               '--min_parental_fold', str(min_fold_parent_over_abundance),
-               '--allow_one_off', str(allow_one_off),
-               '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn),
-               '--homopolymer_gap_penalty', 'NULL',
-               '--band_size', '32']
+        _run_dada2(
+            input_dir=str(demultiplexed_seqs),
+            output_path=str(biom_fp),
+            output_track=str(track_fp),
+            output_err_track=str(err_track_fp),
+            removed_primer_dir=str(nop_fp),
+            filtered_dir=str(filt_fp),
+            forward_primer=front,
+            reverse_primer=adapter,
+            max_mismatch=max_mismatch,
+            indels=indels,
+            trunc_len=trunc_len,
+            trim_left=trim_left,
+            max_ee=max_ee,
+            trunc_quality=trunc_q,
+            max_len=max_len,
+            min_len=min_len,
+            pooling_method=pooling_method,
+            chimera_method=chimera_method,
+            min_parental_fold=min_fold_parent_over_abundance,
+            allow_one_off=allow_one_off,
+            num_threads=n_threads,
+            learn_min_reads=n_reads_learn,
+            band_size=32
+        )
 
-        if adapter is not None:
-            cmd += ['--reverse_primer', str(adapter)]
-
-        try:
-            run_commands([cmd])
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 2:
-                raise ValueError(
-                    "No reads passed the filter. trunc_len (%r) may be longer"
-                    " than read lengths, or other arguments (such as max_ee"
-                    " or trunc_q) may be preventing reads from passing the"
-                    " filter." % trunc_len)
-            else:
-                raise Exception("An error was encountered while running DADA2"
-                                " in R (return code %d), please inspect stdout"
-                                " and stderr to learn more." % e.returncode)
         return _denoise_helper(biom_fp, track_fp, err_track_fp,
                                hashed_feature_ids, retain_all_samples)

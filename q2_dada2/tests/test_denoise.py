@@ -12,6 +12,7 @@ import tempfile
 import pandas as pd
 import skbio
 import biom
+from pandas.testing import assert_frame_equal
 
 import qiime2
 from qiime2.plugin.testing import TestPluginBase
@@ -455,19 +456,16 @@ class TestDenoiseCCS(TestPluginBase):
             self.demux_seqs, front="AGRGTTYGATYMTGGCTCAG"
         )
 
-        self.assertEqual(
-            table,
-            exp_table.sort_order(
-                table.ids('observation'),
-                axis='observation'
-            )
-        )
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         df_err_md = \
             error_model_md.to_dataframe().replace('', pd.NA, inplace=True)
         df_err_exp_md = \
             exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
-        self.assertEqual(read_stats_md, exp_md)
+        assert_frame_equal(
+            read_stats_md.to_dataframe().sort_index(),
+            exp_md.to_dataframe().sort_index()
+        )
         self.assertEqual(df_err_md, df_err_exp_md)
 
     def test_with_reverse_primer(self):
@@ -497,13 +495,7 @@ class TestDenoiseCCS(TestPluginBase):
             adapter="RGYTACCTTGTTACGACTT"
         )
 
-        self.assertEqual(
-            table,
-            exp_table.sort_order(
-                table.ids('observation'),
-                axis='observation'
-            )
-        )
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         read_stats_md = md
         error_model_md = error_md
@@ -511,7 +503,10 @@ class TestDenoiseCCS(TestPluginBase):
             error_model_md.to_dataframe().replace('', pd.NA, inplace=True)
         df_err_exp_md = \
             exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
-        self.assertEqual(read_stats_md, exp_md)
+        assert_frame_equal(
+            read_stats_md.to_dataframe().sort_index(),
+            exp_md.to_dataframe().sort_index()
+        )
         self.assertEqual(df_err_md, df_err_exp_md)
 
 
