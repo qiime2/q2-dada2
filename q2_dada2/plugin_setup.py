@@ -586,11 +586,11 @@ plugin.visualizers.register_function(
         ],
     },
     parameters={
-        'kmer_size': qiime2.plugin.Int,
-        'window': qiime2.plugin.Int,
-        'by': qiime2.plugin.Int,
-        'n': qiime2.plugin.Int,
-        'bins': qiime2.plugin.Int,
+        'kmer_size': qiime2.plugin.Int % qiime2.plugin.Range(1, None),
+        'window': qiime2.plugin.Int % qiime2.plugin.Range(1, None),
+        'by': qiime2.plugin.Int % qiime2.plugin.Range(1, None),
+        'n': qiime2.plugin.Int % qiime2.plugin.Range(1, None),
+        'bins': qiime2.plugin.Int % qiime2.plugin.Range(1, None),
         'aggregate': qiime2.plugin.Bool,
     },
     input_descriptions={
@@ -615,7 +615,10 @@ plugin.visualizers.register_function(
         ),
     },
     name='Sequence complexity plots.',
-    description='Forthcoming.',
+    description=(
+        'Plot a histogram of the distribution of sequence complexities in '
+        'the form of effective numbers of kmers per read.'
+    ),
 )
 
 plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)
