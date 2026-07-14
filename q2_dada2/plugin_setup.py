@@ -20,7 +20,7 @@ from q2_dada2 import (
     DADA2BaseTransitionStatsFormat, DADA2BaseTransitionStatsDirFmt
 )
 import q2_dada2._examples as ex
-from ._dada_stats import plot_base_transitions
+from ._dada_stats import plot_base_transitions, plot_complexity
 
 _POOL_OPT = {'pseudo', 'independent'}
 _CHIM_OPT = {'consensus', 'none'}
@@ -576,6 +576,46 @@ plugin.visualizers.register_function(
         'error_in': 'Sets the input error line of the vizualization',
         'error_out': 'Sets the output error line of the vizualization'
     }
+)
+
+plugin.visualizers.register_function(
+    function=plot_complexity,
+    inputs={
+        'sequences': SampleData[
+            SequencesWithQuality | PairedEndSequencesWithQuality
+        ],
+    },
+    parameters={
+        'kmer_size': qiime2.plugin.Int,
+        'window': qiime2.plugin.Int,
+        'by': qiime2.plugin.Int,
+        'n': qiime2.plugin.Int,
+        'bins': qiime2.plugin.Int,
+        'aggregate': qiime2.plugin.Bool,
+    },
+    input_descriptions={
+        'sequences': 'The sequences to visuzlize.',
+    },
+    parameter_descriptions={
+        'kmer_size': (
+            'The size of the kmers (or "oligonucleotides" or "words") to use.'
+        ),
+        'window': (
+            'The width in nucleotides of the moving window. If not specified '
+            'then the whole sequence is used.'
+        ),
+        'by': (
+            'The step size in nucleotides between each moving window tested.'
+        ),
+        'n': 'The number of records to sample from the fastq file.',
+        'bins': 'The number of bins to use for the histogram.',
+        'aggregate': (
+            'Whether to compute an aggregate quality profile for all fastq '
+            'files provided.'
+        ),
+    },
+    name='Sequence complexity plots.',
+    description='Forthcoming.',
 )
 
 plugin.register_formats(DADA2StatsFormat, DADA2StatsDirFmt)

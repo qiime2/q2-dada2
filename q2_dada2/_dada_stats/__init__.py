@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-from ._visualizer import plot_base_transitions
+from ._visualizer import plot_base_transitions, plot_complexity
 
 
-__all__ = ['plot_base_transitions']
+__all__ = ['plot_base_transitions', 'plot_complexity']

@@ -6,14 +6,30 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-import os
 import importlib
+import math
+import os
+from pathlib import Path
+import shutil
+from typing import Union
+import warnings
+
 import matplotlib.pyplot as plt
+from rpy2.robjects.packages import importr
+import rpy2.robjects as ro
 import seaborn as sns
+
+import qiime2
 import qiime2.util
 import q2templates
-import qiime2
-import warnings
+from q2_types.per_sample_sequences import (
+    SingleLanePerSamplePairedEndFastqDirFmt,
+    SingleLanePerSampleSingleEndFastqDirFmt,
+)
+
+base = importr('base')
+dada2 = importr('dada2')
+ggplot2 = importr('ggplot2')
 
 TEMPLATES = importlib.resources.files('q2_dada2') / '_dada_stats' / 'assets'
 
@@ -111,3 +127,85 @@ def plot_base_transitions(
     # renders the template and initalizes the
     # js sorter for the dada2 read table
     q2templates.render(index, output_dir, context=context)
+
+
+def _ggplot2_objects_to_visualization(
+    plots: dict[str, object],
+    index: Path,
+    output_dir: str,
+    width: int,
+    height: int,
+    device: str
+) -> None:
+    '''
+    Saves one or more R ggplot2 objects to files referenced by `index`.
+    '''
+    shutil.copy(index, output_dir)
+
+    for img_name, plot_obj in plots.items():
+        img_name = f'{img_name}.{device}'
+        ggplot2.ggsave(
+            filename=str(Path(output_dir) / img_name),
+            plot=plot_obj,
+            device=device,
+            width=width,
+            height=height,
+            limitsize=False,
+            dpi=500
+        )
+
+
+def plot_complexity(
+    output_dir: str,
+    sequences: Union[
+        SingleLanePerSamplePairedEndFastqDirFmt,
+        SingleLanePerSampleSingleEndFastqDirFmt
+    ],
+    kmer_size: int = 2,
+    window: int | None = None,
+    by: int = 5,
+    n: int = 100_000,
+    bins: int = 100,
+    aggregate: bool = False
+):
+    '''
+    Plot per-sample sequence complexity histograms using the dada2 package's
+    `plotComplexity` function.
+    '''
+    forwards = base.list_files(
+        str(sequences), pattern=".*R1.*\\.fastq\\.gz$", full_names=True
+    )
+    reverses = base.list_files(
+        str(sequences), pattern=".*R2.*\\.fastq\\.gz$", full_names=True
+    )
+
+    kwargs = dict(
+        kmerSize=kmer_size,
+        window=window if window is not None else ro.r('NULL'),
+        by=by,
+        n=n,
+        bins=bins,
+        aggregate=aggregate
+    )
+
+    plots = {'forwards': dada2.plotComplexity(fl=forwards, **kwargs)}
+
+    if isinstance(sequences, SingleLanePerSamplePairedEndFastqDirFmt):
+        plots['reverses'] = dada2.plotComplexity(fl=reverses, **kwargs)
+
+    # make figure dimensions dependent on num samples
+    if aggregate:
+        axis_len = 0.9
+    else:
+        axis_len = 0.6 * math.ceil(math.sqrt(len(forwards)))
+
+    # sent font size
+    for img_name in plots:
+        plots[img_name] = ro.r["+"](
+            plots[img_name], ggplot2.theme_bw(base_size=2.4),
+        )
+
+    index = importlib.resources.files('q2_dada2') / 'assets' / 'index.html'
+    _ggplot2_objects_to_visualization(
+        plots, index, output_dir, width=axis_len, height=axis_len, device='png'
+    )
