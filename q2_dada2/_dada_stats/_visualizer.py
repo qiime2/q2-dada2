@@ -140,7 +140,7 @@ def _ggplot2_objects_to_visualization(
     '''
     Saves one or more R ggplot2 objects to files referenced by `index`.
     '''
-    shutil.copy(index, output_dir)
+    shutil.copy(index, Path(output_dir) / 'index.html')
 
     for img_name, plot_obj in plots.items():
         img_name = f'{img_name}.{device}'
@@ -205,7 +205,10 @@ def plot_complexity(
             plots[img_name], ggplot2.theme_bw(base_size=2.4),
         )
 
-    index = importlib.resources.files('q2_dada2') / 'assets' / 'index.html'
+    index = (
+        importlib.resources.files('q2_dada2') / '_dada_stats' / 'assets'
+        / 'plotComplexity.html'
+    )
     _ggplot2_objects_to_visualization(
         plots, index, output_dir, width=axis_len, height=axis_len, device='png'
     )
