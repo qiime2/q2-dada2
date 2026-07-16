@@ -18,7 +18,7 @@ import qiime2.util
 import pandas as pd
 import numpy as np
 
-from q2_types.feature_data import DNAIterator
+from q2_types.feature_data import DNAIterator, LinkedDNA
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt)
@@ -76,6 +76,7 @@ _valid_inputs = {
     'homopolymer_gap_penalty': _SKIP,
     'band_size': _SKIP,
     'retain_all_samples': _BOOL,
+    'retain_unmerged': _BOOL,
     'front': _SKIP,
     'adapter': _SKIP,
     'indels': _SKIP,
@@ -106,7 +107,7 @@ def _filepath_to_sample_paired(fp):
 
 def _denoise_helper(biom_fp, track_fp, err_track_fp,
                     hashed_feature_ids, retain_all_samples,
-                    paired=False):
+                    paired=False, retain_unmerged=False):
 
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
@@ -125,6 +126,7 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
 
     PASSED_FILTER = 'percentage of input passed filter'
     NON_CHIMERIC = 'percentage of input non-chimeric'
+    CONCATENATED = 'percentage of input concatenated'
 
     round_cols = {PASSED_FILTER: 2, NON_CHIMERIC: 2}
 
@@ -141,6 +143,15 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
         df[MERGED] = df['merged'] / df['input'] * 100
         col_order.insert(4, 'merged')
         col_order.insert(5, MERGED)
+
+    # only calculate percentage of input concatenated if unmerged read pairs
+    # were retained
+    if 'concatenated' in df:
+        round_cols[CONCATENATED] = 2
+        df[CONCATENATED] = df['concatenated'] / df['input'] * 100
+        insert_at = col_order.index('non-chimeric')
+        col_order.insert(insert_at, 'concatenated')
+        col_order.insert(insert_at + 1, CONCATENATED)
 
     # only calculate percentage of input primer-removed if ccs
     if 'primer-removed' in df:
@@ -182,6 +193,12 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
     # reintroduced above!
     if not retain_all_samples:
         table = table.remove_empty(axis="sample", inplace=False)
+
+    def _to_sequence(sequence, metadata):
+        if retain_unmerged:
+            return LinkedDNA(sequence, metadata=metadata)
+        return skbio.DNA(sequence, metadata=metadata)
+
     # The feature IDs in DADA2 are the sequences themselves.
     if hashed_feature_ids:
         # Make feature IDs the md5 sums of the sequences.
@@ -189,11 +206,11 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
                    for id_ in table.ids(axis='observation')}
         table.update_ids(fid_map, axis='observation', inplace=True)
 
-        rep_sequences = DNAIterator((skbio.DNA(k, metadata={'id': v})
+        rep_sequences = DNAIterator((_to_sequence(k, metadata={'id': v})
                                      for k, v in fid_map.items()))
     else:
         rep_sequences = DNAIterator(
-            (skbio.DNA(id_, metadata={'id': id_})
+            (_to_sequence(id_, metadata={'id': id_})
              for id_ in table.ids(axis='observation')))
 
     # initalize and populate DADA2 diagnoistic Stats dictionary
@@ -300,7 +317,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True,
-                   retain_all_samples: bool = True
+                   retain_all_samples: bool = True,
+                   retain_unmerged: bool = False
                    ) -> (biom.Table, DNAIterator,
                          qiime2.Metadata, qiime2.Metadata):
     _check_inputs(**locals())
@@ -357,7 +375,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                '--min_parental_fold', str(min_fold_parent_over_abundance),
                '--allow_one_off', str(allow_one_off),
                '--num_threads', str(n_threads),
-               '--learn_min_reads', str(n_reads_learn)]
+               '--learn_min_reads', str(n_reads_learn),
+               '--retain_unmerged', str(retain_unmerged)]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -378,7 +397,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
 
         return _denoise_helper(biom_fp, track_fp, err_track_fp,
                                hashed_feature_ids, retain_all_samples,
-                               paired=True)
+                               paired=True,
+                               retain_unmerged=retain_unmerged)
 
 
 def _remove_barcode(filename):

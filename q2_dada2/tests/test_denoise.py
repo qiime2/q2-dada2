@@ -7,6 +7,7 @@
 # ----------------------------------------------------------------------------
 
 import os
+import re
 import unittest
 import tempfile
 import pandas as pd
@@ -18,6 +19,7 @@ from qiime2.plugin.testing import TestPluginBase
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt)
+from q2_types.feature_data import LinkedDNA
 
 from q2_dada2 import denoise_single, denoise_paired, denoise_pyro, denoise_ccs
 from q2_dada2._denoise import _check_featureless_table
@@ -318,6 +320,9 @@ class TestDenoisePaired(TestPluginBase):
         with self.assertRaisesRegex(ValueError, 'n_reads_learn'):
             denoise_paired(self.demux_seqs, 150, 150, n_reads_learn=0)
 
+        with self.assertRaisesRegex(ValueError, 'retain_unmerged'):
+            denoise_paired(self.demux_seqs, 150, 150, retain_unmerged='foo')
+
         with self.assertRaisesRegex(ValueError, 'consensus'):
             denoise_single(self.demux_seqs, 150, 150, chimera_method='foo')
 
@@ -356,6 +361,259 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(
             error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
             exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+
+
+class TestDenoisePairedRetainUnmerged(TestPluginBase):
+    package = 'q2_dada2.tests'
+
+    def setUp(self):
+        super().setUp()
+        self.demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
+            self.get_data_path('sample_seqs_paired'), 'r')
+
+    def test_retain_unmerged(self):
+        '''
+        Smoke test that makes sure `retain_unmerged=True` yields linked
+        sequences in the feature table and representative sequences.
+        '''
+        table, rep_seqs, _, _ = denoise_paired(
+            self.demux_seqs, 150, 150,
+            chimera_method='none',
+            hashed_feature_ids=False,
+            retain_unmerged=True
+        )
+        rep_seqs = list(rep_seqs)
+        feature_ids = list(table.ids('observation'))
+
+        self.assertGreater(len(table.ids('observation')), 0)
+        self.assertGreater(len(table.ids('sample')), 0)
+
+        self.assertTrue(any(' ' in seq for seq in feature_ids))
+        self.assertTrue(any(' ' not in seq for seq in feature_ids))
+        self.assertTrue(any(' ' in str(seq) for seq in rep_seqs))
+        self.assertTrue(any(' ' not in str(seq) for seq in rep_seqs))
+        self.assertTrue(all(type(seq) is LinkedDNA for seq in rep_seqs))
+
+    def test_retain_unmerged_rescues_no_merge_run(self):
+        '''
+        Ensures that enabling `retain_unmerged` retains features where an
+        equivalent run with `retain_unmerged` disbabled discards all features.
+        '''
+        shared_kwargs = dict(
+            trunc_len_f=150,
+            trunc_len_r=150,
+            min_overlap=1000,
+            chimera_method='none',
+            hashed_feature_ids=False
+        )
+
+        with self.assertRaisesRegex(ValueError, 'No features remain'):
+            denoise_paired(
+                self.demux_seqs,
+                retain_unmerged=False,
+                **shared_kwargs
+            )
+
+        table, rep_seqs, read_stats_md, _ = denoise_paired(
+            self.demux_seqs,
+            retain_unmerged=True,
+            **shared_kwargs
+        )
+        rep_seqs = list(rep_seqs)
+        feature_ids = list(table.ids('observation'))
+
+        self.assertGreater(len(feature_ids), 0)
+        self.assertTrue(all(' ' in feature_id for feature_id in feature_ids))
+        self.assertTrue(all(' ' in str(seq) for seq in rep_seqs))
+
+        stats = read_stats_md.to_dataframe()
+        self.assertEqual(list(stats.columns), [
+            'input',
+            'filtered',
+            'percentage of input passed filter',
+            'denoised',
+            'merged',
+            'percentage of input merged',
+            'concatenated',
+            'percentage of input concatenated',
+            'non-chimeric',
+            'percentage of input non-chimeric',
+        ])
+        self.assertEqual(stats['merged'].sum(), 0)
+        self.assertGreater(stats['concatenated'].sum(), 0)
+        self.assertEqual(
+            stats['non-chimeric'].sum(),
+            stats['concatenated'].sum()
+        )
+
+        exp_concat_pct = (
+            stats['concatenated'] / stats['input'] * 100
+        ).fillna(0).round(2)
+        pd.testing.assert_series_equal(
+            stats['percentage of input concatenated'],
+            exp_concat_pct,
+            check_names=False
+        )
+
+    def test_retain_unmerged_hashed_feature_ids_are_stable(self):
+        '''
+        Ensures that when `retain_unmerged` is enabled the feature hashes are
+        deterministic and look like MD5 hexdigests.
+        '''
+        first_table, first_rep_seqs, _, _ = denoise_paired(
+            self.demux_seqs, 150, 150,
+            chimera_method='none',
+            hashed_feature_ids=True,
+            retain_unmerged=True
+        )
+        second_table, second_rep_seqs, _, _ = denoise_paired(
+            self.demux_seqs, 150, 150,
+            chimera_method='none',
+            hashed_feature_ids=True,
+            retain_unmerged=True
+        )
+
+        first_ids = set(first_table.ids('observation'))
+        second_ids = set(second_table.ids('observation'))
+        self.assertGreater(len(first_ids), 0)
+        self.assertEqual(first_ids, second_ids)
+        self.assertTrue(all(' ' not in feature_id for feature_id in first_ids))
+        self.assertTrue(
+            all(re.fullmatch(r'[0-9a-f]{32}', feature_id)
+                for feature_id in first_ids)
+        )
+
+        first_rep_ids = {seq.metadata['id'] for seq in first_rep_seqs}
+        second_rep_ids = {seq.metadata['id'] for seq in second_rep_seqs}
+        self.assertEqual(first_ids, first_rep_ids)
+        self.assertEqual(first_rep_ids, second_rep_ids)
+
+    def test_retain_unmerged_uses_space_delimiter(self):
+        '''
+        Ensures that unmerged feature sequences are represented with a single
+        space delimiter and that there is no leakage of DADA2's temporary
+        N-separator representation.
+        '''
+        table, rep_seqs, _, _ = denoise_paired(
+            self.demux_seqs, 150, 150,
+            chimera_method='none',
+            hashed_feature_ids=False,
+            retain_unmerged=True
+        )
+        rep_seqs = list(rep_seqs)
+        linked_feature_ids = [
+            feature_id for feature_id in table.ids('observation')
+            if ' ' in feature_id
+        ]
+        linked_rep_seq_strings = [
+            str(seq) for seq in rep_seqs if ' ' in str(seq)
+        ]
+
+        self.assertGreater(len(linked_feature_ids), 0)
+        self.assertTrue(all(
+            feature_id.count(' ') == 1 for feature_id in linked_feature_ids
+        ))
+        self.assertTrue(all(
+            'NNNNNNNNNN' not in feature_id for feature_id in linked_feature_ids
+        ))
+        self.assertEqual(set(linked_feature_ids), set(linked_rep_seq_strings))
+        self.assertTrue(all(
+            'NNNNNNNNNN' not in seq for seq in linked_rep_seq_strings
+        ))
+
+    def test_retain_unmerged_preserves_merged_features(self):
+        '''
+        Ensures that the set of merged features obtained is equivalent whether
+        `retain_unmerged` is enabled or not.
+        '''
+        merged_only_table, merged_only_rep_seqs, _, _ = denoise_paired(
+            self.demux_seqs, 150, 150,
+            chimera_method='consensus',
+            hashed_feature_ids=False,
+            retain_unmerged=False
+        )
+        retained_table, retained_rep_seqs, _, _ = denoise_paired(
+            self.demux_seqs, 150, 150,
+            chimera_method='consensus',
+            hashed_feature_ids=False,
+            retain_unmerged=True
+        )
+
+        merged_only_ids = set(merged_only_table.ids('observation'))
+        retained_merged_ids = {
+            f for f in retained_table.ids('observation') if ' ' not in f
+        }
+
+        self.assertEqual(merged_only_ids, retained_merged_ids)
+
+        merged_only_df = merged_only_table.to_dataframe(dense=True).loc[
+            sorted(merged_only_ids)
+        ]
+        retained_merged_df = retained_table.to_dataframe(dense=True).loc[
+            sorted(retained_merged_ids)
+        ]
+        pd.testing.assert_frame_equal(
+            merged_only_df.sort_index(axis=1),
+            retained_merged_df.sort_index(axis=1),
+            check_dtype=False
+        )
+
+        merged_only_rep_seqs = {
+            seq.metadata['id']: str(seq) for seq in merged_only_rep_seqs
+        }
+        retained_merged_rep_seqs = {
+            seq.metadata['id']: str(seq) for seq in retained_rep_seqs
+            if ' ' not in seq.metadata['id']
+        }
+        self.assertEqual(merged_only_rep_seqs, retained_merged_rep_seqs)
+
+    def test_chimera_filtering_applied_to_retained_unmerged_seqs(self):
+        '''
+        Ensures that the rescued unmerged sequences are still processed
+        by the chimera filtering algorithm, by checking that fewer unmerged
+        sequences are retained when performing chimera filtering than when
+        chimera filtering is not performed.
+        '''
+        chimera_none_table, _, chimera_none_stats, _ = denoise_paired(
+            self.demux_seqs, 150, 150, min_overlap=1000, chimera_method='none',
+            hashed_feature_ids=False, retain_unmerged=True
+        )
+        chimera_consensus_table, _, chimera_consensus_stats, _ = \
+            denoise_paired(
+                self.demux_seqs, 150, 150, min_overlap=1000,
+                chimera_method='consensus', hashed_feature_ids=False,
+                retain_unmerged=True
+            )
+
+        chimera_none_unmerged_features = {
+            f for f in chimera_none_table.ids('observation') if ' ' in f
+        }
+        chimera_consensus_unmerged_features = {
+            f for f in chimera_consensus_table.ids('observation') if ' ' in f
+        }
+
+        self.assertGreater(len(chimera_none_unmerged_features), 0)
+        self.assertGreater(len(chimera_consensus_unmerged_features), 0)
+        self.assertGreater(
+            len(chimera_none_unmerged_features),
+            len(chimera_consensus_unmerged_features)
+        )
+        self.assertTrue(
+            chimera_consensus_unmerged_features.issubset(
+                chimera_none_unmerged_features
+            )
+        )
+        self.assertGreater(
+            chimera_none_stats.to_dataframe()['non-chimeric'].sum(),
+            chimera_consensus_stats.to_dataframe()['non-chimeric'].sum()
+        )
+
+        chimera_none_stats = chimera_none_stats.to_dataframe()
+        chimera_consensus_stats = chimera_consensus_stats.to_dataframe()
+        self.assertEqual(
+            chimera_none_stats['concatenated'].sum(),
+            chimera_consensus_stats['concatenated'].sum()
+        )
 
 
 # More thorough tests exist in TestDenoiseSingle --- denoise-pyro is basically
