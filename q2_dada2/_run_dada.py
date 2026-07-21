@@ -1,5 +1,5 @@
 from rpy2.robjects.packages import importr
-from rpy2.robjects.vectors import StrVector
+from rpy2.robjects.vectors import StrVector, IntVector, ListVector
 from rpy2.rinterface import NULL
 from rpy2.robjects import pandas2ri, default_converter
 from rpy2.robjects.conversion import localconverter
@@ -217,7 +217,7 @@ def _run_dada2(
     max_merge_mismatch=None, trim_overhang=None, pooling_method=None,
     chimera_method=None, min_parental_fold=None, allow_one_off=None,
     num_threads=None, learn_min_reads=None, homopolymer_gap_penalty=None,
-    band_size=None
+    band_size=None, retain_unmerged=None
 ):
     if not os.path.exists(input_dir):
         raise ValueError('Input directory does not exist.')
@@ -273,6 +273,8 @@ def _run_dada2(
             raise ValueError(f'Output filename {file} is a directory.')
         elif os.path.exists(file):
             os.remove(file)
+
+    linked_concat_delim = 'NNNNNNNNNN'
 
     if num_threads is None:
         multithread = False
@@ -359,6 +361,13 @@ def _run_dada2(
         err = dada2.learnErrors(filts, **kwargs)
         com_err_df = _internal_plot_errors(err)
 
+    unmerged_id_map = pd.DataFrame(
+        {
+            'temporary': pd.Series().astype(str),
+            'linked': pd.Series().astype(str)
+        }
+    )
+
     if input_dir_rev is None:
         dds = []
         for filt in filts:
@@ -398,11 +407,14 @@ def _run_dada2(
         sequence_table = _convert_robj_to_pandas(sequence_table_r)
     else:
         denoised_fwd = []
+        merged_fwd = []
+        concatenated_fwd = []
         dds_fwd = []
         dds_rev = []
         drp_fwd_list = []
         drp_rev_list = []
         mergers = []
+        mergers_r = []
 
         for i in range(len(filts)):
             drp_fwd = dada2.derepFastq(filts[i])
@@ -455,21 +467,85 @@ def _run_dada2(
             kwargs['maxMismatch'] = max_merge_mismatch
         if trim_overhang is not None:
             kwargs['trimOverhang'] = trim_overhang
+        if retain_unmerged is not None:
+            kwargs['returnRejects'] = retain_unmerged
 
         for i in range(len(filts)):
             drp_fwd = drp_fwd_list[i]
             drp_rev = drp_rev_list[i]
 
-            mergers.append(dada2.mergePairs(
+            mp_r = dada2.mergePairs(
                 dds_fwd[i], drp_fwd, dds_rev[i], drp_rev, **kwargs
-            ))
+            )
+
+            mp = pandas2ri.rpy2py(mp_r)
+            if retain_unmerged:
+                merged_fwd.append(mp.loc[mp['accept'], 'abundance'].sum())
+                merge = mp.loc[mp['accept'], ['sequence', 'abundance']]
+                mergers.append(merge)
+
+                unmerged_j = mp.loc[
+                    ~mp['accept'], ['forward', 'reverse', 'abundance']
+                ]
+                concatenated_fwd.append(unmerged_j['abundance'].sum())
+
+                if len(unmerged_j) > 0:
+                    sequence = dds_fwd[i].rx2('clustering').rx2('sequence')
+                    unmerged_fwd = sequence.rx(
+                        IntVector(unmerged_j['forward'].to_list())
+                    )
+                    sequence_rev = dds_rev[i].rx2('clustering').rx2('sequence')
+                    unmerged_rev = dada2.rc(sequence_rev.rx(
+                        IntVector(unmerged_j['reverse'].to_list())
+                    ))
+
+                    unmerged_temp_seqs = [
+                        f'{f}{linked_concat_delim}{r}'
+                        for f, r in zip(unmerged_fwd, unmerged_rev)
+                    ]
+                    unmerged_link_seqs = [
+                        f'{f} {r}'
+                        for f, r in zip(unmerged_fwd, unmerged_rev)
+                    ]
+
+                    unmerged_id_map = pd.concat(
+                        [unmerged_id_map, pd.DataFrame(
+                            {
+                                'temporary': unmerged_temp_seqs,
+                                'linked': unmerged_link_seqs
+                            }
+                        )], ignore_index=True
+                    )
+                    mergers[i] = pd.concat(
+                        [mergers[i], pd.DataFrame(
+                            {
+                                'sequence': unmerged_temp_seqs,
+                                'abundance': unmerged_j['abundance']
+                            }
+                        )], ignore_index=True
+                    )
+                    with localconverter(
+                        default_converter + pandas2ri.converter
+                    ):
+                        mergers_r = ListVector(
+                            {
+                                str(i + 1): pandas2ri.py2rpy(merge)
+                                for i, merge in enumerate(mergers)
+                            }
+                        )
+            else:
+                mergers_r.append(mp_r)
+                merged_fwd.append(mp['abundance'].sum())
 
             denoised_fwd.append(get_n(dds_fwd[i]))
 
-        sequence_table_r = dada2.makeSequenceTable(mergers)
+        sequence_table_r = dada2.makeSequenceTable(mergers_r)
         sequence_table = _convert_robj_to_pandas(sequence_table_r)
 
-    if chimera_method in ['pooled', 'consensus']:
+    if (
+        chimera_method in ['pooled', 'consensus']
+        and sequence_table.shape[1] > 0
+    ):
         sequence_table_no_chimera = dada2.removeBimeraDenovo(
             sequence_table_r, method=chimera_method,
             minFoldParentOverAbundance=min_parental_fold,
@@ -480,6 +556,30 @@ def _run_dada2(
         )
     else:
         sequence_table_no_chimera = sequence_table
+
+    if len(unmerged_id_map) > 0:
+        unmerged_id_map = unmerged_id_map.drop_duplicates()
+        ambiguous_ids = unmerged_id_map.loc[
+            unmerged_id_map['temporary'].duplicated(keep=False), 'temporary'
+        ]
+        if len(ambiguous_ids) > 0:
+            raise ValueError(
+                'Unable to uniquely map retained unmerged sequences from the '
+                'temporary DADA2-compatible representation to linked '
+                'sequences.'
+            )
+
+        unmerged_keep = sequence_table_no_chimera.columns.intersection(
+            unmerged_id_map['temporary']
+        ).tolist()
+
+        if len(unmerged_keep) > 0:
+            map = unmerged_id_map[
+                unmerged_id_map['temporary'].isin(unmerged_keep)
+            ].set_index('temporary')['linked'].to_dict()
+            sequence_table_no_chimera = sequence_table_no_chimera.rename(
+                columns=map
+            )
 
     if input_dir_rev is None:
         if removed_primer_dir is not None:
@@ -500,16 +600,26 @@ def _run_dada2(
         track.loc[passed_filtering, 'non-chimeric'] = no_chimera
         track.to_csv(output_track, sep='\t', index=True)
     else:
-        track = out.copy()
-        track.columns = ["input", "filtered"]
-        track["denoised"] = 0
-        track["merged"] = 0
-        track["non-chimeric"] = 0
+        if retain_unmerged:
+            track = out.copy()
+            track.columns = ["input", "filtered"]
+            track["denoised"] = 0
+            track["merged"] = 0
+            track['concatenated'] = 0
+            track["non-chimeric"] = 0
+        else:
+            track = out.copy()
+            track.columns = ["input", "filtered"]
+            track["denoised"] = 0
+            track["merged"] = 0
+            track["non-chimeric"] = 0
         passed_filtering = track['filtered'] > 0
         track.loc[passed_filtering, 'denoised'] = denoised_fwd
-        track.loc[passed_filtering, 'merged'] = sequence_table.sum(
-            axis='columns'
-        ).values
+        print(type(merged_fwd))
+        print(merged_fwd)
+        track.loc[passed_filtering, 'merged'] = merged_fwd
+        if retain_unmerged:
+            track.loc[passed_filtering, 'concatenated'] = concatenated_fwd
         no_chimera = sequence_table_no_chimera.sum(axis='columns').values
         track.loc[passed_filtering, 'non-chimeric'] = no_chimera
 
