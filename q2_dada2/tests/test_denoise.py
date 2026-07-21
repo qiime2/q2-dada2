@@ -65,8 +65,6 @@ class TestDenoiseSingle(TestPluginBase):
 
         table, rep_seqs, read_stats_md, error_model_md = denoise_single(
             self.demux_seqs, 100)
-        print('Observed:\n', _sort_table(table))
-        print('Expected:\n', _sort_table(exp_table))
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)

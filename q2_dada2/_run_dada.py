@@ -615,8 +615,6 @@ def _run_dada2(
             track["non-chimeric"] = 0
         passed_filtering = track['filtered'] > 0
         track.loc[passed_filtering, 'denoised'] = denoised_fwd
-        print(type(merged_fwd))
-        print(merged_fwd)
         track.loc[passed_filtering, 'merged'] = merged_fwd
         if retain_unmerged:
             track.loc[passed_filtering, 'concatenated'] = concatenated_fwd
