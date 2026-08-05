@@ -25,6 +25,14 @@ from q2_dada2._r_utils import _robj_to_pandas_df
 dada2 = importr('dada2')
 
 
+def _find_fastq_files(directory: Path) -> list[Path]:
+    # mimic R's list.files(pattern=...) behaviour which excludes dotfiles
+    return sorted(
+        path for path in directory.glob('*.fastq.gz')
+        if not path.name.startswith('.')
+    )
+
+
 def get_n(robj: RObject) -> int:
     '''
     Returns the total number of read counts in any object that contains or can
@@ -108,7 +116,7 @@ def _prepare_ccs_reads(
         verbose=True
     )
 
-    removed_primers = sorted(removed_primer_dir.glob('*.fastq.gz'))
+    removed_primers = _find_fastq_files(removed_primer_dir)
 
     if len(removed_primers) == 0:
         raise ValueError(
@@ -135,7 +143,7 @@ def _prepare_ccs_reads(
     )
 
     filts = StrVector([
-        str(path) for path in sorted(filtered_dir.glob('*.fastq.gz'))
+        str(path) for path in _find_fastq_files(filtered_dir)
     ])
     if len(filts) == 0:
         raise ValueError(
@@ -236,7 +244,7 @@ def _prepare_short_reads(
         )
         filts_rev = StrVector([
             str(path)
-            for path in sorted(filtered_dir_rev.glob('*.fastq.gz'))
+            for path in _find_fastq_files(filtered_dir_rev)
         ])
     else:
         filts_rev = None
@@ -253,7 +261,7 @@ def _prepare_short_reads(
         )
 
     filts = StrVector([
-        str(path) for path in sorted(filtered_dir.glob('*.fastq.gz'))
+        str(path) for path in _find_fastq_files(filtered_dir)
     ])
     if len(filts) == 0:
         raise ValueError(
@@ -773,9 +781,7 @@ def _validate_inputs(
     if not input_dir.exists():
         raise ValueError('Input directory does not exist.')
 
-    unfilts = StrVector(
-        sorted([str(p) for p in input_dir.glob('*.fastq.gz')])
-    )
+    unfilts = StrVector([str(path) for path in _find_fastq_files(input_dir)])
 
     if len(unfilts) == 0:
         raise ValueError(
@@ -784,9 +790,9 @@ def _validate_inputs(
         )
 
     if input_dir_rev is not None:
-        unfilts_rev = StrVector(
-            sorted([str(p) for p in input_dir_rev.glob('*.fastq.gz')])
-        )
+        unfilts_rev = StrVector([
+            str(path) for path in _find_fastq_files(input_dir_rev)
+        ])
 
         if len(unfilts_rev) == 0:
             raise ValueError(
