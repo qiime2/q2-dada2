@@ -89,18 +89,17 @@ def _prepare_ccs_reads(
         Paths to the filtered FASTQ files.
     out : pd.DataFrame
         Per-sample input, primer-removed, and filtered read counts.
-
     '''
     if reverse_primer is None:
         reverse_primer = NULL
     else:
         reverse_primer = dada2.rc(reverse_primer)
 
-    removed_primers = [removed_primer_dir / f.name for f in unfilts]
+    removed_primers = [removed_primer_dir / path.name for path in unfilts]
 
     no_primers = dada2.removePrimers(
-        fn=StrVector([str(f) for f in unfilts]),
-        fout=StrVector([str(f) for f in removed_primers]),
+        fn=StrVector([str(path) for path in unfilts]),
+        fout=StrVector([str(path) for path in removed_primers]),
         primer_fwd=forward_primer,
         primer_rev=reverse_primer,
         max_mismatch=max_mismatch,
@@ -117,11 +116,12 @@ def _prepare_ccs_reads(
             'right primer(s)?'
         )
 
-    filtered = [filtered_dir / f.name for f in removed_primers]
-    filts = StrVector([str(f) for f in filtered])
+    filts = StrVector([
+        str(filtered_dir / path.name) for path in removed_primers
+    ])
 
     filtered_out = dada2.filterAndTrim(
-        StrVector([str(f) for f in removed_primers]),
+        StrVector([str(path) for path in removed_primers]),
         filts,
         truncLen=trunc_len,
         trimLeft=trim_left,
@@ -266,6 +266,18 @@ def _prepare_short_reads(
 
 @dataclass(frozen=True)
 class _ErrorLearningResults:
+    '''
+    Results from learning one or two (if paired-end reads) DADA2 error models.
+
+    Attributes
+    ----------
+    forward : ListVector
+        Learned error model for forward or single-end reads.
+    reverse : ListVector or None
+        Learned error model for reverse reads, if paired-end reads were used.
+    stats : pd.DataFrame
+        Error-model statistics formatted for plotting.
+    '''
     forward: ListVector
     reverse: ListVector | None
     stats: pd.DataFrame
@@ -292,18 +304,18 @@ def _learn_error_models(
     multithread : bool or int
         Whether to use multiple threads, or the number of threads to use.
     filts_rev : StrVector or None
-        Paths to filtered reverse FASTQ files for paired-end reads.
+        Paths to filtered reverse FASTQ files for paired-end reads if provided.
     pacbio : bool
         Whether to learn the forward model with DADA2's PacBio error
         estimation function.
     homopolymer_gap_penalty : int or None
-        Homopolymer gap penalty used when learning a single-end error model.
+        Homopolymer gap penalty used when learning each error model.
     band_size : int or None
-        Band size used when learning a single-end or PacBio error model.
+        Band size used when learning each error model.
 
     Returns
     -------
-    results : _ErrorLearningResults
+    _ErrorLearningResults
         Learned forward and optional reverse models, plus their combined
         plotting statistics.
     '''
@@ -312,37 +324,32 @@ def _learn_error_models(
             'PacBio error learning does not accept reverse reads.'
         )
 
-    kwargs = {
+    learn_errors_kwargs = {
         'nreads': learn_min_reads,
         'multithread': multithread
     }
     if pacbio:
-        kwargs['errorEstimationFunction'] = dada2.PacBioErrfun
-        kwargs['BAND_SIZE'] = band_size
+        learn_errors_kwargs['errorEstimationFunction'] = dada2.PacBioErrfun
+        learn_errors_kwargs['BAND_SIZE'] = band_size
     else:
         if homopolymer_gap_penalty is not None:
-            kwargs['HOMOPOLYMER_GAP_PENALTY'] = homopolymer_gap_penalty
+            learn_errors_kwargs['HOMOPOLYMER_GAP_PENALTY'] = (
+                homopolymer_gap_penalty
+            )
         if band_size is not None:
-            kwargs['BAND_SIZE'] = band_size
+            learn_errors_kwargs['BAND_SIZE'] = band_size
 
-    forward = dada2.learnErrors(filts, **kwargs)
+    forward = dada2.learnErrors(filts, **learn_errors_kwargs)
     forward_stats = _error_model_to_dataframe(forward)
 
     if filts_rev is None:
         reverse = None
         stats = forward_stats
     else:
-        reverse = dada2.learnErrors(
-            filts_rev,
-            nreads=learn_min_reads,
-            multithread=multithread
-        )
+        reverse = dada2.learnErrors(filts_rev, **learn_errors_kwargs)
         reverse_stats = _error_model_to_dataframe(reverse)
         stats = pd.concat(
-            [
-                forward_stats.add_prefix('F_'),
-                reverse_stats.add_prefix('R_')
-            ],
+            [forward_stats.add_prefix('F_'), reverse_stats.add_prefix('R_')],
             axis=1
         )
 
@@ -364,7 +371,7 @@ def _dereplicate_reads(filts: StrVector) -> ListVector:
 
     Returns
     -------
-    dereplicated : ListVector
+    ListVector
         Named R list containing one DADA2 derep-class object per sample.
     '''
     return ListVector({
@@ -405,7 +412,7 @@ def _denoise_single_reads(
 
     Returns
     -------
-    sequence_table_r : RMatrix
+    RMatrix
         R sequence table constructed from the denoised samples.
     '''
     kwargs = {
@@ -427,6 +434,20 @@ def _denoise_single_reads(
 
 @dataclass(frozen=True)
 class _PairedDenoiseResults:
+    '''
+    Results from denoising paired-end reads.
+
+    Attributes
+    ----------
+    forward : list[ListVector]
+        Denoised forward-read objects for each sample.
+    reverse : list[ListVector]
+        Denoised reverse-read objects for each sample.
+    dereplicated_forward : list[ListVector]
+        Dereplicated forward reads used during denoising.
+    dereplicated_reverse : list[ListVector]
+        Dereplicated reverse reads used during denoising.
+    '''
     forward: list[ListVector]
     reverse: list[ListVector]
     dereplicated_forward: list[ListVector]
@@ -439,6 +460,18 @@ class _PairedDenoiseResults:
 
 @dataclass(frozen=True)
 class _RetainedUnmergedResults:
+    '''
+    Retained-unmerged results for one sample.
+
+    Attributes
+    ----------
+    mergers : pd.DataFrame
+        Accepted and retained pairs in DADA2-compatible form.
+    concatenated_count : int
+        Number of retained unmerged read pairs.
+    id_map : pd.DataFrame
+        Mapping from temporary sequences to linked sequences.
+    '''
     mergers: pd.DataFrame
     concatenated_count: int
     id_map: pd.DataFrame
@@ -446,6 +479,20 @@ class _RetainedUnmergedResults:
 
 @dataclass(frozen=True)
 class _PairedMergeResults:
+    '''
+    Results from merging denoised paired-end reads.
+
+    Attributes
+    ----------
+    sequence_table : RMatrix
+        Sequence table containing merged and retained-unmerged reads.
+    merged_counts : list[int]
+        Number of merged reads per sample.
+    concatenated_counts : list[int]
+        Number of retained unmerged reads per sample.
+    unmerged_id_map : pd.DataFrame
+        Mapping from temporary sequences to linked sequences.
+    '''
     sequence_table: RMatrix
     merged_counts: list[int]
     concatenated_counts: list[int]
@@ -481,7 +528,7 @@ def _denoise_paired_reads(
 
     Returns
     -------
-    results : _PairedDenoiseResults
+    _PairedDenoiseResults
         Denoised forward and reverse samples, their corresponding dereplicated
         reads, and the denoised forward-read count for each sample.
     '''

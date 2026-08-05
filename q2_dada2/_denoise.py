@@ -409,7 +409,7 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         n_threads=n_threads,
         n_reads_learn=n_reads_learn,
         hashed_feature_ids=hashed_feature_ids,
-        homopolymer_gap_penalty=1,
+        homopolymer_gap_penalty=-1,
         band_size=32,
         retain_all_samples=retain_all_samples)
 
