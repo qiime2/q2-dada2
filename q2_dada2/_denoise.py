@@ -8,6 +8,7 @@
 
 import os
 import tempfile
+from pathlib import Path
 from typing import Optional
 import hashlib
 
@@ -21,7 +22,17 @@ from q2_types.feature_data import DNAIterator, LinkedDNA
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt)
-from q2_dada2._run_dada import _run_dada2
+from q2_dada2._run_dada import (
+    _Dada2Results,
+    _construct_sequence_table,
+    _denoise_single_reads,
+    _finalize_dada2_results,
+    _learn_error_models,
+    _prepare_short_reads,
+    _resolve_multithread,
+    _run_dada2,
+    _validate_inputs,
+)
 
 
 def _check_featureless_table(fp):
@@ -99,18 +110,57 @@ def _filepath_to_sample_paired(fp):
     return fp.rsplit('_', 3)[0]
 
 
-# Since `denoise-single` and `denoise-pyro` are almost identical, break out
-# the bulk of the functionality to this helper util. Typechecking is assumed
-# to have occurred in the calling functions, this is primarily for making
-# sure that DADA2 is able to do what it needs to do.
-
-def _denoise_helper(biom_fp, track_fp, err_track_fp,
-                    hashed_feature_ids, retain_all_samples,
-                    paired=False, retain_unmerged=False):
+def _denoise_file_helper(biom_fp, track_fp, err_track_fp,
+                         hashed_feature_ids, retain_all_samples,
+                         paired=False, retain_unmerged=False):
 
     _check_featureless_table(biom_fp)
     with open(biom_fp) as fh:
         table = biom.Table.from_tsv(fh, None, None, None)
+
+    read_stats = pd.read_csv(track_fp, sep='\t', index_col=0)
+    error_stats = pd.read_csv(err_track_fp, sep='\t', index_col=0)
+
+    return _assemble_denoise_outputs(
+        table=table,
+        read_stats=read_stats,
+        error_stats=error_stats,
+        hashed_feature_ids=hashed_feature_ids,
+        retain_all_samples=retain_all_samples,
+        paired=paired,
+        retain_unmerged=retain_unmerged
+    )
+
+
+def _denoise_helper(results: _Dada2Results, hashed_feature_ids,
+                    retain_all_samples, paired=False,
+                    retain_unmerged=False):
+    if results.sequence_table.shape[1] == 0:
+        raise ValueError(
+            'No features remain after denoising. Try adjusting your '
+            'truncation and trim parameter settings.'
+        )
+
+    table = biom.Table(
+        results.sequence_table.T.to_numpy(),
+        observation_ids=results.sequence_table.columns,
+        sample_ids=results.sequence_table.index
+    )
+
+    return _assemble_denoise_outputs(
+        table=table,
+        read_stats=results.filtering_stats.copy(),
+        error_stats=results.error_stats.copy(),
+        hashed_feature_ids=hashed_feature_ids,
+        retain_all_samples=retain_all_samples,
+        paired=paired,
+        retain_unmerged=retain_unmerged
+    )
+
+
+def _assemble_denoise_outputs(table, read_stats, error_stats,
+                              hashed_feature_ids, retain_all_samples,
+                              paired=False, retain_unmerged=False):
 
     # If we used denoise_paired the barcode was already stripped from the
     # filename to force the files to sort by id and pair up properly
@@ -119,7 +169,7 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
     filepath_to_sample = _filepath_to_sample_paired if paired \
         else _filepath_to_sample_single
 
-    df = pd.read_csv(track_fp, sep='\t', index_col=0)
+    df = read_stats
     df.index.name = 'sample-id'
     df = df.rename(index=filepath_to_sample)
 
@@ -166,7 +216,7 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
     metadata = qiime2.Metadata(df)
 
     # reads in error plot df
-    df_err = pd.read_csv(err_track_fp, sep='\t', index_col=0)
+    df_err = error_stats
     df_err.index.name = 'id'
     df_err.index = df_err.index.astype(str)
     metadata_err = qiime2.Metadata(df_err)
@@ -216,11 +266,15 @@ def _denoise_helper(biom_fp, track_fp, err_track_fp,
     return table, rep_sequences, metadata, metadata_err
 
 
-def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
-                    max_len, pooling_method, chimera_method,
-                    min_fold_parent_over_abundance, allow_one_off,
-                    n_threads, n_reads_learn, hashed_feature_ids,
-                    homopolymer_gap_penalty, band_size, retain_all_samples):
+# `denoise-single` and `denoise-pyro` differ only in a few DADA2 options, so
+# they share the same composed single-read workflow.
+def _denoise_single_or_pyro(
+    demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
+    max_len, pooling_method, chimera_method,
+    min_fold_parent_over_abundance, allow_one_off,
+    n_threads, n_reads_learn, hashed_feature_ids,
+    homopolymer_gap_penalty, band_size, retain_all_samples
+):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
@@ -232,33 +286,61 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
     max_len = 'Inf' if max_len == 0 else max_len
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
-        biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
-        track_fp = os.path.join(temp_dir_name, 'track.tsv')
-        err_track_fp = os.path.join(temp_dir_name, 'err_track.tsv')
-
-        _run_dada2(
-            input_dir=str(demultiplexed_seqs),
-            output_path=str(biom_fp),
-            output_track=str(track_fp),
-            output_err_track=str(err_track_fp),
-            filtered_dir=str(temp_dir_name),
+        temp_dir = Path(temp_dir_name)
+        multithread = _resolve_multithread(n_threads)
+        unfilts, _ = _validate_inputs(Path(str(demultiplexed_seqs)))
+        filts, _, filtering_stats = _prepare_short_reads(
+            filtered_dir=temp_dir,
+            filtered_dir_rev=None,
+            unfilts=unfilts,
+            unfilts_rev=None,
             trunc_len=trunc_len,
+            trunc_len_rev=None,
             trim_left=trim_left,
+            trim_left_rev=None,
             max_ee=max_ee,
+            max_ee_rev=None,
             trunc_quality=trunc_q,
             max_len=max_len,
-            pooling_method=pooling_method,
-            chimera_method=chimera_method,
-            min_parental_fold=min_fold_parent_over_abundance,
-            allow_one_off=allow_one_off,
-            num_threads=n_threads,
+            multithread=multithread
+        )
+        error_models = _learn_error_models(
+            filts=filts,
+            filts_rev=None,
             learn_min_reads=n_reads_learn,
+            multithread=multithread,
+            pacbio=False,
             homopolymer_gap_penalty=homopolymer_gap_penalty,
             band_size=band_size
         )
+        denoised = _denoise_single_reads(
+            filts=filts,
+            err=error_models.forward,
+            pooling_method=pooling_method,
+            learn_min_reads=n_reads_learn,
+            multithread=multithread,
+            homopolymer_gap_penalty=homopolymer_gap_penalty,
+            band_size=band_size
+        )
+        sequence_table = _construct_sequence_table(denoised.samples)
+        results = _finalize_dada2_results(
+            sequence_table=sequence_table,
+            filts=filts,
+            filtering_stats=filtering_stats,
+            error_stats=error_models.stats,
+            denoised_counts=denoised.read_counts,
+            chimera_method=chimera_method,
+            min_parental_fold=min_fold_parent_over_abundance,
+            allow_one_off=allow_one_off,
+            multithread=multithread,
+            primer_removed=False
+        )
 
-        return _denoise_helper(biom_fp, track_fp, err_track_fp,
-                               hashed_feature_ids, retain_all_samples)
+        return _denoise_helper(
+            results=results,
+            hashed_feature_ids=hashed_feature_ids,
+            retain_all_samples=retain_all_samples
+        )
 
 
 def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -272,7 +354,7 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    retain_all_samples: bool = True
                    ) -> (biom.Table, DNAIterator,
                          qiime2.Metadata, qiime2.Metadata):
-    return _denoise_single(
+    return _denoise_single_or_pyro(
         demultiplexed_seqs=demultiplexed_seqs,
         trunc_len=trunc_len,
         trim_left=trim_left,
@@ -290,6 +372,37 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         band_size=16,
         retain_all_samples=retain_all_samples
     )
+
+
+def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
+                 trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
+                 trunc_q: int = 2, max_len: int = 0,
+                 pooling_method: str = 'independent',
+                 chimera_method: str = 'consensus',
+                 min_fold_parent_over_abundance: float = 1.0,
+                 allow_one_off: bool = False,
+                 n_threads: int = 1, n_reads_learn: int = 250000,
+                 hashed_feature_ids: bool = True,
+                 retain_all_samples: bool = True
+                 ) -> (biom.Table, DNAIterator,
+                       qiime2.Metadata, qiime2.Metadata):
+    return _denoise_single_or_pyro(
+        demultiplexed_seqs=demultiplexed_seqs,
+        trunc_len=trunc_len,
+        trim_left=trim_left,
+        max_ee=max_ee,
+        trunc_q=trunc_q,
+        max_len=max_len,
+        pooling_method=pooling_method,
+        chimera_method=chimera_method,
+        min_fold_parent_over_abundance=min_fold_parent_over_abundance,
+        allow_one_off=allow_one_off,
+        n_threads=n_threads,
+        n_reads_learn=n_reads_learn,
+        hashed_feature_ids=hashed_feature_ids,
+        homopolymer_gap_penalty=-1,
+        band_size=32,
+        retain_all_samples=retain_all_samples)
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -368,10 +481,12 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             retain_unmerged=retain_unmerged
         )
 
-        return _denoise_helper(biom_fp, track_fp, err_track_fp,
-                               hashed_feature_ids, retain_all_samples,
-                               paired=True,
-                               retain_unmerged=retain_unmerged)
+        return _denoise_file_helper(
+            biom_fp, track_fp, err_track_fp,
+            hashed_feature_ids, retain_all_samples,
+            paired=True,
+            retain_unmerged=retain_unmerged
+        )
 
 
 def _remove_barcode(filename):
@@ -382,37 +497,6 @@ def _remove_barcode(filename):
     cut.insert(0, id_)
 
     return ('_'.join(cut))
-
-
-def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
-                 trunc_len: int, trim_left: int = 0, max_ee: float = 2.0,
-                 trunc_q: int = 2, max_len: int = 0,
-                 pooling_method: str = 'independent',
-                 chimera_method: str = 'consensus',
-                 min_fold_parent_over_abundance: float = 1.0,
-                 allow_one_off: bool = False,
-                 n_threads: int = 1, n_reads_learn: int = 250000,
-                 hashed_feature_ids: bool = True,
-                 retain_all_samples: bool = True
-                 ) -> (biom.Table, DNAIterator,
-                       qiime2.Metadata, qiime2.Metadata):
-    return _denoise_single(
-        demultiplexed_seqs=demultiplexed_seqs,
-        trunc_len=trunc_len,
-        trim_left=trim_left,
-        max_ee=max_ee,
-        trunc_q=trunc_q,
-        max_len=max_len,
-        pooling_method=pooling_method,
-        chimera_method=chimera_method,
-        min_fold_parent_over_abundance=min_fold_parent_over_abundance,
-        allow_one_off=allow_one_off,
-        n_threads=n_threads,
-        n_reads_learn=n_reads_learn,
-        hashed_feature_ids=hashed_feature_ids,
-        homopolymer_gap_penalty=-1,
-        band_size=32,
-        retain_all_samples=retain_all_samples)
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -474,5 +558,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
             band_size=32
         )
 
-        return _denoise_helper(biom_fp, track_fp, err_track_fp,
-                               hashed_feature_ids, retain_all_samples)
+        return _denoise_file_helper(
+            biom_fp, track_fp, err_track_fp,
+            hashed_feature_ids, retain_all_samples
+        )

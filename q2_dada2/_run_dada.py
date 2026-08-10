@@ -288,6 +288,25 @@ class _ErrorLearningResults:
     stats: pd.DataFrame
 
 
+@dataclass(frozen=True)
+class _Dada2Results:
+    '''
+    Final in-memory results from a DADA2 workflow.
+
+    Attributes
+    ----------
+    sequence_table : pd.DataFrame
+        Per-sample feature table with samples as rows and sequences as columns.
+    filtering_stats : pd.DataFrame
+        Per-sample read counts for each completed processing stage.
+    error_stats : pd.DataFrame
+        Error-model statistics formatted for plotting.
+    '''
+    sequence_table: pd.DataFrame
+    filtering_stats: pd.DataFrame
+    error_stats: pd.DataFrame
+
+
 def _learn_error_models(
     filts: StrVector,
     learn_min_reads: int,
@@ -539,7 +558,7 @@ def _denoise_paired_reads(
     err_rev : ListVector
         Learned reverse-read DADA2 error model.
     pooling_method : str
-        Pooling method used during denoising. ``"pseudo"`` delegates
+        Pooling method used during denoising. `"pseudo"` delegates
         pseudo-pooling to DADA2.
     multithread : bool or int
         Whether to use multiple threads, or the number of threads to use.
@@ -628,14 +647,15 @@ def _retain_unmerged_pairs(
         ~merged_pairs['accept'], ['forward', 'reverse', 'abundance']
     ]
     concatenated_count = int(rejected['abundance'].sum())
-    id_map = pd.DataFrame(
-        {
-            'temporary': pd.Series(dtype=str),
-            'linked': pd.Series(dtype=str)
-        }
-    )
 
     if len(rejected) == 0:
+        id_map = pd.DataFrame(
+            {
+                'temporary': pd.Series(dtype=str),
+                'linked': pd.Series(dtype=str)
+            }
+        )
+
         return _RetainedUnmergedResults(
             mergers=mergers,
             concatenated_count=concatenated_count,
@@ -798,7 +818,7 @@ def _construct_sequence_table(
     Parameters
     ----------
     samples : list[ListVector or RDataFrame]
-        Per-sample DADA2 ``dada-class`` objects for single-end reads or merge
+        Per-sample DADA2 `dada-class` objects for single-end reads or merge
         result data frames for paired-end reads.
 
     Returns
@@ -807,6 +827,17 @@ def _construct_sequence_table(
         Per-sample sequence table.
     '''
     return dada2.makeSequenceTable(samples)
+
+
+def _resolve_multithread(num_threads: int | None) -> bool | int:
+    '''Convert the requested thread count to DADA2's multithread argument.'''
+    if num_threads is None:
+        return False
+    if num_threads < 0:
+        raise ValueError('Number of threads must be a positive number.')
+    if num_threads == 0:
+        return True
+    return num_threads
 
 
 def _validate_inputs(
@@ -1011,6 +1042,90 @@ def _restore_linked_sequences(
     return sequence_table.rename(columns=replacements)
 
 
+def _finalize_dada2_results(
+    sequence_table: RMatrix,
+    filts: StrVector,
+    filtering_stats: pd.DataFrame,
+    error_stats: pd.DataFrame,
+    denoised_counts: Iterable[int],
+    chimera_method: str,
+    min_parental_fold: float,
+    allow_one_off: bool,
+    multithread: bool | int,
+    primer_removed: bool,
+    merged_counts: Iterable[int] | None = None,
+    concatenated_counts: Iterable[int] | None = None,
+    unmerged_id_map: pd.DataFrame | None = None
+) -> _Dada2Results:
+    '''
+    Apply shared post-denoising steps and assemble in-memory results.
+
+    Parameters
+    ----------
+    sequence_table : RMatrix
+        DADA2 sequence table constructed from denoised or merged samples.
+    filts : StrVector
+        Filtered FASTQ paths in sequence-table row order.
+    filtering_stats : pd.DataFrame
+        Per-sample filtering counts.
+    error_stats : pd.DataFrame
+        Error-model statistics formatted for plotting.
+    denoised_counts : Iterable[int]
+        Number of denoised reads per sample that passed filtering.
+    chimera_method : str
+        Chimera-removal method, or ``"none"`` to skip removal.
+    min_parental_fold : float
+        Minimum parental abundance fold difference used to identify chimeras.
+    allow_one_off : bool
+        Whether to identify one-off bimeras as chimeric.
+    multithread : bool or int
+        Whether to use multiple threads, or the number of threads to use.
+    primer_removed : bool
+        Whether primer-removal counts are present in ``filtering_stats``.
+    merged_counts : Iterable[int] or None
+        Number of merged reads per sample, if paired reads were processed.
+    concatenated_counts : Iterable[int] or None
+        Number of retained unmerged reads per sample, if requested.
+    unmerged_id_map : pd.DataFrame or None
+        Temporary-to-linked sequence mapping for retained unmerged reads.
+
+    Returns
+    -------
+    _Dada2Results
+        Final sequence table, read statistics, and error statistics.
+    '''
+    sequence_table = _remove_chimeras(
+        sequence_table=sequence_table,
+        chimera_method=chimera_method,
+        min_parental_fold=min_parental_fold,
+        allow_one_off=allow_one_off,
+        multithread=multithread
+    )
+    sequence_table = _robj_to_pandas_df(sequence_table)
+
+    if unmerged_id_map is not None:
+        sequence_table = _restore_linked_sequences(
+            sequence_table=sequence_table,
+            unmerged_id_map=unmerged_id_map
+        )
+
+    track = _construct_stats_table(
+        filtering_stats=filtering_stats,
+        denoised_counts=denoised_counts,
+        non_chimeric_counts=sequence_table.sum(axis='columns').values,
+        primer_removed=primer_removed,
+        merged_counts=merged_counts,
+        concatenated_counts=concatenated_counts
+    )
+    sequence_table.index = [Path(filt).name for filt in filts]
+
+    return _Dada2Results(
+        sequence_table=sequence_table,
+        filtering_stats=track,
+        error_stats=error_stats
+    )
+
+
 def _write_sequence_table(
     sequence_table: pd.DataFrame,
     filts: StrVector,
@@ -1056,14 +1171,7 @@ def _run_dada2(
 
     unfilts, unfilts_rev = _validate_inputs(input_dir, input_dir_rev)
 
-    if num_threads is None:
-        multithread = False
-    elif num_threads < 0:
-        raise ValueError('Number of threads must be a positive number.')
-    elif num_threads == 0:
-        multithread = True
-    else:
-        multithread = num_threads
+    multithread = _resolve_multithread(num_threads)
 
     if removed_primer_dir is not None:
         filts, filtering_stats = _prepare_ccs_reads(
@@ -1127,6 +1235,7 @@ def _run_dada2(
         denoised_counts = denoised.read_counts
         merged_counts = None
         concatenated_counts = None
+        unmerged_id_map = None
     else:
         denoised_fwd, denoised_rev = _denoise_paired_reads(
             filts=filts,
@@ -1152,37 +1261,28 @@ def _run_dada2(
         concatenated_counts = (
             merged.concatenated_counts if retain_unmerged else None
         )
+        unmerged_id_map = merged.unmerged_id_map
 
-    sequence_table_r = _remove_chimeras(
+    results = _finalize_dada2_results(
         sequence_table=sequence_table_r,
+        filts=filts,
+        filtering_stats=filtering_stats,
+        error_stats=error_models.stats,
+        denoised_counts=denoised_counts,
         chimera_method=chimera_method,
         min_parental_fold=min_parental_fold,
         allow_one_off=allow_one_off,
-        multithread=multithread
-    )
-    sequence_table = _robj_to_pandas_df(sequence_table_r)
-
-    if input_dir_rev is not None:
-        sequence_table = _restore_linked_sequences(
-            sequence_table=sequence_table,
-            unmerged_id_map=merged.unmerged_id_map
-        )
-
-    track = _construct_stats_table(
-        filtering_stats=filtering_stats,
-        denoised_counts=denoised_counts,
-        non_chimeric_counts=sequence_table.sum(
-            axis='columns'
-        ).values,
+        multithread=multithread,
         primer_removed=removed_primer_dir is not None,
         merged_counts=merged_counts,
-        concatenated_counts=concatenated_counts
+        concatenated_counts=concatenated_counts,
+        unmerged_id_map=unmerged_id_map
     )
-    track.to_csv(output_track, sep='\t', index=True)
+    results.filtering_stats.to_csv(output_track, sep='\t', index=True)
 
-    error_models.stats.to_csv(output_err_track, sep='\t', index=True)
+    results.error_stats.to_csv(output_err_track, sep='\t', index=True)
     _write_sequence_table(
-        sequence_table=sequence_table,
+        sequence_table=results.sequence_table,
         filts=filts,
         output_path=Path(output_path)
     )
