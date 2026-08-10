@@ -13,9 +13,10 @@ from pathlib import Path
 import pandas as pd
 
 from rpy2.rinterface import NULL
-from rpy2.robjects import default_converter, pandas2ri, RObject
+from rpy2.robjects import default_converter, pandas2ri
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.packages import importr
+from rpy2.robjects.vectors import DataFrame as RDataFrame
 from rpy2.robjects.vectors import IntVector, ListVector, Matrix as RMatrix
 from rpy2.robjects.vectors import StrVector
 
@@ -23,7 +24,6 @@ from q2_dada2._dada_stats._error_model import _error_model_to_dataframe
 from q2_dada2._r_utils import _robj_to_pandas_df
 
 dada2 = importr('dada2')
-base = importr('base')
 
 
 def _find_fastq_files(directory: Path) -> list[Path]:
@@ -32,14 +32,6 @@ def _find_fastq_files(directory: Path) -> list[Path]:
         path for path in directory.glob('*.fastq.gz')
         if not path.name.startswith('.')
     )
-
-
-def get_n(robj: RObject) -> int:
-    '''
-    Returns the total number of read counts in any object that contains or can
-    be interpreted as a `uniques-vector`. See `dada2.getUniques` for details.
-    '''
-    return sum(dada2.getUniques(robj))
 
 
 def _prepare_ccs_reads(
@@ -393,6 +385,35 @@ def _dereplicate_reads(filts: StrVector) -> ListVector:
     })
 
 
+@dataclass(frozen=True)
+class _DenoiseResults:
+    '''
+    Results from denoising one read direction.
+
+    Attributes
+    ----------
+    samples : list[ListVector]
+        Per-sample `dada-class` objects. Each `dada-class` object has the
+        following key slots:
+            $denoised:
+                Integer vector named by inferred sequence and valued by its
+                abundance.
+            $map:
+                Unnamed integer vector of length `derep-class$unqiues`.
+                Position i is the ith unique sequence. Value at i is the index
+                into `dada-class$denoised` that unique sequence i maps (was
+                denoised) to. Or, NA if the unique sequence i was removed
+                during denoising.
+
+        For the remaining slots see the `dada-class` type in dada2.
+    '''
+    samples: list[ListVector]
+
+    @property
+    def read_counts(self) -> list[int]:
+        return [sum(dada2.getUniques(sample)) for sample in self.samples]
+
+
 def _denoise_single_reads(
     filts: StrVector,
     err: ListVector,
@@ -401,9 +422,9 @@ def _denoise_single_reads(
     multithread: bool | int,
     homopolymer_gap_penalty: int | None,
     band_size: int | None
-) -> RMatrix:
+) -> _DenoiseResults:
     '''
-    Denoise single-end, pyrosequencing, or CCS reads.
+    Dereplicate and denoise single-end, pyrosequencing, or CCS reads.
 
     Parameters
     ----------
@@ -425,8 +446,8 @@ def _denoise_single_reads(
 
     Returns
     -------
-    RMatrix
-        R sequence table constructed from the denoised samples.
+    _DenoiseResults
+        Per-sample denoised read objects.
     '''
     kwargs = {
         'nreads': learn_min_reads,
@@ -442,33 +463,17 @@ def _denoise_single_reads(
 
     if pooling_method == 'pseudo':
         dds = dada2.dada(_dereplicate_reads(filts), **kwargs)
+        if 'dada' in dds.rclass:
+            dds = [dds]
+        else:
+            dds = list(dds)
     else:
         dds = []
         for filt in filts:
             dereplicated = dada2.derepFastq(filt)
             dds.append(dada2.dada(dereplicated, **kwargs))
 
-    return dada2.makeSequenceTable(dds)
-
-
-@dataclass(frozen=True)
-class _PairedDenoiseResults:
-    '''
-    Results from denoising paired-end reads.
-
-    Attributes
-    ----------
-    forward : list[ListVector]
-        Denoised forward-read objects for each sample.
-    reverse : list[ListVector]
-        Denoised reverse-read objects for each sample.
-    '''
-    forward: list[ListVector]
-    reverse: list[ListVector]
-
-    @property
-    def forward_read_counts(self) -> list[int]:
-        return [get_n(dd) for dd in self.forward]
+    return _DenoiseResults(samples=dds)
 
 
 @dataclass(frozen=True)
@@ -497,8 +502,8 @@ class _PairedMergeResults:
 
     Attributes
     ----------
-    sequence_table : RMatrix
-        Sequence table containing merged and retained-unmerged reads.
+    merged_reads : list[RDataFrame]
+        Per-sample DADA2 merge results used to construct the sequence table.
     merged_counts : list[int]
         Number of merged reads per sample.
     concatenated_counts : list[int]
@@ -506,7 +511,7 @@ class _PairedMergeResults:
     unmerged_id_map : pd.DataFrame
         Mapping from temporary sequences to linked sequences.
     '''
-    sequence_table: RMatrix
+    merged_reads: list[RDataFrame]
     merged_counts: list[int]
     concatenated_counts: list[int]
     unmerged_id_map: pd.DataFrame
@@ -519,7 +524,7 @@ def _denoise_paired_reads(
     err_rev: ListVector,
     pooling_method: str,
     multithread: bool | int
-) -> _PairedDenoiseResults:
+) -> tuple[_DenoiseResults, _DenoiseResults]:
     '''
     Dereplicate and denoise paired-end reads.
 
@@ -541,9 +546,10 @@ def _denoise_paired_reads(
 
     Returns
     -------
-    _PairedDenoiseResults
-        Denoised forward and reverse samples and the denoised forward-read
-        count for each sample.
+    denoised_fwd : _DenoiseResults
+        Per-sample denoised forward-read objects.
+    denoised_rev : _DenoiseResults
+        Per-sample denoised reverse-read objects.
     '''
     if pooling_method == 'pseudo':
         dds_fwd = dada2.dada(
@@ -586,9 +592,9 @@ def _denoise_paired_reads(
                 verbose=False
             ))
 
-    return _PairedDenoiseResults(
-        forward=dds_fwd,
-        reverse=dds_rev
+    return (
+        _DenoiseResults(samples=dds_fwd),
+        _DenoiseResults(samples=dds_rev)
     )
 
 
@@ -676,7 +682,8 @@ def _retain_unmerged_pairs(
 
 
 def _merge_paired_reads(
-    denoised: _PairedDenoiseResults,
+    denoised_fwd: _DenoiseResults,
+    denoised_rev: _DenoiseResults,
     filts: StrVector,
     filts_rev: StrVector,
     min_overlap: int | None,
@@ -689,8 +696,10 @@ def _merge_paired_reads(
 
     Parameters
     ----------
-    denoised : _PairedDenoiseResults
-        Denoised forward and reverse reads.
+    denoised_fwd : _DenoiseResults
+        Per-sample denoised forward-read objects.
+    denoised_rev : _DenoiseResults
+        Per-sample denoised reverse-read objects.
     filts : StrVector
         Paths to filtered forward FASTQ files.
     filts_rev : StrVector
@@ -707,8 +716,8 @@ def _merge_paired_reads(
     Returns
     -------
     results : _PairedMergeResults
-        Sequence table, per-sample merged and retained-unmerged counts, and
-        the temporary-to-linked sequence mapping.
+        Per-sample merge results, merged and retained-unmerged counts, and the
+        temporary-to-linked sequence mapping.
     '''
     merged_counts = []
     concatenated_counts = []
@@ -726,13 +735,15 @@ def _merge_paired_reads(
     if retain_unmerged is not None:
         kwargs['returnRejects'] = retain_unmerged
 
-    for i in range(len(denoised.forward)):
-        drp_fwd = dada2.derepFastq(filts[i])
-        drp_rev = dada2.derepFastq(filts_rev[i])
+    for dd_fwd, dd_rev, filt, filt_rev in zip(
+            denoised_fwd.samples, denoised_rev.samples,
+            filts, filts_rev, strict=True):
+        drp_fwd = dada2.derepFastq(filt)
+        drp_rev = dada2.derepFastq(filt_rev)
 
         mp_r = dada2.mergePairs(
-            denoised.forward[i], drp_fwd,
-            denoised.reverse[i], drp_rev,
+            dd_fwd, drp_fwd,
+            dd_rev, drp_rev,
             **kwargs
         )
 
@@ -743,8 +754,8 @@ def _merge_paired_reads(
             )
             retained = _retain_unmerged_pairs(
                 merged_pairs=mp,
-                denoised_fwd=denoised.forward[i],
-                denoised_rev=denoised.reverse[i]
+                denoised_fwd=dd_fwd,
+                denoised_rev=dd_rev
             )
             concatenated_counts.append(retained.concatenated_count)
             mergers.append(retained.mergers)
@@ -755,12 +766,10 @@ def _merge_paired_reads(
 
     if retain_unmerged:
         with localconverter(default_converter + pandas2ri.converter):
-            mergers_r = ListVector(
-                {
-                    str(i + 1): pandas2ri.py2rpy(merger)
-                    for i, merger in enumerate(mergers)
-                }
-            )
+            mergers_r = [
+                pandas2ri.py2rpy(merger)
+                for merger in mergers
+            ]
 
     if unmerged_id_maps:
         unmerged_id_map = pd.concat(unmerged_id_maps, ignore_index=True)
@@ -772,14 +781,32 @@ def _merge_paired_reads(
             }
         )
 
-    sequence_table_r = dada2.makeSequenceTable(mergers_r)
-
     return _PairedMergeResults(
-        sequence_table=sequence_table_r,
+        merged_reads=mergers_r,
         merged_counts=merged_counts,
         concatenated_counts=concatenated_counts,
         unmerged_id_map=unmerged_id_map
     )
+
+
+def _construct_sequence_table(
+    samples: list[ListVector | RDataFrame]
+) -> RMatrix:
+    '''
+    Construct a sequence table from per-sample DADA2 results.
+
+    Parameters
+    ----------
+    samples : list[ListVector or RDataFrame]
+        Per-sample DADA2 ``dada-class`` objects for single-end reads or merge
+        result data frames for paired-end reads.
+
+    Returns
+    -------
+    RMatrix
+        Per-sample sequence table.
+    '''
+    return dada2.makeSequenceTable(samples)
 
 
 def _validate_inputs(
@@ -1087,7 +1114,7 @@ def _run_dada2(
     )
 
     if input_dir_rev is None:
-        sequence_table_r = _denoise_single_reads(
+        denoised = _denoise_single_reads(
             filts=filts,
             err=error_models.forward,
             pooling_method=pooling_method,
@@ -1096,13 +1123,12 @@ def _run_dada2(
             homopolymer_gap_penalty=homopolymer_gap_penalty,
             band_size=band_size
         )
-        denoised_counts = [int(count) for count in base.rowSums(
-            sequence_table_r
-        )]
+        sequence_table_r = _construct_sequence_table(denoised.samples)
+        denoised_counts = denoised.read_counts
         merged_counts = None
         concatenated_counts = None
     else:
-        denoised = _denoise_paired_reads(
+        denoised_fwd, denoised_rev = _denoise_paired_reads(
             filts=filts,
             filts_rev=filts_rev,
             err=error_models.forward,
@@ -1111,7 +1137,8 @@ def _run_dada2(
             multithread=multithread
         )
         merged = _merge_paired_reads(
-            denoised=denoised,
+            denoised_fwd=denoised_fwd,
+            denoised_rev=denoised_rev,
             filts=filts,
             filts_rev=filts_rev,
             min_overlap=min_overlap,
@@ -1119,8 +1146,8 @@ def _run_dada2(
             trim_overhang=trim_overhang,
             retain_unmerged=retain_unmerged
         )
-        sequence_table_r = merged.sequence_table
-        denoised_counts = denoised.forward_read_counts
+        sequence_table_r = _construct_sequence_table(merged.merged_reads)
+        denoised_counts = denoised_fwd.read_counts
         merged_counts = merged.merged_counts
         concatenated_counts = (
             merged.concatenated_counts if retain_unmerged else None
