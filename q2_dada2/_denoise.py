@@ -25,9 +25,11 @@ from q2_types.per_sample_sequences import (
 from q2_dada2._run_dada import (
     _Dada2Results,
     _construct_sequence_table,
+    _denoise_paired_reads,
     _denoise_single_reads,
     _finalize_dada2_results,
     _learn_error_models,
+    _merge_paired_reads,
     _prepare_short_reads,
     _resolve_multithread,
     _run_dada2,
@@ -424,44 +426,47 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    ) -> (biom.Table, DNAIterator,
                          qiime2.Metadata, qiime2.Metadata):
     _check_inputs(**locals())
+
     if trunc_len_f != 0 and trim_left_f >= trunc_len_f:
         raise ValueError("trim_left_f (%r) must be smaller than trunc_len_f"
                          " (%r)" % (trim_left_f, trunc_len_f))
     if trunc_len_r != 0 and trim_left_r >= trunc_len_r:
         raise ValueError("trim_left_r (%r) must be smaller than trunc_len_r"
                          " (%r)" % (trim_left_r, trunc_len_r))
-    with tempfile.TemporaryDirectory() as temp_dir:
-        tmp_forward = os.path.join(temp_dir, 'forward')
-        tmp_reverse = os.path.join(temp_dir, 'reverse')
-        biom_fp = os.path.join(temp_dir, 'output.tsv.biom')
-        track_fp = os.path.join(temp_dir, 'track.tsv')
-        err_track_fp = os.path.join(temp_dir, 'err_track.tsv')
-        filt_forward = os.path.join(temp_dir, 'filt_f')
-        filt_reverse = os.path.join(temp_dir, 'filt_r')
+
+    with tempfile.TemporaryDirectory() as temp_dir_name:
+        temp_dir = Path(temp_dir_name)
+        tmp_forward = temp_dir / 'forward'
+        tmp_reverse = temp_dir / 'reverse'
+        filt_forward = temp_dir / 'filt_f'
+        filt_reverse = temp_dir / 'filt_r'
         manifest_df = demultiplexed_seqs.manifest.view(pd.DataFrame)
 
-        for fp in tmp_forward, tmp_reverse, filt_forward, filt_reverse:
-            os.mkdir(fp)
+        for directory in (
+                tmp_forward, tmp_reverse, filt_forward, filt_reverse):
+            directory.mkdir()
         for _, fps in manifest_df.iterrows():
             fwd_fp = fps['forward']
             rev_fp = fps['reverse']
 
-            fwd_no_barcode = _remove_barcode(os.path.basename(fps['forward']))
-            rev_no_barcode = _remove_barcode(os.path.basename(fps['reverse']))
+            fwd_no_barcode = _remove_barcode(Path(fwd_fp).name)
+            rev_no_barcode = _remove_barcode(Path(rev_fp).name)
 
-            qiime2.util.duplicate(fwd_fp, os.path.join(tmp_forward,
-                                                       fwd_no_barcode))
-            qiime2.util.duplicate(rev_fp, os.path.join(tmp_reverse,
-                                                       rev_no_barcode))
+            qiime2.util.duplicate(fwd_fp, tmp_forward / fwd_no_barcode)
+            qiime2.util.duplicate(rev_fp, tmp_reverse / rev_no_barcode)
 
-        _run_dada2(
-            input_dir=str(tmp_forward),
-            input_dir_rev=str(tmp_reverse),
-            output_path=str(biom_fp),
-            output_track=str(track_fp),
-            output_err_track=str(err_track_fp),
-            filtered_dir=str(filt_forward),
-            filtered_dir_rev=str(filt_reverse),
+        multithread = _resolve_multithread(n_threads)
+        unfilts, unfilts_rev = _validate_inputs(tmp_forward, tmp_reverse)
+        if unfilts_rev is None:
+            raise RuntimeError(
+                'Paired input validation returned no reverse reads.'
+            )
+
+        filts, filts_rev, filtering_stats = _prepare_short_reads(
+            filtered_dir=filt_forward,
+            filtered_dir_rev=filt_reverse,
+            unfilts=unfilts,
+            unfilts_rev=unfilts_rev,
             trunc_len=trunc_len_f,
             trunc_len_rev=trunc_len_r,
             trim_left=trim_left_f,
@@ -469,21 +474,64 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             max_ee=max_ee_f,
             max_ee_rev=max_ee_r,
             trunc_quality=trunc_q,
+            max_len='Inf',
+            multithread=multithread
+        )
+        if filts_rev is None:
+            raise RuntimeError('Paired filtering returned no reverse reads.')
+
+        error_models = _learn_error_models(
+            filts=filts,
+            filts_rev=filts_rev,
+            learn_min_reads=n_reads_learn,
+            multithread=multithread
+        )
+        if error_models.reverse is None:
+            raise RuntimeError(
+                'Paired error learning returned no reverse model.'
+            )
+
+        denoised_fwd, denoised_rev = _denoise_paired_reads(
+            filts=filts,
+            filts_rev=filts_rev,
+            err=error_models.forward,
+            err_rev=error_models.reverse,
+            pooling_method=pooling_method,
+            multithread=multithread
+        )
+        merged = _merge_paired_reads(
+            denoised_fwd=denoised_fwd,
+            denoised_rev=denoised_rev,
+            filts=filts,
+            filts_rev=filts_rev,
             min_overlap=min_overlap,
             max_merge_mismatch=max_merge_mismatch,
             trim_overhang=trim_overhang,
-            pooling_method=pooling_method,
+            retain_unmerged=retain_unmerged
+        )
+        sequence_table = _construct_sequence_table(merged.merged_reads)
+        results = _finalize_dada2_results(
+            sequence_table=sequence_table,
+            filts=filts,
+            filtering_stats=filtering_stats,
+            error_stats=error_models.stats,
+            denoised_counts=denoised_fwd.read_counts,
             chimera_method=chimera_method,
             min_parental_fold=min_fold_parent_over_abundance,
             allow_one_off=allow_one_off,
-            num_threads=n_threads,
-            learn_min_reads=n_reads_learn,
-            retain_unmerged=retain_unmerged
+            multithread=multithread,
+            primer_removed=False,
+            merged_counts=merged.merged_counts,
+            concatenated_counts=(
+                merged.concatenated_counts if retain_unmerged else None
+            ),
+            unmerged_id_map=merged.unmerged_id_map
         )
 
-        return _denoise_file_helper(
-            biom_fp, track_fp, err_track_fp,
-            hashed_feature_ids, retain_all_samples,
+        return _denoise_helper(
+            results=results,
+            hashed_feature_ids=hashed_feature_ids,
+            retain_all_samples=retain_all_samples,
             paired=True,
             retain_unmerged=retain_unmerged
         )
