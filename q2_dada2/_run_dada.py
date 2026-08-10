@@ -435,8 +435,14 @@ def _denoise_single_reads(
     if band_size is not None:
         kwargs['BAND_SIZE'] = band_size
 
-    dereplicated = _dereplicate_reads(filts)
-    dds = dada2.dada(dereplicated, **kwargs)
+    if pooling_method == 'pseudo':
+        dds = dada2.dada(_dereplicate_reads(filts), **kwargs)
+    else:
+        dds = []
+        for filt in filts:
+            dereplicated = dada2.derepFastq(filt)
+            dds.append(dada2.dada(dereplicated, **kwargs))
+
     return dada2.makeSequenceTable(dds)
 
 
@@ -451,15 +457,9 @@ class _PairedDenoiseResults:
         Denoised forward-read objects for each sample.
     reverse : list[ListVector]
         Denoised reverse-read objects for each sample.
-    dereplicated_forward : list[ListVector]
-        Dereplicated forward reads used during denoising.
-    dereplicated_reverse : list[ListVector]
-        Dereplicated reverse reads used during denoising.
     '''
     forward: list[ListVector]
     reverse: list[ListVector]
-    dereplicated_forward: list[ListVector]
-    dereplicated_reverse: list[ListVector]
 
     @property
     def forward_read_counts(self) -> list[int]:
@@ -537,39 +537,53 @@ def _denoise_paired_reads(
     Returns
     -------
     _PairedDenoiseResults
-        Denoised forward and reverse samples, their corresponding dereplicated
-        reads, and the denoised forward-read count for each sample.
+        Denoised forward and reverse samples and the denoised forward-read
+        count for each sample.
     '''
-    pool = 'pseudo' if pooling_method == 'pseudo' else False
-    dereplicated_fwd = _dereplicate_reads(filts)
-    dereplicated_rev = _dereplicate_reads(filts_rev)
-    dds_fwd = dada2.dada(
-        dereplicated_fwd,
-        err=err,
-        pool=pool,
-        multithread=multithread,
-        verbose=False
-    )
-    dds_rev = dada2.dada(
-        dereplicated_rev,
-        err=err_rev,
-        pool=pool,
-        multithread=multithread,
-        verbose=False
-    )
+    if pooling_method == 'pseudo':
+        dds_fwd = dada2.dada(
+            _dereplicate_reads(filts),
+            err=err,
+            pool='pseudo',
+            multithread=multithread,
+            verbose=False
+        )
+        dds_rev = dada2.dada(
+            _dereplicate_reads(filts_rev),
+            err=err_rev,
+            pool='pseudo',
+            multithread=multithread,
+            verbose=False
+        )
 
-    if 'dada' in dds_fwd.rclass:
-        dds_fwd = [dds_fwd]
-        dds_rev = [dds_rev]
+        if 'dada' in dds_fwd.rclass:
+            dds_fwd = [dds_fwd]
+            dds_rev = [dds_rev]
+        else:
+            dds_fwd = list(dds_fwd)
+            dds_rev = list(dds_rev)
     else:
-        dds_fwd = list(dds_fwd)
-        dds_rev = list(dds_rev)
+        dds_fwd = []
+        dds_rev = []
+        for filt, filt_rev in zip(filts, filts_rev, strict=True):
+            dds_fwd.append(dada2.dada(
+                dada2.derepFastq(filt),
+                err=err,
+                pool=False,
+                multithread=multithread,
+                verbose=False
+            ))
+            dds_rev.append(dada2.dada(
+                dada2.derepFastq(filt_rev),
+                err=err_rev,
+                pool=False,
+                multithread=multithread,
+                verbose=False
+            ))
 
     return _PairedDenoiseResults(
         forward=dds_fwd,
-        reverse=dds_rev,
-        dereplicated_forward=list(dereplicated_fwd),
-        dereplicated_reverse=list(dereplicated_rev)
+        reverse=dds_rev
     )
 
 
@@ -658,6 +672,8 @@ def _retain_unmerged_pairs(
 
 def _merge_paired_reads(
     denoised: _PairedDenoiseResults,
+    filts: StrVector,
+    filts_rev: StrVector,
     min_overlap: int | None,
     max_merge_mismatch: int | None,
     trim_overhang: bool | None,
@@ -669,7 +685,11 @@ def _merge_paired_reads(
     Parameters
     ----------
     denoised : _PairedDenoiseResults
-        Denoised and dereplicated forward and reverse reads.
+        Denoised forward and reverse reads.
+    filts : StrVector
+        Paths to filtered forward FASTQ files.
+    filts_rev : StrVector
+        Paths to filtered reverse FASTQ files.
     min_overlap : int or None
         Minimum overlap required to merge a forward and reverse read.
     max_merge_mismatch : int or None
@@ -702,8 +722,8 @@ def _merge_paired_reads(
         kwargs['returnRejects'] = retain_unmerged
 
     for i in range(len(denoised.forward)):
-        drp_fwd = denoised.dereplicated_forward[i]
-        drp_rev = denoised.dereplicated_reverse[i]
+        drp_fwd = dada2.derepFastq(filts[i])
+        drp_rev = dada2.derepFastq(filts_rev[i])
 
         mp_r = dada2.mergePairs(
             denoised.forward[i], drp_fwd,
@@ -1085,6 +1105,8 @@ def _run_dada2(
         )
         merged = _merge_paired_reads(
             denoised=denoised,
+            filts=filts,
+            filts_rev=filts_rev,
             min_overlap=min_overlap,
             max_merge_mismatch=max_merge_mismatch,
             trim_overhang=trim_overhang,
