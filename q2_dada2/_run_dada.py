@@ -23,6 +23,7 @@ from q2_dada2._dada_stats._error_model import _error_model_to_dataframe
 from q2_dada2._r_utils import _robj_to_pandas_df
 
 dada2 = importr('dada2')
+base = importr('base')
 
 
 def _find_fastq_files(directory: Path) -> list[Path]:
@@ -95,7 +96,7 @@ def _prepare_ccs_reads(
     -------
     filts : StrVector
         Paths to the filtered FASTQ files.
-    out : pd.DataFrame
+    filtering_stats : pd.DataFrame
         Per-sample input, primer-removed, and filtered read counts.
     '''
     if reverse_primer is None:
@@ -151,7 +152,7 @@ def _prepare_ccs_reads(
             '(was truncLen longer than the read length?)'
         )
 
-    out = pd.concat(
+    filtering_stats = pd.concat(
         [
             _robj_to_pandas_df(no_primers),
             _robj_to_pandas_df(filtered_out)['reads.out']
@@ -159,7 +160,7 @@ def _prepare_ccs_reads(
         axis=1
     )
 
-    return filts, out
+    return filts, filtering_stats
 
 
 def _prepare_short_reads(
@@ -217,7 +218,7 @@ def _prepare_short_reads(
         Paths to filtered forward or single-end .fastq.gz files.
     filts_rev : StrVector or None
         Paths to filtered reverse .fastq.gz files if provided.
-    out : pd.DataFrame
+    filtering_stats : pd.DataFrame
         Per-sample input and filtered read counts.
     '''
     filts = StrVector([
@@ -233,7 +234,7 @@ def _prepare_short_reads(
         filts_rev = StrVector([
             str(filtered_dir_rev / Path(f).name) for f in unfilts_rev
         ])
-        out = dada2.filterAndTrim(
+        filtering_stats_r = dada2.filterAndTrim(
             unfilts, filts, unfilts_rev, filts_rev,
             truncLen=[trunc_len, trunc_len_rev],
             trimLeft=[trim_left, trim_left_rev],
@@ -248,7 +249,7 @@ def _prepare_short_reads(
         ])
     else:
         filts_rev = None
-        out = dada2.filterAndTrim(
+        filtering_stats_r = dada2.filterAndTrim(
             unfilts,
             filts,
             truncLen=trunc_len,
@@ -269,7 +270,8 @@ def _prepare_short_reads(
             '(was truncLen longer than the read length?)'
         )
 
-    return filts, filts_rev, _robj_to_pandas_df(out)
+    filtering_stats = _robj_to_pandas_df(filtering_stats_r)
+    return filts, filts_rev, filtering_stats
 
 
 @dataclass(frozen=True)
@@ -280,9 +282,12 @@ class _ErrorLearningResults:
     Attributes
     ----------
     forward : ListVector
-        Learned error model for forward or single-end reads.
+        Named R list containing `$err_out`, the learned error-rate matrix;
+        `$err_in`, the initial error rates; and `$trans`, the observed
+        transition counts by nucleotide substitution and quality score.
+        See `dada2::learnErrors` for more information.
     reverse : ListVector or None
-        Learned error model for reverse reads, if paired-end reads were used.
+        Same structure as `forward`, but for reverse reads.
     stats : pd.DataFrame
         Error-model statistics formatted for plotting.
     '''
@@ -898,7 +903,7 @@ def _remove_chimeras(
     min_parental_fold: float,
     allow_one_off: bool,
     multithread: bool | int
-) -> pd.DataFrame:
+) -> RMatrix:
     '''
     Remove chimeric sequences from a DADA2 sequence table.
 
@@ -917,25 +922,23 @@ def _remove_chimeras(
 
     Returns
     -------
-    non_chimeric_table : pd.DataFrame
-        Per-sample sequence table after chimera removal, or the unchanged
-        sequence table when chimera removal is skipped.
+    non_chimeric_table : RMatrix
+        R sequence table after chimera removal, or the unchanged sequence
+        table when chimera removal is skipped.
     '''
-    sequence_table_df = _robj_to_pandas_df(sequence_table)
     if (
         chimera_method not in {'pooled', 'consensus'}
-        or sequence_table_df.shape[1] == 0
+        or sequence_table.ncol == 0
     ):
-        return sequence_table_df
+        return sequence_table
 
-    non_chimeric_table = dada2.removeBimeraDenovo(
+    return dada2.removeBimeraDenovo(
         sequence_table,
         method=chimera_method,
         minFoldParentOverAbundance=min_parental_fold,
         allowOneOff=allow_one_off,
         multithread=multithread
     )
-    return _robj_to_pandas_df(non_chimeric_table)
 
 
 def _restore_linked_sequences(
@@ -1036,7 +1039,7 @@ def _run_dada2(
         multithread = num_threads
 
     if removed_primer_dir is not None:
-        filts, out = _prepare_ccs_reads(
+        filts, filtering_stats = _prepare_ccs_reads(
             filtered_dir=Path(filtered_dir),
             removed_primer_dir=Path(removed_primer_dir),
             unfilts=[Path(f) for f in unfilts],
@@ -1054,7 +1057,7 @@ def _run_dada2(
         )
         filts_rev = None
     else:
-        filts, filts_rev, out = _prepare_short_reads(
+        filts, filts_rev, filtering_stats = _prepare_short_reads(
             filtered_dir=Path(filtered_dir),
             filtered_dir_rev=(
                 Path(filtered_dir_rev)
@@ -1093,7 +1096,11 @@ def _run_dada2(
             homopolymer_gap_penalty=homopolymer_gap_penalty,
             band_size=band_size
         )
-        sequence_table = _robj_to_pandas_df(sequence_table_r)
+        denoised_counts = [int(count) for count in base.rowSums(
+            sequence_table_r
+        )]
+        merged_counts = None
+        concatenated_counts = None
     else:
         denoised = _denoise_paired_reads(
             filts=filts,
@@ -1113,38 +1120,31 @@ def _run_dada2(
             retain_unmerged=retain_unmerged
         )
         sequence_table_r = merged.sequence_table
-        denoised_fwd = denoised.forward_read_counts
-        sequence_table = _robj_to_pandas_df(sequence_table_r)
+        denoised_counts = denoised.forward_read_counts
+        merged_counts = merged.merged_counts
+        concatenated_counts = (
+            merged.concatenated_counts if retain_unmerged else None
+        )
 
-    sequence_table_no_chimera = _remove_chimeras(
+    sequence_table_r = _remove_chimeras(
         sequence_table=sequence_table_r,
         chimera_method=chimera_method,
         min_parental_fold=min_parental_fold,
         allow_one_off=allow_one_off,
         multithread=multithread
     )
+    sequence_table = _robj_to_pandas_df(sequence_table_r)
 
     if input_dir_rev is not None:
-        sequence_table_no_chimera = _restore_linked_sequences(
-            sequence_table=sequence_table_no_chimera,
+        sequence_table = _restore_linked_sequences(
+            sequence_table=sequence_table,
             unmerged_id_map=merged.unmerged_id_map
         )
 
-    if input_dir_rev is None:
-        denoised_counts = sequence_table.sum(axis='columns').values
-        merged_counts = None
-        concatenated_counts = None
-    else:
-        denoised_counts = denoised_fwd
-        merged_counts = merged.merged_counts
-        concatenated_counts = (
-            merged.concatenated_counts if retain_unmerged else None
-        )
-
     track = _construct_stats_table(
-        filtering_stats=out,
+        filtering_stats=filtering_stats,
         denoised_counts=denoised_counts,
-        non_chimeric_counts=sequence_table_no_chimera.sum(
+        non_chimeric_counts=sequence_table.sum(
             axis='columns'
         ).values,
         primer_removed=removed_primer_dir is not None,
@@ -1155,7 +1155,7 @@ def _run_dada2(
 
     error_models.stats.to_csv(output_err_track, sep='\t', index=True)
     _write_sequence_table(
-        sequence_table=sequence_table_no_chimera,
+        sequence_table=sequence_table,
         filts=filts,
         output_path=Path(output_path)
     )
