@@ -6,7 +6,6 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-import os
 import tempfile
 from pathlib import Path
 from typing import Optional
@@ -30,9 +29,9 @@ from q2_dada2._run_dada import (
     _finalize_dada2_results,
     _learn_error_models,
     _merge_paired_reads,
+    _prepare_ccs_reads,
     _prepare_short_reads,
     _resolve_multithread,
-    _run_dada2,
     _validate_inputs,
 )
 
@@ -110,28 +109,6 @@ def _filepath_to_sample_single(fp):
 
 def _filepath_to_sample_paired(fp):
     return fp.rsplit('_', 3)[0]
-
-
-def _denoise_file_helper(biom_fp, track_fp, err_track_fp,
-                         hashed_feature_ids, retain_all_samples,
-                         paired=False, retain_unmerged=False):
-
-    _check_featureless_table(biom_fp)
-    with open(biom_fp) as fh:
-        table = biom.Table.from_tsv(fh, None, None, None)
-
-    read_stats = pd.read_csv(track_fp, sep='\t', index_col=0)
-    error_stats = pd.read_csv(err_track_fp, sep='\t', index_col=0)
-
-    return _assemble_denoise_outputs(
-        table=table,
-        read_stats=read_stats,
-        error_stats=error_stats,
-        hashed_feature_ids=hashed_feature_ids,
-        retain_all_samples=retain_all_samples,
-        paired=paired,
-        retain_unmerged=retain_unmerged
-    )
 
 
 def _denoise_helper(results: _Dada2Results, hashed_feature_ids,
@@ -572,21 +549,18 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
     max_len = 'Inf' if max_len == 0 else max_len
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
-        biom_fp = os.path.join(temp_dir_name, 'output.tsv.biom')
-        track_fp = os.path.join(temp_dir_name, 'track.tsv')
-        err_track_fp = os.path.join(temp_dir_name, 'err_track.tsv')
-        nop_fp = os.path.join(temp_dir_name, 'nop')
-        filt_fp = os.path.join(temp_dir_name, 'filt')
-        for fp in nop_fp, filt_fp:
-            os.mkdir(fp)
+        temp_dir = Path(temp_dir_name)
+        removed_primer_dir = temp_dir / 'nop'
+        filtered_dir = temp_dir / 'filt'
+        removed_primer_dir.mkdir()
+        filtered_dir.mkdir()
 
-        _run_dada2(
-            input_dir=str(demultiplexed_seqs),
-            output_path=str(biom_fp),
-            output_track=str(track_fp),
-            output_err_track=str(err_track_fp),
-            removed_primer_dir=str(nop_fp),
-            filtered_dir=str(filt_fp),
+        multithread = _resolve_multithread(n_threads)
+        unfilts, _ = _validate_inputs(Path(str(demultiplexed_seqs)))
+        filts, filtering_stats = _prepare_ccs_reads(
+            filtered_dir=filtered_dir,
+            removed_primer_dir=removed_primer_dir,
+            unfilts=[Path(filt) for filt in unfilts],
             forward_primer=front,
             reverse_primer=adapter,
             max_mismatch=max_mismatch,
@@ -597,16 +571,41 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
             trunc_quality=trunc_q,
             max_len=max_len,
             min_len=min_len,
+            multithread=multithread
+        )
+        error_models = _learn_error_models(
+            filts=filts,
+            filts_rev=None,
+            learn_min_reads=n_reads_learn,
+            multithread=multithread,
+            pacbio=True,
+            band_size=32
+        )
+        denoised = _denoise_single_reads(
+            filts=filts,
+            err=error_models.forward,
             pooling_method=pooling_method,
+            learn_min_reads=n_reads_learn,
+            multithread=multithread,
+            homopolymer_gap_penalty=None,
+            band_size=32
+        )
+        sequence_table = _construct_sequence_table(denoised.samples)
+        results = _finalize_dada2_results(
+            sequence_table=sequence_table,
+            filts=filts,
+            filtering_stats=filtering_stats,
+            error_stats=error_models.stats,
+            denoised_counts=denoised.read_counts,
             chimera_method=chimera_method,
             min_parental_fold=min_fold_parent_over_abundance,
             allow_one_off=allow_one_off,
-            num_threads=n_threads,
-            learn_min_reads=n_reads_learn,
-            band_size=32
+            multithread=multithread,
+            primer_removed=True
         )
 
-        return _denoise_file_helper(
-            biom_fp, track_fp, err_track_fp,
-            hashed_feature_ids, retain_all_samples
+        return _denoise_helper(
+            results=results,
+            hashed_feature_ids=hashed_feature_ids,
+            retain_all_samples=retain_all_samples
         )
