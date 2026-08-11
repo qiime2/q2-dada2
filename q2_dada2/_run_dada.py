@@ -384,26 +384,6 @@ def _learn_error_models(
     )
 
 
-def _dereplicate_reads(filts: StrVector) -> ListVector:
-    '''
-    Dereplicate filtered reads into a named R list.
-
-    Parameters
-    ----------
-    filts : StrVector
-        Paths to filtered FASTQ files.
-
-    Returns
-    -------
-    ListVector
-        Named R list containing one DADA2 derep-class object per sample.
-    '''
-    return ListVector({
-        Path(filt).name: dada2.derepFastq(filt)
-        for filt in filts
-    })
-
-
 @dataclass(frozen=True)
 class _DenoiseResults:
     '''
@@ -411,14 +391,15 @@ class _DenoiseResults:
 
     Attributes
     ----------
-    samples : list[ListVector]
-        Per-sample `dada-class` objects. Each `dada-class` object has the
-        following key slots:
+    samples : ListVector
+        R list containing one `dada-class` object per sample. Each
+        `dada-class` object has the following key slots. The native R list is
+        retained so it can be passed directly to other DADA2 functions.
             $denoised:
                 Integer vector named by inferred sequence and valued by its
                 abundance.
             $map:
-                Unnamed integer vector of length `derep-class$unqiues`.
+                Unnamed integer vector of length `derep-class$uniques`.
                 Position i is the ith unique sequence. Value at i is the index
                 into `dada-class$denoised` that unique sequence i maps (was
                 denoised) to. Or, NA if the unique sequence i was removed
@@ -426,7 +407,22 @@ class _DenoiseResults:
 
         For the remaining slots see the `dada-class` type in dada2.
     '''
-    samples: list[ListVector]
+    samples: ListVector
+
+    @classmethod
+    def _normalize_denoise_return(
+        cls, samples: ListVector
+    ) -> '_DenoiseResults':
+        '''
+        Normalize DADA2's single- and multi-sample return shapes. If a single
+        sample is processed a single `dada-class` is returned instead of a
+        single-item R list.
+        '''
+        if 'dada' in samples.rclass:
+            normalized = ListVector.from_length(1)
+            normalized[0] = samples
+            samples = normalized
+        return cls(samples=samples)
 
     @property
     def read_counts(self) -> list[int]:
@@ -443,7 +439,7 @@ def _denoise_single_reads(
     band_size: int | None
 ) -> _DenoiseResults:
     '''
-    Dereplicate and denoise single-end, pyrosequencing, or CCS reads.
+    Denoise single-end, pyrosequencing, or CCS reads from FASTQ files.
 
     Parameters
     ----------
@@ -480,19 +476,9 @@ def _denoise_single_reads(
     if band_size is not None:
         kwargs['BAND_SIZE'] = band_size
 
-    if pooling_method == 'pseudo':
-        dds = dada2.dada(_dereplicate_reads(filts), **kwargs)
-        if 'dada' in dds.rclass:
-            dds = [dds]
-        else:
-            dds = list(dds)
-    else:
-        dds = []
-        for filt in filts:
-            dereplicated = dada2.derepFastq(filt)
-            dds.append(dada2.dada(dereplicated, **kwargs))
+    dds = dada2.dada(filts, **kwargs)
 
-    return _DenoiseResults(samples=dds)
+    return _DenoiseResults._normalize_denoise_return(dds)
 
 
 @dataclass(frozen=True)
@@ -545,7 +531,7 @@ def _denoise_paired_reads(
     multithread: bool | int
 ) -> tuple[_DenoiseResults, _DenoiseResults]:
     '''
-    Dereplicate and denoise paired-end reads.
+    Denoise paired-end reads from FASTQ files.
 
     Parameters
     ----------
@@ -570,50 +556,24 @@ def _denoise_paired_reads(
     denoised_rev : _DenoiseResults
         Per-sample denoised reverse-read objects.
     '''
-    if pooling_method == 'pseudo':
-        dds_fwd = dada2.dada(
-            _dereplicate_reads(filts),
-            err=err,
-            pool='pseudo',
-            multithread=multithread,
-            verbose=False
-        )
-        dds_rev = dada2.dada(
-            _dereplicate_reads(filts_rev),
-            err=err_rev,
-            pool='pseudo',
-            multithread=multithread,
-            verbose=False
-        )
-
-        if 'dada' in dds_fwd.rclass:
-            dds_fwd = [dds_fwd]
-            dds_rev = [dds_rev]
-        else:
-            dds_fwd = list(dds_fwd)
-            dds_rev = list(dds_rev)
-    else:
-        dds_fwd = []
-        dds_rev = []
-        for filt, filt_rev in zip(filts, filts_rev, strict=True):
-            dds_fwd.append(dada2.dada(
-                dada2.derepFastq(filt),
-                err=err,
-                pool=False,
-                multithread=multithread,
-                verbose=False
-            ))
-            dds_rev.append(dada2.dada(
-                dada2.derepFastq(filt_rev),
-                err=err_rev,
-                pool=False,
-                multithread=multithread,
-                verbose=False
-            ))
+    dds_fwd = dada2.dada(
+        filts,
+        err=err,
+        pool='pseudo' if pooling_method == 'pseudo' else False,
+        multithread=multithread,
+        verbose=False
+    )
+    dds_rev = dada2.dada(
+        filts_rev,
+        err=err_rev,
+        pool='pseudo' if pooling_method == 'pseudo' else False,
+        multithread=multithread,
+        verbose=False
+    )
 
     return (
-        _DenoiseResults(samples=dds_fwd),
-        _DenoiseResults(samples=dds_rev)
+        _DenoiseResults._normalize_denoise_return(dds_fwd),
+        _DenoiseResults._normalize_denoise_return(dds_rev)
     )
 
 
@@ -755,18 +715,23 @@ def _merge_paired_reads(
     if retain_unmerged is not None:
         kwargs['returnRejects'] = retain_unmerged
 
-    for dd_fwd, dd_rev, filt, filt_rev in zip(
-            denoised_fwd.samples, denoised_rev.samples,
-            filts, filts_rev, strict=True):
-        drp_fwd = dada2.derepFastq(filt)
-        drp_rev = dada2.derepFastq(filt_rev)
+    merged_reads_r = dada2.mergePairs(
+        denoised_fwd.samples,
+        filts,
+        denoised_rev.samples,
+        filts_rev,
+        **kwargs
+    )
+    if isinstance(merged_reads_r, RDataFrame):
+        merged_reads_r = [merged_reads_r]
+    else:
+        merged_reads_r = list(merged_reads_r)
 
-        mp_r = dada2.mergePairs(
-            dd_fwd, drp_fwd,
-            dd_rev, drp_rev,
-            **kwargs
-        )
-
+    for mp_r, dd_fwd, dd_rev in zip(
+            merged_reads_r,
+            denoised_fwd.samples,
+            denoised_rev.samples,
+            strict=True):
         mp = pandas2ri.rpy2py(mp_r)
         if retain_unmerged:
             merged_counts.append(
@@ -810,16 +775,16 @@ def _merge_paired_reads(
 
 
 def _construct_sequence_table(
-    samples: list[ListVector | RDataFrame]
+    samples: ListVector | list[RDataFrame]
 ) -> RMatrix:
     '''
     Construct a sequence table from per-sample DADA2 results.
 
     Parameters
     ----------
-    samples : list[ListVector or RDataFrame]
-        Per-sample DADA2 `dada-class` objects for single-end reads or merge
-        result data frames for paired-end reads.
+    samples : ListVector or list[RDataFrame]
+        R list of per-sample DADA2 `dada-class` objects for single-end reads,
+        or a list of merge-result data frames for paired-end reads.
 
     Returns
     -------
