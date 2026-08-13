@@ -13,7 +13,7 @@ import hashlib
 
 import biom
 import skbio
-import qiime2.util
+import qiime2
 import pandas as pd
 import numpy as np
 
@@ -29,10 +29,11 @@ from q2_dada2._run_dada import (
     _finalize_dada2_results,
     _learn_error_models,
     _merge_paired_reads,
+    _ReadPaths,
     _prepare_ccs_reads,
+    _prepare_paired_reads,
     _prepare_short_reads,
     _resolve_multithread,
-    _validate_inputs,
 )
 
 
@@ -103,17 +104,8 @@ def _check_inputs(**kwargs):
                              % (param, arg, explanation))
 
 
-def _filepath_to_sample_single(fp):
-    return fp.rsplit('_', 4)[0]
-
-
-def _filepath_to_sample_paired(fp):
-    return fp.rsplit('_', 3)[0]
-
-
 def _denoise_helper(results: _Dada2Results, hashed_feature_ids,
-                    retain_all_samples, paired=False,
-                    retain_unmerged=False):
+                    retain_all_samples, retain_unmerged=False):
     if results.sequence_table.shape[1] == 0:
         raise ValueError(
             'No features remain after denoising. Try adjusting your '
@@ -132,25 +124,15 @@ def _denoise_helper(results: _Dada2Results, hashed_feature_ids,
         error_stats=results.error_stats.copy(),
         hashed_feature_ids=hashed_feature_ids,
         retain_all_samples=retain_all_samples,
-        paired=paired,
         retain_unmerged=retain_unmerged
     )
 
 
 def _assemble_denoise_outputs(table, read_stats, error_stats,
                               hashed_feature_ids, retain_all_samples,
-                              paired=False, retain_unmerged=False):
-
-    # If we used denoise_paired the barcode was already stripped from the
-    # filename to force the files to sort by id and pair up properly
-    # see https://github.com/qiime2/q2-dada2/issues/102
-    # and https://github.com/qiime2/q2-dada2/pull/125
-    filepath_to_sample = _filepath_to_sample_paired if paired \
-        else _filepath_to_sample_single
-
+                              retain_unmerged=False):
     df = read_stats
     df.index.name = 'sample-id'
-    df = df.rename(index=filepath_to_sample)
 
     PASSED_FILTER = 'percentage of input passed filter'
     NON_CHIMERIC = 'percentage of input non-chimeric'
@@ -200,11 +182,6 @@ def _assemble_denoise_outputs(table, read_stats, error_stats,
     df_err.index = df_err.index.astype(str)
     metadata_err = qiime2.Metadata(df_err)
 
-    # Currently the sample IDs in DADA2 are the file names. We make
-    # them the sample id part of the filename here.
-    sid_map = {id_: filepath_to_sample(id_)
-               for id_ in table.ids(axis='sample')}
-    table.update_ids(sid_map, axis='sample', inplace=True)
     # Reintroduce empty samples dropped by dada2.
     table_cols = table.ids(axis='observation')
     table_rows = list(set(df.index) - set(table.ids()))
@@ -267,24 +244,21 @@ def _denoise_single_or_pyro(
     with tempfile.TemporaryDirectory() as temp_dir_name:
         temp_dir = Path(temp_dir_name)
         multithread = _resolve_multithread(n_threads)
-        unfilts, _ = _validate_inputs(Path(str(demultiplexed_seqs)))
-        filts, _, filtering_stats = _prepare_short_reads(
+        unfiltered = _ReadPaths.from_manifest(
+            demultiplexed_seqs.manifest.view(pd.DataFrame)
+        )
+        filtered, filtering_stats = _prepare_short_reads(
             filtered_dir=temp_dir,
-            filtered_dir_rev=None,
-            unfilts=unfilts,
-            unfilts_rev=None,
+            unfiltered=unfiltered,
             trunc_len=trunc_len,
-            trunc_len_rev=None,
             trim_left=trim_left,
-            trim_left_rev=None,
             max_ee=max_ee,
-            max_ee_rev=None,
             trunc_quality=trunc_q,
             max_len=max_len,
             multithread=multithread
         )
         error_models = _learn_error_models(
-            filts=filts,
+            filts=filtered.forward,
             filts_rev=None,
             learn_min_reads=n_reads_learn,
             multithread=multithread,
@@ -293,7 +267,7 @@ def _denoise_single_or_pyro(
             band_size=band_size
         )
         denoised = _denoise_single_reads(
-            filts=filts,
+            filts=filtered.forward,
             err=error_models.forward,
             pooling_method=pooling_method,
             learn_min_reads=n_reads_learn,
@@ -304,7 +278,7 @@ def _denoise_single_or_pyro(
         sequence_table = _construct_sequence_table(denoised.samples)
         results = _finalize_dada2_results(
             sequence_table=sequence_table,
-            filts=filts,
+            sample_names=filtered.sample_ids,
             filtering_stats=filtering_stats,
             error_stats=error_models.stats,
             denoised_counts=denoised.read_counts,
@@ -413,37 +387,20 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
         temp_dir = Path(temp_dir_name)
-        tmp_forward = temp_dir / 'forward'
-        tmp_reverse = temp_dir / 'reverse'
         filt_forward = temp_dir / 'filt_f'
         filt_reverse = temp_dir / 'filt_r'
         manifest_df = demultiplexed_seqs.manifest.view(pd.DataFrame)
 
-        for directory in (
-                tmp_forward, tmp_reverse, filt_forward, filt_reverse):
+        for directory in (filt_forward, filt_reverse):
             directory.mkdir()
-        for _, fps in manifest_df.iterrows():
-            fwd_fp = fps['forward']
-            rev_fp = fps['reverse']
 
-            fwd_no_barcode = _remove_barcode(Path(fwd_fp).name)
-            rev_no_barcode = _remove_barcode(Path(rev_fp).name)
-
-            qiime2.util.duplicate(fwd_fp, tmp_forward / fwd_no_barcode)
-            qiime2.util.duplicate(rev_fp, tmp_reverse / rev_no_barcode)
+        unfiltered = _ReadPaths.from_manifest(manifest_df)
 
         multithread = _resolve_multithread(n_threads)
-        unfilts, unfilts_rev = _validate_inputs(tmp_forward, tmp_reverse)
-        if unfilts_rev is None:
-            raise RuntimeError(
-                'Paired input validation returned no reverse reads.'
-            )
-
-        filts, filts_rev, filtering_stats = _prepare_short_reads(
+        filtered, filtering_stats = _prepare_paired_reads(
             filtered_dir=filt_forward,
             filtered_dir_rev=filt_reverse,
-            unfilts=unfilts,
-            unfilts_rev=unfilts_rev,
+            unfiltered=unfiltered,
             trunc_len=trunc_len_f,
             trunc_len_rev=trunc_len_r,
             trim_left=trim_left_f,
@@ -451,15 +408,12 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             max_ee=max_ee_f,
             max_ee_rev=max_ee_r,
             trunc_quality=trunc_q,
-            max_len='Inf',
             multithread=multithread
         )
-        if filts_rev is None:
-            raise RuntimeError('Paired filtering returned no reverse reads.')
 
         error_models = _learn_error_models(
-            filts=filts,
-            filts_rev=filts_rev,
+            filts=filtered.forward,
+            filts_rev=filtered.reverse,
             learn_min_reads=n_reads_learn,
             multithread=multithread
         )
@@ -469,8 +423,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             )
 
         denoised_fwd, denoised_rev = _denoise_paired_reads(
-            filts=filts,
-            filts_rev=filts_rev,
+            reads=filtered,
             err=error_models.forward,
             err_rev=error_models.reverse,
             pooling_method=pooling_method,
@@ -479,8 +432,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         merged = _merge_paired_reads(
             denoised_fwd=denoised_fwd,
             denoised_rev=denoised_rev,
-            filts=filts,
-            filts_rev=filts_rev,
+            reads=filtered,
             min_overlap=min_overlap,
             max_merge_mismatch=max_merge_mismatch,
             trim_overhang=trim_overhang,
@@ -489,7 +441,7 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
         sequence_table = _construct_sequence_table(merged.merged_reads)
         results = _finalize_dada2_results(
             sequence_table=sequence_table,
-            filts=filts,
+            sample_names=filtered.sample_ids,
             filtering_stats=filtering_stats,
             error_stats=error_models.stats,
             denoised_counts=denoised_fwd.read_counts,
@@ -509,19 +461,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
             results=results,
             hashed_feature_ids=hashed_feature_ids,
             retain_all_samples=retain_all_samples,
-            paired=True,
             retain_unmerged=retain_unmerged
         )
-
-
-def _remove_barcode(filename):
-    cut = filename.rsplit('_', 3)
-    id_ = cut[0].rsplit('_', 1)[0]
-
-    cut = cut[1:]
-    cut.insert(0, id_)
-
-    return ('_'.join(cut))
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -556,11 +497,13 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         filtered_dir.mkdir()
 
         multithread = _resolve_multithread(n_threads)
-        unfilts, _ = _validate_inputs(Path(str(demultiplexed_seqs)))
-        filts, filtering_stats = _prepare_ccs_reads(
+        unfiltered = _ReadPaths.from_manifest(
+            demultiplexed_seqs.manifest.view(pd.DataFrame)
+        )
+        filtered, filtering_stats = _prepare_ccs_reads(
             filtered_dir=filtered_dir,
             removed_primer_dir=removed_primer_dir,
-            unfilts=[Path(filt) for filt in unfilts],
+            unfiltered=unfiltered,
             forward_primer=front,
             reverse_primer=adapter,
             max_mismatch=max_mismatch,
@@ -574,7 +517,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
             multithread=multithread
         )
         error_models = _learn_error_models(
-            filts=filts,
+            filts=filtered.forward,
             filts_rev=None,
             learn_min_reads=n_reads_learn,
             multithread=multithread,
@@ -582,7 +525,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
             band_size=32
         )
         denoised = _denoise_single_reads(
-            filts=filts,
+            filts=filtered.forward,
             err=error_models.forward,
             pooling_method=pooling_method,
             learn_min_reads=n_reads_learn,
@@ -593,7 +536,7 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         sequence_table = _construct_sequence_table(denoised.samples)
         results = _finalize_dada2_results(
             sequence_table=sequence_table,
-            filts=filts,
+            sample_names=filtered.sample_ids,
             filtering_stats=filtering_stats,
             error_stats=error_models.stats,
             denoised_counts=denoised.read_counts,

@@ -26,18 +26,95 @@ from q2_dada2._r_utils import _robj_to_pandas_df
 dada2 = importr('dada2')
 
 
-def _find_fastq_files(directory: Path) -> list[Path]:
-    # mimic R's list.files(pattern=...) behaviour which excludes dotfiles
-    return sorted(
-        path for path in directory.glob('*.fastq.gz')
-        if not path.name.startswith('.')
-    )
+@dataclass(frozen=True)
+class _ReadPaths:
+    '''
+    Sample-aware collection of single- or paired-end FASTQ paths.
+
+    Attributes
+    ----------
+    sample_ids : tuple[str, ...]
+        Sample IDs in manifest-view order.
+    forward : StrVector
+        Forward FASTQ paths, or the sole direction of single-end reads, in
+        manifest-view order.
+    reverse : StrVector or None
+        Reverse FASTQ paths for paired-end reads in manifest-view order.
+    '''
+    sample_ids: tuple[str, ...]
+    forward: StrVector
+    reverse: StrVector | None = None
+
+    @classmethod
+    def from_manifest(cls, manifest: pd.DataFrame) -> '_ReadPaths':
+        '''
+        Build read paths from a single-end, paired-end, or reverse-only
+        manifest. For reverse-only single-end data, the reverse paths are
+        stored as the primary (``forward``) paths.
+        '''
+        primary = 'forward' if 'forward' in manifest else 'reverse'
+        reverse = None
+        if primary == 'forward' and 'reverse' in manifest:
+            reverse = StrVector(manifest['reverse'].astype(str).tolist())
+
+        return cls(
+            sample_ids=tuple(map(str, manifest.index)),
+            forward=StrVector(manifest[primary].astype(str).tolist()),
+            reverse=reverse
+        )
+
+    def __len__(self) -> int:
+        return len(self.sample_ids)
+
+    def output_paths(
+        self,
+        forward_dir: Path,
+        reverse_dir: Path | None = None
+    ) -> '_ReadPaths':
+        reverse = None
+        if self.reverse is not None:
+            if reverse_dir is None:
+                raise ValueError(
+                    'An output directory is required for reverse reads.'
+                )
+            reverse = StrVector([
+                str(reverse_dir / Path(path).name) for path in self.reverse
+            ])
+
+        return _ReadPaths(
+            sample_ids=self.sample_ids,
+            forward=StrVector([
+                str(forward_dir / Path(path).name) for path in self.forward
+            ]),
+            reverse=reverse
+        )
+
+    def select(self, keep: Iterable[bool]) -> '_ReadPaths':
+        keep = tuple(keep)
+        reverse = None
+        if self.reverse is not None:
+            reverse = StrVector([
+                path for path, selected
+                in zip(self.reverse, keep, strict=True) if selected
+            ])
+
+        return _ReadPaths(
+            sample_ids=tuple(
+                sample_id for sample_id, selected
+                in zip(self.sample_ids, keep, strict=True) if selected
+            ),
+            forward=StrVector([
+                path for path, selected
+                in zip(self.forward, keep, strict=True) if selected
+            ]),
+            reverse=reverse
+        )
 
 
 def _prepare_ccs_reads(
     filtered_dir: Path,
     removed_primer_dir: Path,
-    unfilts: list[Path],
+    unfiltered: _ReadPaths,
     forward_primer: str,
     reverse_primer: str | None,
     max_mismatch: int,
@@ -49,7 +126,7 @@ def _prepare_ccs_reads(
     max_len: int | str,
     min_len: int,
     multithread: bool | int
-) -> tuple[StrVector, pd.DataFrame]:
+) -> tuple[_ReadPaths, pd.DataFrame]:
     '''
     Remove primers from CCS reads, then filter and trim the reads.
 
@@ -59,8 +136,8 @@ def _prepare_ccs_reads(
         Directory in which to write filtered FASTQ files.
     removed_primer_dir : Path
         Directory in which to write primer-removed FASTQ files.
-    unfilts : list[Path]
-        Input FASTQ files from which primers will be removed.
+    unfiltered : _ReadPaths
+        Manifest-identified input FASTQ paths and sample IDs.
     forward_primer : str
         Forward primer sequence in the 5' to 3' direction.
     reverse_primer : str or None
@@ -86,8 +163,8 @@ def _prepare_ccs_reads(
 
     Returns
     -------
-    filts : StrVector
-        Paths to the filtered FASTQ files.
+    filtered : _ReadPaths
+        Filtered FASTQ paths and their sample IDs.
     filtering_stats : pd.DataFrame
         Per-sample input, primer-removed, and filtered read counts.
     '''
@@ -96,11 +173,11 @@ def _prepare_ccs_reads(
     else:
         reverse_primer = dada2.rc(reverse_primer)
 
-    removed_primers = [removed_primer_dir / path.name for path in unfilts]
+    expected_no_primers = unfiltered.output_paths(removed_primer_dir)
 
-    no_primers = dada2.removePrimers(
-        fn=StrVector([str(path) for path in unfilts]),
-        fout=StrVector([str(path) for path in removed_primers]),
+    primer_stats_r = dada2.removePrimers(
+        fn=unfiltered.forward,
+        fout=expected_no_primers.forward,
         primer_fwd=forward_primer,
         primer_rev=reverse_primer,
         max_mismatch=max_mismatch,
@@ -109,21 +186,21 @@ def _prepare_ccs_reads(
         verbose=True
     )
 
-    removed_primers = _find_fastq_files(removed_primer_dir)
+    primer_stats = _robj_to_pandas_df(primer_stats_r)
+    primer_stats.index = unfiltered.sample_ids
+    no_primers = expected_no_primers.select(primer_stats['reads.out'] > 0)
 
-    if len(removed_primers) == 0:
+    if len(no_primers) == 0:
         raise ValueError(
             'No reads passed the Removing Primers step. Did you select the '
             'right primer(s)?'
         )
 
-    filts = StrVector([
-        str(filtered_dir / path.name) for path in removed_primers
-    ])
+    expected_filtered = no_primers.output_paths(filtered_dir)
 
-    filtered_out = dada2.filterAndTrim(
-        StrVector([str(path) for path in removed_primers]),
-        filts,
+    filtered_stats_r = dada2.filterAndTrim(
+        no_primers.forward,
+        expected_filtered.forward,
         truncLen=trunc_len,
         trimLeft=trim_left,
         maxEE=max_ee,
@@ -135,68 +212,48 @@ def _prepare_ccs_reads(
         minQ=3
     )
 
-    filts = StrVector([
-        str(path) for path in _find_fastq_files(filtered_dir)
-    ])
-    if len(filts) == 0:
+    filtered_stats = _robj_to_pandas_df(filtered_stats_r)
+    filtered_stats.index = no_primers.sample_ids
+    filtered = expected_filtered.select(filtered_stats['reads.out'] > 0)
+    if len(filtered) == 0:
         raise ValueError(
             'No reads survived filtering and trimming. '
             '(was truncLen longer than the read length?)'
         )
 
-    filtering_stats = pd.concat(
-        [
-            _robj_to_pandas_df(no_primers),
-            _robj_to_pandas_df(filtered_out)['reads.out']
-        ],
-        axis=1
+    filtering_stats = primer_stats.join(
+        filtered_stats['reads.out'].rename('filtered')
     )
 
-    return filts, filtering_stats
+    return filtered, filtering_stats
 
 
 def _prepare_short_reads(
     filtered_dir: Path,
-    filtered_dir_rev: Path | None,
-    unfilts: StrVector,
-    unfilts_rev: StrVector | None,
+    unfiltered: _ReadPaths,
     trunc_len: int,
-    trunc_len_rev: int | None,
     trim_left: int,
-    trim_left_rev: int | None,
     max_ee: float,
-    max_ee_rev: float | None,
     trunc_quality: int,
     max_len: int | str,
     multithread: bool | int
-) -> tuple[StrVector, StrVector | None, pd.DataFrame]:
+) -> tuple[_ReadPaths, pd.DataFrame]:
     '''
-    Filter and trim single, paired, or pyrosequencing reads.
+    Filter and trim single-end or pyrosequencing reads.
 
     Parameters
     ----------
     filtered_dir : Path
         Directory in which to write filtered forward or single-end FASTQ files.
-    filtered_dir_rev : Path or None
-        Directory in which to write filtered reverse FASTQ files for paired
-        reads.
-    unfilts : StrVector
-        Paths to unfiltered forward or single-end FASTQ files.
-    unfilts_rev : StrVector or None
-        Paths to unfiltered reverse FASTQ files for paired reads.
+    unfiltered : _ReadPaths
+        Manifest-identified input FASTQ paths and sample IDs.
     trunc_len : int
         Length at which to truncate forward or single-end reads.
-    trunc_len_rev : int or None
-        Length at which to truncate reverse reads for paired reads.
     trim_left : int
         Number of bases to remove from the start of each forward or single-end
         read.
-    trim_left_rev : int or None
-        Number of bases to remove from the start of each reverse read.
     max_ee : float
         Maximum expected errors allowed in a forward or single-end read.
-    max_ee_rev : float or None
-        Maximum expected errors allowed in a reverse read.
     trunc_quality : int
         Quality score at which reads are truncated.
     max_len : int or str
@@ -206,64 +263,109 @@ def _prepare_short_reads(
 
     Returns
     -------
-    filts : StrVector
-        Paths to filtered forward or single-end .fastq.gz files.
-    filts_rev : StrVector or None
-        Paths to filtered reverse .fastq.gz files if provided.
+    filtered : _ReadPaths
+        Filtered FASTQ paths and their sample IDs.
     filtering_stats : pd.DataFrame
         Per-sample input and filtered read counts.
     '''
-    filts = StrVector([
-        str(filtered_dir / Path(f).name) for f in unfilts
-    ])
+    expected = unfiltered.output_paths(filtered_dir)
 
-    if unfilts_rev is not None:
-        if filtered_dir_rev is None:
-            raise ValueError(
-                'A reverse filtered directory is required for paired reads.'
-            )
+    filtering_stats_r = dada2.filterAndTrim(
+        unfiltered.forward,
+        expected.forward,
+        truncLen=trunc_len,
+        trimLeft=trim_left,
+        maxEE=max_ee,
+        truncQ=trunc_quality,
+        rm_phix=True,
+        multithread=multithread,
+        maxLen=max_len
+    )
 
-        filts_rev = StrVector([
-            str(filtered_dir_rev / Path(f).name) for f in unfilts_rev
-        ])
-        filtering_stats_r = dada2.filterAndTrim(
-            unfilts, filts, unfilts_rev, filts_rev,
-            truncLen=[trunc_len, trunc_len_rev],
-            trimLeft=[trim_left, trim_left_rev],
-            maxEE=[max_ee, max_ee_rev],
-            truncQ=trunc_quality,
-            rm_phix=True,
-            multithread=multithread
-        )
-        filts_rev = StrVector([
-            str(path)
-            for path in _find_fastq_files(filtered_dir_rev)
-        ])
-    else:
-        filts_rev = None
-        filtering_stats_r = dada2.filterAndTrim(
-            unfilts,
-            filts,
-            truncLen=trunc_len,
-            trimLeft=trim_left,
-            maxEE=max_ee,
-            truncQ=trunc_quality,
-            rm_phix=True,
-            multithread=multithread,
-            maxLen=max_len
-        )
-
-    filts = StrVector([
-        str(path) for path in _find_fastq_files(filtered_dir)
-    ])
-    if len(filts) == 0:
+    filtering_stats = _robj_to_pandas_df(filtering_stats_r)
+    filtering_stats.index = unfiltered.sample_ids
+    filtered = expected.select(filtering_stats['reads.out'] > 0)
+    if len(filtered) == 0:
         raise ValueError(
             'No reads survived filtering and trimming. '
             '(was truncLen longer than the read length?)'
         )
 
+    return filtered, filtering_stats
+
+
+def _prepare_paired_reads(
+    filtered_dir: Path,
+    filtered_dir_rev: Path,
+    unfiltered: _ReadPaths,
+    trunc_len: int,
+    trunc_len_rev: int,
+    trim_left: int,
+    trim_left_rev: int,
+    max_ee: float,
+    max_ee_rev: float,
+    trunc_quality: int,
+    multithread: bool | int
+) -> tuple[_ReadPaths, pd.DataFrame]:
+    '''
+    Filter paired reads while retaining their manifest sample identities.
+
+    Parameters
+    ----------
+    filtered_dir : Path
+        Directory in which to write filtered forward FASTQ files.
+    filtered_dir_rev : Path
+        Directory in which to write filtered reverse FASTQ files.
+    unfiltered : _ReadPaths
+        Manifest-identified forward and reverse input paths.
+    trunc_len : int
+        Length at which to truncate forward reads.
+    trunc_len_rev : int
+        Length at which to truncate reverse reads.
+    trim_left : int
+        Number of bases to remove from the start of each forward read.
+    trim_left_rev : int
+        Number of bases to remove from the start of each reverse read.
+    max_ee : float
+        Maximum expected errors allowed in a forward read.
+    max_ee_rev : float
+        Maximum expected errors allowed in a reverse read.
+    trunc_quality : int
+        Quality score at which reads are truncated.
+    multithread : bool or int
+        Whether to use multiple threads, or the number of threads to use.
+
+    Returns
+    -------
+    filtered : _ReadPaths
+        Sample-aware filtered paths for samples with reads passing filtering.
+    filtering_stats : pd.DataFrame
+        Input and filtered read counts indexed by manifest sample ID.
+    '''
+    expected = unfiltered.output_paths(filtered_dir, filtered_dir_rev)
+    filtering_stats_r = dada2.filterAndTrim(
+        unfiltered.forward,
+        expected.forward,
+        unfiltered.reverse,
+        expected.reverse,
+        truncLen=[trunc_len, trunc_len_rev],
+        trimLeft=[trim_left, trim_left_rev],
+        maxEE=[max_ee, max_ee_rev],
+        truncQ=trunc_quality,
+        rm_phix=True,
+        multithread=multithread
+    )
     filtering_stats = _robj_to_pandas_df(filtering_stats_r)
-    return filts, filts_rev, filtering_stats
+    filtering_stats.index = unfiltered.sample_ids
+
+    filtered = expected.select(filtering_stats['reads.out'] > 0)
+    if len(filtered) == 0:
+        raise ValueError(
+            'No reads survived filtering and trimming. '
+            '(was truncLen longer than the read length?)'
+        )
+
+    return filtered, filtering_stats
 
 
 @dataclass(frozen=True)
@@ -523,8 +625,7 @@ class _PairedMergeResults:
 
 
 def _denoise_paired_reads(
-    filts: StrVector,
-    filts_rev: StrVector,
+    reads: _ReadPaths,
     err: ListVector,
     err_rev: ListVector,
     pooling_method: str,
@@ -535,10 +636,8 @@ def _denoise_paired_reads(
 
     Parameters
     ----------
-    filts : StrVector
-        Paths to filtered forward FASTQ files.
-    filts_rev : StrVector
-        Paths to filtered reverse FASTQ files.
+    reads : _ReadPaths
+        Sample-aware filtered forward and reverse FASTQ paths.
     err : ListVector
         Learned forward-read DADA2 error model.
     err_rev : ListVector
@@ -557,14 +656,14 @@ def _denoise_paired_reads(
         Per-sample denoised reverse-read objects.
     '''
     dds_fwd = dada2.dada(
-        filts,
+        reads.forward,
         err=err,
         pool='pseudo' if pooling_method == 'pseudo' else False,
         multithread=multithread,
         verbose=False
     )
     dds_rev = dada2.dada(
-        filts_rev,
+        reads.reverse,
         err=err_rev,
         pool='pseudo' if pooling_method == 'pseudo' else False,
         multithread=multithread,
@@ -664,8 +763,7 @@ def _retain_unmerged_pairs(
 def _merge_paired_reads(
     denoised_fwd: _DenoiseResults,
     denoised_rev: _DenoiseResults,
-    filts: StrVector,
-    filts_rev: StrVector,
+    reads: _ReadPaths,
     min_overlap: int | None,
     max_merge_mismatch: int | None,
     trim_overhang: bool | None,
@@ -680,10 +778,8 @@ def _merge_paired_reads(
         Per-sample denoised forward-read objects.
     denoised_rev : _DenoiseResults
         Per-sample denoised reverse-read objects.
-    filts : StrVector
-        Paths to filtered forward FASTQ files.
-    filts_rev : StrVector
-        Paths to filtered reverse FASTQ files.
+    reads : _ReadPaths
+        Sample-aware filtered forward and reverse FASTQ paths.
     min_overlap : int or None
         Minimum overlap required to merge a forward and reverse read.
     max_merge_mismatch : int or None
@@ -717,9 +813,9 @@ def _merge_paired_reads(
 
     merged_reads_r = dada2.mergePairs(
         denoised_fwd.samples,
-        filts,
+        reads.forward,
         denoised_rev.samples,
-        filts_rev,
+        reads.reverse,
         **kwargs
     )
     if isinstance(merged_reads_r, RDataFrame):
@@ -805,59 +901,6 @@ def _resolve_multithread(num_threads: int | None) -> bool | int:
     return num_threads
 
 
-def _validate_inputs(
-    input_dir: Path,
-    input_dir_rev: Path | None = None
-) -> tuple[StrVector, StrVector | None]:
-    '''
-    Validate input directories and collect their FASTQ files.
-
-    Parameters
-    ----------
-    input_dir : Path
-        Directory containing forward or single-end .fastq.gz files.
-    input_dir_rev : Path or None
-        Optional directory containing paired reverse .fastq.gz files.
-
-    Returns
-    -------
-    unfilts : StrVector
-        Sorted paths to forward or single-end .fastq.gz files.
-    unfilts_rev : StrVector or None
-        Sorted paths to paired reverse .fastq.gz files, if provided.
-    '''
-    if not input_dir.exists():
-        raise ValueError('Input directory does not exist.')
-
-    unfilts = StrVector([str(path) for path in _find_fastq_files(input_dir)])
-
-    if len(unfilts) == 0:
-        raise ValueError(
-            'No input files with the expected filename format (*.fastq.gz) '
-            'found in forward directory.'
-        )
-
-    if input_dir_rev is not None:
-        unfilts_rev = StrVector([
-            str(path) for path in _find_fastq_files(input_dir_rev)
-        ])
-
-        if len(unfilts_rev) == 0:
-            raise ValueError(
-                'No input files with the expected filename format '
-                '(*.fastq.gz) found in reverse directory.'
-            )
-
-        if len(unfilts) != len(unfilts_rev):
-            raise ValueError(
-                'Different numbers of forward and reverse .fastq.gz files.'
-            )
-    else:
-        unfilts_rev = None
-
-    return unfilts, unfilts_rev
-
-
 def _construct_stats_table(
     filtering_stats: pd.DataFrame,
     denoised_counts: Iterable[int],
@@ -913,9 +956,7 @@ def _construct_stats_table(
         track.loc[passed_filtering, 'concatenated'] = list(
             concatenated_counts
         )
-    track.loc[passed_filtering, 'non-chimeric'] = list(
-        non_chimeric_counts
-    )
+    track.loc[passed_filtering, 'non-chimeric'] = list(non_chimeric_counts)
 
     return track
 
@@ -1009,7 +1050,7 @@ def _restore_linked_sequences(
 
 def _finalize_dada2_results(
     sequence_table: RMatrix,
-    filts: StrVector,
+    sample_names: Iterable[str],
     filtering_stats: pd.DataFrame,
     error_stats: pd.DataFrame,
     denoised_counts: Iterable[int],
@@ -1029,8 +1070,8 @@ def _finalize_dada2_results(
     ----------
     sequence_table : RMatrix
         DADA2 sequence table constructed from denoised or merged samples.
-    filts : StrVector
-        Filtered FASTQ paths in sequence-table row order.
+    sample_names : Iterable[str]
+        Names to assign to sequence-table rows in processing order.
     filtering_stats : pd.DataFrame
         Per-sample filtering counts.
     error_stats : pd.DataFrame
@@ -1074,6 +1115,8 @@ def _finalize_dada2_results(
             unmerged_id_map=unmerged_id_map
         )
 
+    sequence_table.index = list(sample_names)
+
     track = _construct_stats_table(
         filtering_stats=filtering_stats,
         denoised_counts=denoised_counts,
@@ -1082,7 +1125,6 @@ def _finalize_dada2_results(
         merged_counts=merged_counts,
         concatenated_counts=concatenated_counts
     )
-    sequence_table.index = [Path(filt).name for filt in filts]
 
     return _Dada2Results(
         sequence_table=sequence_table,

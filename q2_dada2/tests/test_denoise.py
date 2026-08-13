@@ -10,6 +10,9 @@ import os
 import re
 import unittest
 import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
 import pandas as pd
 import skbio
 import biom
@@ -25,6 +28,7 @@ from q2_types.feature_data import LinkedDNA
 from q2_dada2 import denoise_single, denoise_paired, denoise_pyro, denoise_ccs
 from q2_dada2._denoise import _check_featureless_table
 from q2_dada2._dada_stats._visualizer import plot_base_transitions
+from q2_dada2._run_dada import _ReadPaths, _prepare_paired_reads
 
 
 def _sort_seqs(seqs):
@@ -47,6 +51,72 @@ class TestExamples(TestPluginBase):
 
     def test_examples(self):
         self.execute_examples()
+
+
+class TestReadPathPreparation(unittest.TestCase):
+
+    def test_preserves_manifest_pairs_and_sample_ids(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            forward_dir = Path(temp_dir) / 'filtered-forward'
+            reverse_dir = Path(temp_dir) / 'filtered-reverse'
+            forward_dir.mkdir()
+            reverse_dir.mkdir()
+
+            # mix 'a' and 'z' to show filesystem sorting is no longer in effect
+            unfiltered = _ReadPaths.from_manifest(pd.DataFrame(
+                {
+                    'forward': [
+                        '/input/z-forward.fastq.gz',
+                        '/input/a-forward.fastq.gz'
+                    ],
+                    'reverse': [
+                        '/input/a-reverse.fastq.gz',
+                        '/input/z-reverse.fastq.gz'
+                    ]
+                },
+                index=['sample-b', 'sample-a']
+            ))
+
+            def filter_and_trim(fwd, filt, rev, filt_rev, **kwargs):
+                self.assertEqual(list(fwd), list(unfiltered.forward))
+                self.assertEqual(list(rev), list(unfiltered.reverse))
+                Path(filt[0]).touch()
+                Path(filt_rev[0]).touch()
+                return pd.DataFrame(
+                    {'reads.in': [10, 20], 'reads.out': [5, 0]},
+                    index=[Path(path).name for path in fwd]
+                )
+
+            with patch(
+                'q2_dada2._run_dada.dada2.filterAndTrim',
+                side_effect=filter_and_trim
+            ):
+                filtered, filtering_stats = _prepare_paired_reads(
+                    filtered_dir=forward_dir,
+                    filtered_dir_rev=reverse_dir,
+                    unfiltered=unfiltered,
+                    trunc_len=100,
+                    trunc_len_rev=100,
+                    trim_left=0,
+                    trim_left_rev=0,
+                    max_ee=2.0,
+                    max_ee_rev=2.0,
+                    trunc_quality=2,
+                    multithread=False
+                )
+
+            self.assertEqual(filtered.sample_ids, ('sample-b',))
+            self.assertEqual(
+                Path(filtered.forward[0]),
+                forward_dir / 'z-forward.fastq.gz'
+            )
+            self.assertEqual(
+                Path(filtered.reverse[0]),
+                reverse_dir / 'a-reverse.fastq.gz'
+            )
+            self.assertEqual(
+                list(filtering_stats.index), ['sample-b', 'sample-a']
+            )
 
 
 class TestDenoiseSingle(TestPluginBase):
