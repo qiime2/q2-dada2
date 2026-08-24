@@ -127,6 +127,7 @@
 #                 number turns off banding (i.e. full Needleman-Wunsch).
 #    Ex: 32
 #
+# 23)
 
 # error handling -----------------
 options(error = function() {
@@ -208,9 +209,11 @@ option_list = list(
   make_option(c("--retain_unmerged"), action="store", default='FALSE', type='character',
               help="If TRUE, denoised paired reads that fail merging are retained as space-concatenated sequences."),
   make_option(c("--homopolymer_gap_penalty"), action="store", default='NULL', type='character',
-              help="The cost of gaps in homopolymer regions (>=3 repeated bases).Default is NULL, which causes homopolymer gaps to be treated as normal gaps."),
+              help="The cost of gaps in homopolymer regions (>=3 repeated bases). Default is NULL, which causes homopolymer gaps to be treated as normal gaps."),
   make_option(c("--band_size"), action="store", default='NULL', type='character',
-              help="When set, banded Needleman-Wunsch alignments are performed.")
+              help="When set, banded Needleman-Wunsch alignments are performed."),
+  make_option(c("--quality_type"), action="store", default='Auto', type='character',
+              help="The quality encoding of the fastq file(s). If set to 'Auto' (the default) dada2 will attempt to auto-detect the encoding.")
 )
 opt = parse_args(OptionParser(option_list=option_list))
 
@@ -247,6 +250,7 @@ allowOneOff <-if(opt$allow_one_off=='NULL') NULL else as.logical(opt$allow_one_o
 nthreads <- if(opt$num_threads=='NULL') NULL else as.integer(opt$num_threads)
 nreads.learn <- if(opt$learn_min_reads=='NULL') NULL else as.integer(opt$learn_min_reads)
 retain.unmerged <- if(opt$retain_unmerged=='NULL') FALSE else as.logical(opt$retain_unmerged)
+qualityType <- opt$quality_type
 linked.concat.delim <- "NNNNNNNNNN"
 # The following args are not directly exposed to end users in q2-dada2,
 # but rather indirectly, via the methods `denoise-single` and `denoise-pyro`.
@@ -478,7 +482,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   cat("4) Denoise samples ")
   cat("\n")
   for(j in seq(length(filts))) {
-    drp <- derepFastq(filts[[j]])
+    drp <- derepFastq(filts[[j]], qualityType=qualityType)
     dds[[j]] <- dada(drp, err=err, multithread=multithread,HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
                      BAND_SIZE=BAND_SIZE, verbose=FALSE)
     cat(".")
@@ -495,7 +499,7 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
     ### \pseudo_priors code copied from dada2.R
     ### code copied from previous loop through samples in this script
     for(j in seq(length(filts))) {
-      drp <- derepFastq(filts[[j]])
+      drp <- derepFastq(filts[[j]], qualityType=qualityType)
       dds[[j]] <- dada(drp, err=err, multithread=multithread,
                        priors=pseudo_priors, HOMOPOLYMER_GAP_PENALTY=HOMOPOLYMER_GAP_PENALTY,
                        BAND_SIZE=BAND_SIZE, verbose=FALSE)
@@ -516,9 +520,9 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
   cat("3) Denoise samples ")
 
   for(j in seq(length(filts))) {
-    drpF <- derepFastq(filts[[j]])
+    drpF <- derepFastq(filts[[j]], qualityType=qualityType)
     ddsF[[j]] <- dada(drpF, err=err, multithread=multithread, verbose=FALSE)
-    drpR <- derepFastq(filtsR[[j]])
+    drpR <- derepFastq(filtsR[[j]], qualityType=qualityType)
     ddsR[[j]] <- dada(drpR, err=errR, multithread=multithread, verbose=FALSE)
     cat(".")
   }
@@ -537,10 +541,10 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
     ### \pseudo_priors code copied from dada2.R
     ### code copied from previous loop through samples in this script
     for(j in seq(length(filts))) {
-      drpF <- derepFastq(filts[[j]])
+      drpF <- derepFastq(filts[[j]], qualityType=qualityType)
       ddsF[[j]] <- dada(drpF, err=err, priors=pseudo_priorsF,
                         multithread=multithread, verbose=FALSE)
-      drpR <- derepFastq(filtsR[[j]])
+      drpR <- derepFastq(filtsR[[j]], qualityType=qualityType)
       ddsR[[j]] <- dada(drpR, err=errR, priors=pseudo_priorsR,
                         multithread=multithread, verbose=FALSE)
       cat(".")
@@ -551,8 +555,8 @@ if(inp.dirR =='NULL'){#for CCS/sinlge/pyro read analysis
 
   ### Now loop through and do merging
   for(j in seq(length(filts))) {
-    drpF <- derepFastq(filts[[j]])
-    drpR <- derepFastq(filtsR[[j]])
+    drpF <- derepFastq(filts[[j]], qualityType=qualityType)
+    drpR <- derepFastq(filtsR[[j]], qualityType=qualityType)
     # we are intentionally not using `justConcatenate = TRUE` here; that sets
     # the "accept" column to TRUE for all pairs in mergePairs and would collapse
     # true merged and rescued unmerged reads into the same "merged" count
