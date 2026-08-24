@@ -127,7 +127,8 @@
 #                 number turns off banding (i.e. full Needleman-Wunsch).
 #    Ex: 32
 #
-# 23)
+# 23) quality_type - The quality encoding of the fastq file(s). If set to 'Auto'
+#                    (the default) dada2 will attempt to auto-detect the encoding
 
 # error handling -----------------
 options(error = function() {
