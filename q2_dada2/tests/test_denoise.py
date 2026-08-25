@@ -10,9 +10,13 @@ import os
 import re
 import unittest
 import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
 import pandas as pd
 import skbio
 import biom
+from pandas.testing import assert_frame_equal
 
 import qiime2
 from qiime2.plugin.testing import TestPluginBase
@@ -24,6 +28,7 @@ from q2_types.feature_data import LinkedDNA
 from q2_dada2 import denoise_single, denoise_paired, denoise_pyro, denoise_ccs
 from q2_dada2._denoise import _check_featureless_table
 from q2_dada2._dada_stats._visualizer import plot_base_transitions
+from q2_dada2._run_dada import _ReadPaths, _prepare_paired_reads
 
 
 def _sort_seqs(seqs):
@@ -34,11 +39,84 @@ def _sort_table(table):
     return table.sort(axis="sample").sort(axis="observation")
 
 
+def _assert_error_models_equal(actual, expected):
+    assert_frame_equal(
+        actual.to_dataframe().replace('', pd.NA),
+        expected.to_dataframe().replace('', pd.NA)
+    )
+
+
 class TestExamples(TestPluginBase):
     package = 'q2_dada2.tests'
 
     def test_examples(self):
         self.execute_examples()
+
+
+class TestReadPathPreparation(unittest.TestCase):
+
+    def test_preserves_manifest_pairs_and_sample_ids(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            forward_dir = Path(temp_dir) / 'filtered-forward'
+            reverse_dir = Path(temp_dir) / 'filtered-reverse'
+            forward_dir.mkdir()
+            reverse_dir.mkdir()
+
+            # mix 'a' and 'z' to show filesystem sorting is no longer in effect
+            unfiltered = _ReadPaths.from_manifest(pd.DataFrame(
+                {
+                    'forward': [
+                        '/input/z-forward.fastq.gz',
+                        '/input/a-forward.fastq.gz'
+                    ],
+                    'reverse': [
+                        '/input/a-reverse.fastq.gz',
+                        '/input/z-reverse.fastq.gz'
+                    ]
+                },
+                index=['sample-b', 'sample-a']
+            ))
+
+            def filter_and_trim(fwd, filt, rev, filt_rev, **kwargs):
+                self.assertEqual(list(fwd), list(unfiltered.forward))
+                self.assertEqual(list(rev), list(unfiltered.reverse))
+                Path(filt[0]).touch()
+                Path(filt_rev[0]).touch()
+                return pd.DataFrame(
+                    {'reads.in': [10, 20], 'reads.out': [5, 0]},
+                    index=[Path(path).name for path in fwd]
+                )
+
+            with patch(
+                'q2_dada2._run_dada.dada2.filterAndTrim',
+                side_effect=filter_and_trim
+            ):
+                filtered, filtering_stats = _prepare_paired_reads(
+                    filtered_dir=forward_dir,
+                    filtered_dir_rev=reverse_dir,
+                    unfiltered=unfiltered,
+                    trunc_len=100,
+                    trunc_len_rev=100,
+                    trim_left=0,
+                    trim_left_rev=0,
+                    max_ee=2.0,
+                    max_ee_rev=2.0,
+                    trunc_quality=2,
+                    multithread=False
+                )
+
+            self.assertEqual(filtered.sample_ids, ('sample-b',))
+            self.assertEqual(
+                Path(filtered.forward[0]),
+                forward_dir / 'z-forward.fastq.gz'
+            )
+            self.assertEqual(
+                Path(filtered.reverse[0]),
+                reverse_dir / 'a-reverse.fastq.gz'
+            )
+            self.assertEqual(
+                list(filtering_stats.index), ['sample-b', 'sample-a']
+            )
 
 
 class TestDenoiseSingle(TestPluginBase):
@@ -67,9 +145,7 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_override(self):
         with open(self.get_data_path('expected/single-override.tsv')) as fh:
@@ -95,9 +171,7 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_mixed_barcodes_and_ids(self):
         demux_seqs = SingleLanePerSamplePairedEndFastqDirFmt(
@@ -158,9 +232,7 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_no_chimera_method(self):
         with open(self.get_data_path('expected/single-default.tsv')) as fh:
@@ -182,9 +254,7 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_pseudo_pooling(self):
         with open(self.get_data_path('expected/single-pseudo.tsv')) as fh:
@@ -206,9 +276,7 @@ class TestDenoiseSingle(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
 
 class TestDenoisePaired(TestPluginBase):
@@ -239,9 +307,7 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_remove_empty(self):
         with open(self.get_data_path('expected/paired-remove-empty-default.tsv'
@@ -264,9 +330,7 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_override(self):
         with open(self.get_data_path('expected/paired-override.tsv')) as fh:
@@ -293,9 +357,7 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_all_reads_filtered(self):
         with self.assertRaisesRegex(ValueError, 'filter'):
@@ -358,9 +420,7 @@ class TestDenoisePaired(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
 
 class TestDenoisePairedRetainUnmerged(TestPluginBase):
@@ -650,9 +710,7 @@ class TestDenoisePyro(TestPluginBase):
         self.assertEqual(_sort_seqs(rep_seqs),
                          _sort_seqs(exp_rep_seqs))
         self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True),
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True))
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_trunc_len_bigger_than_max_len(self):
         with self.assertRaisesRegex(ValueError, 'max_len'):
@@ -713,20 +771,13 @@ class TestDenoiseCCS(TestPluginBase):
             self.demux_seqs, front="AGRGTTYGATYMTGGCTCAG"
         )
 
-        self.assertEqual(
-            table,
-            exp_table.sort_order(
-                table.ids('observation'),
-                axis='observation'
-            )
-        )
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
-        df_err_md = \
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True)
-        df_err_exp_md = \
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
-        self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(df_err_md, df_err_exp_md)
+        assert_frame_equal(
+            read_stats_md.to_dataframe().sort_index(),
+            exp_md.to_dataframe().sort_index()
+        )
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
     def test_with_reverse_primer(self):
         with open(self.get_data_path('expected/ccs-reverse-primer.tsv')) as fh:
@@ -755,22 +806,15 @@ class TestDenoiseCCS(TestPluginBase):
             adapter="RGYTACCTTGTTACGACTT"
         )
 
-        self.assertEqual(
-            table,
-            exp_table.sort_order(
-                table.ids('observation'),
-                axis='observation'
-            )
-        )
+        self.assertEqual(_sort_table(table), _sort_table(exp_table))
         self.assertEqual(_sort_seqs(rep_seqs), _sort_seqs(exp_rep_seqs))
         read_stats_md = md
         error_model_md = error_md
-        df_err_md = \
-            error_model_md.to_dataframe().replace('', pd.NA, inplace=True)
-        df_err_exp_md = \
-            exp_error_md.to_dataframe().replace('', pd.NA, inplace=True)
-        self.assertEqual(read_stats_md, exp_md)
-        self.assertEqual(df_err_md, df_err_exp_md)
+        assert_frame_equal(
+            read_stats_md.to_dataframe().sort_index(),
+            exp_md.to_dataframe().sort_index()
+        )
+        _assert_error_models_equal(error_model_md, exp_error_md)
 
 
 class TestVizualization(TestPluginBase):
