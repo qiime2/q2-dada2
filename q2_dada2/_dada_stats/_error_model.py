@@ -41,11 +41,11 @@ def _melt_error_matrix(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _error_model_to_dataframe(
-    error_model: RObject,
+    learned_errors: RObject,
     nti: tuple[str, ...] = ('A', 'C', 'G', 'T'),
     nji: tuple[str, ...] = ('A', 'C', 'G', 'T')
 ) -> pd.DataFrame:
-    '''Convert a learned DADA2 error model into plotting statistics.'''
+    '''Convert the complete result of DADA2 error learning to statistics.'''
     acgt = {'A', 'C', 'G', 'T'}
     if not all(n in acgt for n in nti) or not all(n in acgt for n in nji):
         raise ValueError('nti and ntj must be nucleotide(s): A/C/G/T.')
@@ -53,14 +53,18 @@ def _error_model_to_dataframe(
         raise ValueError('nti and ntj must not contain duplicates.')
 
     detailed_errors = dada2.getErrors(
-        error_model, detailed=True, enforce=False
+        learned_errors, detailed=True, enforce=False
     )
 
-    obj = detailed_errors.rx2('trans')
-    trans = _convert_error_matrix(obj) if obj is not NULL else None
-
-    obj = detailed_errors.rx2('err_out')
-    err_out = _convert_error_matrix(obj) if obj is not NULL else None
+    trans_obj = detailed_errors.rx2('trans')
+    err_out_obj = detailed_errors.rx2('err_out')
+    if trans_obj is NULL or err_out_obj is NULL:
+        raise ValueError(
+            'Expected the complete result of dada2::learnErrors(), including '
+            '$trans and $err_out.'
+        )
+    trans = _convert_error_matrix(trans_obj)
+    err_out = _convert_error_matrix(err_out_obj)
 
     obj = detailed_errors.rx2('err_in')
     if obj is not NULL:
@@ -70,53 +74,33 @@ def _error_model_to_dataframe(
     else:
         err_in = None
 
-    if trans is not None:
-        if len(trans.columns) <= 1:
-            raise ValueError(
-                'plotErrors only supported when using quality scores in the '
-                'error model (i.e. USE_QUALS=TRUE).'
-            )
-        trans_df = _melt_error_matrix(trans)
-        trans_df.columns = ['Transition', 'Qual', 'count']
-    elif err_out is not None:
-        if len(err_out.columns) <= 1:
-            raise ValueError(
-                'plotErrors only supported when using quality scores in the '
-                'error model (i.e. USE_QUALS=TRUE).'
-            )
-        trans_df = _melt_error_matrix(err_out)
-        trans_df.columns = ['Transition', 'Qual', 'count']
-    else:
+    if len(trans.columns) <= 1:
         raise ValueError(
-            'Non-null observed and/or estimated error rates '
-            '(dq$trans or dq$err_out) must be provided.'
+            'plotErrors only supported when using quality scores in the '
+            'error model (i.e. USE_QUALS=TRUE).'
         )
+    trans_df = _melt_error_matrix(trans)
+    trans_df.columns = ['Transition', 'Qual', 'count']
 
     trans_df['from'] = trans_df['Transition'].str[0]
     trans_df['to'] = trans_df['Transition'].str[2]
     trans_df['Qual'] = pd.to_numeric(trans_df['Qual'])
 
-    if trans is not None:
-        total_count = trans_df.groupby(['from', 'Qual'])['count'].sum()
-        trans_df['tot'] = [
-            total_count.loc[(from_base, quality)]
-            for from_base, quality in zip(
-                trans_df['from'], trans_df['Qual']
-            )
-        ]
-        trans_df['Observed'] = trans_df['count'] / trans_df['tot']
-    else:
-        trans_df['Observed'] = None
+    total_count = trans_df.groupby(['from', 'Qual'])['count'].sum()
+    trans_df['tot'] = [
+        total_count.loc[(from_base, quality)]
+        for from_base, quality in zip(
+            trans_df['from'], trans_df['Qual']
+        )
+    ]
+    trans_df['Observed'] = trans_df['count'] / trans_df['tot']
 
-    if err_out is not None:
-        trans_df['Estimated'] = [
-            err_out.loc[transition, quality]
-            for transition, quality in zip(
-                trans_df['Transition'], trans_df['Qual']
-            )
-        ]
-    else:
-        trans_df['Estimated'] = None
+    trans_df['Estimated'] = [
+        err_out.loc[transition, quality]
+        for transition, quality in zip(
+            trans_df['Transition'], trans_df['Qual']
+        )
+    ]
 
     if err_in is not None:
         trans_df['Input'] = [
