@@ -221,7 +221,7 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                     max_len, pooling_method, chimera_method,
                     min_fold_parent_over_abundance, allow_one_off,
                     n_threads, n_reads_learn, hashed_feature_ids,
-                    homopolymer_gap_penalty, band_size, retain_all_samples):
+                    homopolymer_gap_penalty, band_size, retain_all_samples, quality_type):
     _check_inputs(**locals())
     if trunc_len != 0 and trim_left >= trunc_len:
         raise ValueError("trim_left (%r) must be smaller than trunc_len (%r)"
@@ -255,7 +255,9 @@ def _denoise_single(demultiplexed_seqs, trunc_len, trim_left, max_ee, trunc_q,
                '--num_threads', str(n_threads),
                '--learn_min_reads', str(n_reads_learn),
                '--homopolymer_gap_penalty', str(homopolymer_gap_penalty),
-               '--band_size', str(band_size)]
+               '--band_size', str(band_size),
+               '--quality_type', str(quality_type),
+               ]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -281,7 +283,8 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                    allow_one_off: bool = False,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True,
-                   retain_all_samples: bool = True
+                   retain_all_samples: bool = True,
+                   quality_type: str = 'Auto',
                    ) -> (biom.Table, DNAIterator,
                          qiime2.Metadata, qiime2.Metadata):
     return _denoise_single(
@@ -300,7 +303,9 @@ def denoise_single(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='NULL',
         band_size='16',
-        retain_all_samples=retain_all_samples)
+        retain_all_samples=retain_all_samples,
+        quality_type=quality_type,
+    )
 
 
 def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
@@ -318,7 +323,8 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                    n_threads: int = 1, n_reads_learn: int = 1000000,
                    hashed_feature_ids: bool = True,
                    retain_all_samples: bool = True,
-                   retain_unmerged: bool = False
+                   retain_unmerged: bool = False,
+                   quality_type: str = 'Auto',
                    ) -> (biom.Table, DNAIterator,
                          qiime2.Metadata, qiime2.Metadata):
     _check_inputs(**locals())
@@ -376,7 +382,9 @@ def denoise_paired(demultiplexed_seqs: SingleLanePerSamplePairedEndFastqDirFmt,
                '--allow_one_off', str(allow_one_off),
                '--num_threads', str(n_threads),
                '--learn_min_reads', str(n_reads_learn),
-               '--retain_unmerged', str(retain_unmerged)]
+               '--retain_unmerged', str(retain_unmerged),
+               '--quality_type', str(quality_type),
+               ]
         try:
             run_commands([cmd])
         except subprocess.CalledProcessError as e:
@@ -420,7 +428,8 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                  allow_one_off: bool = False,
                  n_threads: int = 1, n_reads_learn: int = 250000,
                  hashed_feature_ids: bool = True,
-                 retain_all_samples: bool = True
+                 retain_all_samples: bool = True,
+                 quality_type: str = 'Auto',
                  ) -> (biom.Table, DNAIterator,
                        qiime2.Metadata, qiime2.Metadata):
     return _denoise_single(
@@ -439,7 +448,9 @@ def denoise_pyro(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
         hashed_feature_ids=hashed_feature_ids,
         homopolymer_gap_penalty='1',
         band_size='32',
-        retain_all_samples=retain_all_samples)
+        retain_all_samples=retain_all_samples,
+        quality_type=quality_type,
+    )
 
 
 def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
@@ -453,7 +464,8 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                 allow_one_off: bool = False,
                 n_threads: int = 1, n_reads_learn: int = 1000000,
                 hashed_feature_ids: bool = True,
-                retain_all_samples: bool = True
+                retain_all_samples: bool = True,
+                quality_type: str = 'Auto',
                 ) -> (biom.Table, DNAIterator,
                       qiime2.Metadata, qiime2.Metadata):
     _check_inputs(**locals())
@@ -498,7 +510,9 @@ def denoise_ccs(demultiplexed_seqs: SingleLanePerSampleSingleEndFastqDirFmt,
                '--num_threads', str(n_threads),
                '--learn_min_reads', str(n_reads_learn),
                '--homopolymer_gap_penalty', 'NULL',
-               '--band_size', '32']
+               '--band_size', '32',
+               '--quality_type', str(quality_type),
+               ]
 
         if adapter is not None:
             cmd += ['--reverse_primer', str(adapter)]

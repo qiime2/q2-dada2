@@ -24,6 +24,7 @@ from ._dada_stats import plot_base_transitions
 
 _POOL_OPT = {'pseudo', 'independent'}
 _CHIM_OPT = {'consensus', 'none'}
+_QUAL_OPT = {'Auto', 'FastqQuality', 'SFastqQuality'}
 P_retain_unmerged, T_paired_representative_sequences = qiime2.plugin.TypeMap({
     qiime2.plugin.Choices(True):
         FeatureData[LinkedSequence],
@@ -70,7 +71,10 @@ plugin.methods.register_function(
                 'n_threads': qiime2.plugin.Threads,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool,
-                'retain_all_samples': qiime2.plugin.Bool},
+                'retain_all_samples': qiime2.plugin.Bool,
+                'quality_type': qiime2.plugin.Str %
+                                qiime2.plugin.Choices(_QUAL_OPT),
+                },
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats]),
@@ -144,7 +148,10 @@ plugin.methods.register_function(
         'retain_all_samples': 'If True all samples input to dada2 will be '
                               'retained in the output of dada2, if false '
                               'samples with zero total frequency are removed '
-                              'from the table.'
+                              'from the table.',
+        'quality_type': "The quality encoding of the fastq file(s). If set to "
+                        "'Auto' (the default) dada2 will attempt to "
+                        "auto-detect the encoding.",
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -188,7 +195,10 @@ plugin.methods.register_function(
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool,
                 'retain_all_samples': qiime2.plugin.Bool,
-                'retain_unmerged': qiime2.plugin.Bool % P_retain_unmerged},
+                'retain_unmerged': qiime2.plugin.Bool % P_retain_unmerged,
+                'quality_type': qiime2.plugin.Str %
+                                qiime2.plugin.Choices(_QUAL_OPT),
+                },
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', T_paired_representative_sequences),
              ('denoising_stats', SampleData[DADA2Stats]),
@@ -299,7 +309,10 @@ plugin.methods.register_function(
             'including these features in the table and sequences. Note that '
             'the reverse read is reverse-complemented and thus both read '
             'directions can be expected to map to the same strand.'
-        )
+        ),
+        'quality_type': "The quality encoding of the fastq file(s). If set to "
+                        "'Auto' (the default) dada2 will attempt to "
+                        "auto-detect the encoding.",
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -338,7 +351,10 @@ plugin.methods.register_function(
                 'n_threads': qiime2.plugin.Threads,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool,
-                'retain_all_samples': qiime2.plugin.Bool},
+                'retain_all_samples': qiime2.plugin.Bool,
+                'quality_type': qiime2.plugin.Str %
+                                qiime2.plugin.Choices(_QUAL_OPT),
+                },
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats]),
@@ -414,7 +430,10 @@ plugin.methods.register_function(
         'retain_all_samples': 'If True all samples input to dada2 will be '
                               'retained in the output of dada2, if false '
                               'samples with zero total frequency are removed '
-                              'from the table.'
+                              'from the table.',
+        'quality_type': "The quality encoding of the fastq file(s). If set to "
+                        "'Auto' (the default) dada2 will attempt to "
+                        "auto-detect the encoding.",
     },
     output_descriptions={
         'table': 'The resulting feature table.',
@@ -450,7 +469,10 @@ plugin.methods.register_function(
                 'n_threads': qiime2.plugin.Threads,
                 'n_reads_learn': qiime2.plugin.Int,
                 'hashed_feature_ids': qiime2.plugin.Bool,
-                'retain_all_samples': qiime2.plugin.Bool},
+                'retain_all_samples': qiime2.plugin.Bool,
+                'quality_type': qiime2.plugin.Str %
+                                qiime2.plugin.Choices(_QUAL_OPT),
+                },
     outputs=[('table', FeatureTable[Frequency]),
              ('representative_sequences', FeatureData[Sequence]),
              ('denoising_stats', SampleData[DADA2Stats]),
@@ -553,7 +575,10 @@ plugin.methods.register_function(
         'retain_all_samples': 'If True all samples input to dada2 will be '
                               'retained in the output of dada2, if false '
                               'samples with zero total frequency are removed '
-                              'from the table.'
+                              'from the table.',
+        'quality_type': "The quality encoding of the fastq file(s). If set to "
+                        "'Auto' (the default) dada2 will attempt to auto-detect "
+                        "the encoding.",
     },
     output_descriptions={
         'table': 'The resulting feature table.',
