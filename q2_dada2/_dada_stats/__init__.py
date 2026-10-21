@@ -8,5 +8,4 @@
 
 from ._visualizer import plot_base_transitions
 
-
 __all__ = ['plot_base_transitions']
