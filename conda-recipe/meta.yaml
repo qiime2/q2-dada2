@@ -23,6 +23,7 @@ requirements:
   - r-optparse {{ r_optparse }}
   - qiime2 >={{ qiime2 }}
   - q2-types >={{ q2_types }}
+  - rpy2 {{ rpy2 }}
   build:
   - python {{ python }}
   - setuptools
